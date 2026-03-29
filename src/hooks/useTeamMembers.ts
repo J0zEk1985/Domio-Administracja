@@ -16,7 +16,8 @@ export type TeamMemberRow = {
   roleLabelPl: string;
 };
 
-const TEAM_QUERY_KEY = "team-members" as const;
+/** Eksportowany klucz React Query — używany także przy invalidacji po dodaniu członka. */
+export const TEAM_MEMBERS_QUERY_KEY = "team-members" as const;
 
 /** Short cache window so leaving the tab drops cached rows quickly (GC-friendly). */
 const TEAM_STALE_MS = 0;
@@ -77,7 +78,7 @@ async function fetchTeamMembers(): Promise<TeamMemberRow[]> {
 
 export function useTeamMembers(enabled: boolean = true) {
   return useQuery({
-    queryKey: [TEAM_QUERY_KEY],
+    queryKey: [TEAM_MEMBERS_QUERY_KEY],
     queryFn: fetchTeamMembers,
     enabled,
     staleTime: TEAM_STALE_MS,

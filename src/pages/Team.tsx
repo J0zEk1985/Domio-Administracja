@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
-import { toast } from "@/components/ui/sonner";
+import { AddTeamMemberDialog } from "@/components/team/AddTeamMemberDialog";
 import { cn } from "@/lib/utils";
 
 type SortKey = "fullName" | "roleLabelPl";
@@ -105,6 +105,7 @@ export default function Team() {
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   function handleSortColumn(key: SortKey) {
     setSort((prev) => {
@@ -187,6 +188,8 @@ export default function Team() {
 
   return (
     <div className="flex-1 space-y-6 p-6">
+      <AddTeamMemberDialog open={addMemberOpen} onOpenChange={setAddMemberOpen} />
+
       <div>
         <h1 className="text-lg font-semibold text-foreground">Zespół</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
@@ -215,7 +218,7 @@ export default function Team() {
             <Button
               type="button"
               className="shrink-0 gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:self-start"
-              onClick={() => toast.info("Moduł dodawania w przygotowaniu")}
+              onClick={() => setAddMemberOpen(true)}
             >
               <Plus className="h-4 w-4" aria-hidden />
               Dodaj pracownika
