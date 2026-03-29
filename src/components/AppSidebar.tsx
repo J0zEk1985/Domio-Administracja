@@ -7,10 +7,10 @@ import {
   MessageCircle,
   Users,
   Settings,
-  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
+import domioLogo from "@/assets/domio-logo.jpg";
 import {
   Sidebar,
   SidebarContent,
@@ -40,25 +40,26 @@ const navItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <SidebarHeader className="p-4">
-        {!collapsed ? (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
-              D
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              DOMIO Admin
+        <Link
+          to="/dashboard"
+          className={`flex items-center gap-2 outline-none ring-sidebar-ring rounded-lg focus-visible:ring-2 ${collapsed ? "justify-center" : ""}`}
+          title="DOMIO Administracja"
+        >
+          <img
+            src={domioLogo}
+            alt="DOMIO"
+            className="h-8 w-8 shrink-0 rounded-lg object-cover ring-1 ring-border/40"
+          />
+          {!collapsed && (
+            <span className="font-display text-base font-bold leading-tight gradient-brand-text">
+              Administracja
             </span>
-          </div>
-        ) : (
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold mx-auto">
-            D
-          </div>
-        )}
+          )}
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
@@ -71,8 +72,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                      activeClassName="bg-accent text-foreground font-medium"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && (
