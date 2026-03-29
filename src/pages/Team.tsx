@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, Plus, ShieldOff, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,6 +99,7 @@ function SortableHead({
 }
 
 export default function Team() {
+  const navigate = useNavigate();
   const { data: ownerAccess, isLoading: ownerLoading, isError: ownerError, error: ownerErr } = useIsOrgOwner();
   const canLoadTeam = ownerAccess?.isOwner === true;
   const { data, isLoading, isError, error, refetch } = useTeamMembers(canLoadTeam);
@@ -290,7 +291,11 @@ export default function Team() {
                 </TableHeader>
                 <TableBody>
                   {filteredSorted.map((row) => (
-                    <TableRow key={row.membershipId}>
+                    <TableRow
+                      key={row.membershipId}
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/team/${row.membershipId}`)}
+                    >
                       <TableCell className="font-medium">{row.fullName}</TableCell>
                       <TableCell className="text-muted-foreground">{row.email}</TableCell>
                       <TableCell>{row.roleLabelPl}</TableCell>
@@ -304,6 +309,10 @@ export default function Team() {
                             "hover:bg-accent/40 hover:border-accent/70 hover:text-accent-foreground",
                             "transition-colors",
                           )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/team/${row.membershipId}`);
+                          }}
                         >
                           Edytuj / Przypisz budynki
                         </Button>

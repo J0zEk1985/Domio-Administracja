@@ -11,6 +11,7 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Login from "./pages/Login.tsx";
 import Team from "./pages/Team.tsx";
+import MemberDetails from "./pages/MemberDetails.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +36,7 @@ const App = () => (
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/team" element={<Team />} />
+                <Route path="/team/:id" element={<MemberDetails />} />
                 <Route path="/property/:id" element={<Index />} />
               </Route>
             </Route>
