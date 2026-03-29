@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { mapMembershipRoleToPolish } from "@/lib/membershipRolePl";
 
+/** Roles shown on the Team page (administrative); excludes cleaner, driver, etc. */
+export const TEAM_ADMIN_ROLES = ["owner", "admin", "coordinator", "assistant", "accountant"] as const;
+
 export type TeamMemberRow = {
   membershipId: string;
   userId: string;
@@ -33,7 +36,8 @@ async function fetchTeamMembers(): Promise<TeamMemberRow[]> {
     .from("memberships")
     .select("id, role, user_id, is_active")
     .eq("org_id", orgId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .in("role", [...TEAM_ADMIN_ROLES]);
 
   if (memErr) {
     console.error("[useTeamMembers] memberships:", memErr);
@@ -71,10 +75,11 @@ async function fetchTeamMembers(): Promise<TeamMemberRow[]> {
   });
 }
 
-export function useTeamMembers() {
+export function useTeamMembers(enabled: boolean = true) {
   return useQuery({
     queryKey: [TEAM_QUERY_KEY],
     queryFn: fetchTeamMembers,
+    enabled,
     staleTime: TEAM_STALE_MS,
     gcTime: TEAM_GC_MS,
   });
