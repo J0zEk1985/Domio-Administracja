@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { CheckCircle2, Circle, Loader2, MessageSquare, Plus, Search } from "lucide-react";
@@ -256,6 +257,7 @@ export type PropertyTasksTabProps = {
 };
 
 export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = false }: PropertyTasksTabProps) {
+  const navigate = useNavigate();
   const allowMutations = canEdit && !editPermissionPending;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all");
@@ -374,19 +376,37 @@ export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = 
           {filteredTasks.map((task) => (
             <li key={task.id}>
               <div
+                role="link"
+                tabIndex={0}
+                aria-label={`Otwórz zadanie: ${task.title}`}
                 className={cn(
-                  "group flex items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5 shadow-sm transition-colors",
+                  "group flex cursor-pointer items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5 shadow-sm transition-colors",
                   "hover:border-border hover:bg-muted/20",
                 )}
+                onClick={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (t.closest("[data-task-status-control]")) return;
+                  navigate(`/properties/${locationId}/tasks/${task.id}`);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/properties/${locationId}/tasks/${task.id}`);
+                  }
+                }}
               >
                 <button
                   type="button"
+                  data-task-status-control
                   className={cn(
                     "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
                     allowMutations && "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     !allowMutations && "cursor-default opacity-80",
                   )}
-                  onClick={() => handleStatusClick(task)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatusClick(task);
+                  }}
                   disabled={!allowMutations || updateStatus.isPending}
                   aria-label={statusAriaLabel(task.status)}
                 >
