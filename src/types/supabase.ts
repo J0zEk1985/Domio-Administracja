@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -218,6 +218,7 @@ export type Database = {
           admin_contacts: Json | null
           auto_notify_issues: boolean | null
           billing_details: string | null
+          board_portal_token: string
           cleaning_rate: number | null
           client_id: string | null
           client_notification_email: string | null
@@ -236,8 +237,6 @@ export type Database = {
           is_cleaning_active: boolean | null
           is_maintenance_active: boolean | null
           issue_qr_token: string | null
-          board_portal_token: string
-          public_report_token: string
           latitude: number | null
           location_master_id: string | null
           longitude: number | null
@@ -248,6 +247,7 @@ export type Database = {
           org_id: string
           place_id: string | null
           preferred_contractor_id: string | null
+          public_report_token: string
           qr_code_token: string | null
           require_gps_validation_serwis: boolean | null
           serwis_contacts: Json | null
@@ -267,6 +267,7 @@ export type Database = {
           admin_contacts?: Json | null
           auto_notify_issues?: boolean | null
           billing_details?: string | null
+          board_portal_token?: string
           cleaning_rate?: number | null
           client_id?: string | null
           client_notification_email?: string | null
@@ -285,8 +286,6 @@ export type Database = {
           is_cleaning_active?: boolean | null
           is_maintenance_active?: boolean | null
           issue_qr_token?: string | null
-          board_portal_token?: string
-          public_report_token?: string
           latitude?: number | null
           location_master_id?: string | null
           longitude?: number | null
@@ -297,6 +296,7 @@ export type Database = {
           org_id: string
           place_id?: string | null
           preferred_contractor_id?: string | null
+          public_report_token?: string
           qr_code_token?: string | null
           require_gps_validation_serwis?: boolean | null
           serwis_contacts?: Json | null
@@ -316,6 +316,7 @@ export type Database = {
           admin_contacts?: Json | null
           auto_notify_issues?: boolean | null
           billing_details?: string | null
+          board_portal_token?: string
           cleaning_rate?: number | null
           client_id?: string | null
           client_notification_email?: string | null
@@ -334,8 +335,6 @@ export type Database = {
           is_cleaning_active?: boolean | null
           is_maintenance_active?: boolean | null
           issue_qr_token?: string | null
-          board_portal_token?: string
-          public_report_token?: string
           latitude?: number | null
           location_master_id?: string | null
           longitude?: number | null
@@ -346,6 +345,7 @@ export type Database = {
           org_id?: string
           place_id?: string | null
           preferred_contractor_id?: string | null
+          public_report_token?: string
           qr_code_token?: string | null
           require_gps_validation_serwis?: boolean | null
           serwis_contacts?: Json | null

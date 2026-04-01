@@ -4,7 +4,7 @@ import {
   MessageSquareWarning,
   ClipboardCheck,
   FileText,
-  CheckSquare,
+  ListTodo,
   Users,
   Settings,
 } from "lucide-react";
@@ -43,7 +43,7 @@ const navItems: NavItem[] = [
   { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning, badge: "3" },
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ClipboardCheck },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
-  { title: "Zadania", url: "/tasks", icon: CheckSquare },
+  { title: "Zadania", url: "/tasks", icon: ListTodo },
   { title: "Zespół", url: "/team", icon: Users, ownerOnly: true },
 ];
 

@@ -2,15 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
-import {
-  CheckCircle2,
-  ChevronsUpDown,
-  Circle,
-  Loader2,
-  MessageSquare,
-  Plus,
-} from "lucide-react";
-import { useAllTasks, type GlobalTaskRow } from "@/hooks/useGlobalTasks";
+import { ChevronsUpDown, MessageSquare, Plus } from "lucide-react";
+import { useGlobalTasks, type GlobalTaskRow, type GlobalTasksSortBy } from "@/hooks/useGlobalTasks";
 import {
   useCreateTask,
   useUpdateTaskStatus,
@@ -18,6 +11,8 @@ import {
   type CreatePropertyTaskInput,
 } from "@/hooks/usePropertyTasks";
 import { useProperties, usePropertyAdministrators } from "@/hooks/useProperties";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +46,6 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/types/propertyTasks";
 
@@ -59,7 +55,8 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   urgent: "Pilny",
 };
 
-type StatusFilter = "all" | "todo" | "in_progress";
+const BUILDING_FILTER_ALL = "__all__";
+const ASSIGNEE_FILTER_ALL = "__all__";
 
 function formatTaskDate(iso: string): string {
   try {
@@ -69,20 +66,28 @@ function formatTaskDate(iso: string): string {
   }
 }
 
-function TaskStatusIcon({ status, className }: { status: TaskStatus; className?: string }) {
-  if (status === "done") {
-    return <CheckCircle2 className={cn("h-5 w-5 text-emerald-600", className)} aria-hidden />;
+function initialsFromFullName(name: string | null | undefined): string {
+  const n = name?.trim();
+  if (!n) return "?";
+  const parts = n.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    const a = parts[0]![0];
+    const b = parts[parts.length - 1]![0];
+    return `${a}${b}`.toUpperCase();
   }
-  if (status === "in_progress") {
-    return <Loader2 className={cn("h-5 w-5 animate-spin text-muted-foreground", className)} aria-hidden />;
-  }
-  return <Circle className={cn("h-5 w-5 text-muted-foreground", className)} aria-hidden />;
+  return n.slice(0, 2).toUpperCase();
 }
 
 function statusAriaLabel(status: TaskStatus): string {
   if (status === "done") return "Ukończone — kliknij, aby zmienić status";
   if (status === "in_progress") return "W toku — kliknij, aby zmienić status";
   return "Do zrobienia — kliknij, aby zmienić status";
+}
+
+function checkboxCheckedState(status: TaskStatus): boolean | "indeterminate" {
+  if (status === "done") return true;
+  if (status === "in_progress") return "indeterminate";
+  return false;
 }
 
 function GlobalTasksPageSkeleton() {
@@ -92,7 +97,11 @@ function GlobalTasksPageSkeleton() {
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-10 w-40" />
       </div>
-      <Skeleton className="h-10 w-full max-w-md" />
+      <div className="flex flex-wrap gap-3">
+        <Skeleton className="h-10 w-[200px]" />
+        <Skeleton className="h-10 w-[200px]" />
+        <Skeleton className="h-10 w-[200px]" />
+      </div>
       <div className="space-y-2">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <div key={i} className="flex items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2.5">
@@ -101,7 +110,7 @@ function GlobalTasksPageSkeleton() {
               <Skeleton className="h-4 w-3/4 max-w-lg" />
               <Skeleton className="h-3 w-48" />
             </div>
-            <Skeleton className="h-6 w-14" />
+            <Skeleton className="h-8 w-8 rounded-full" />
           </div>
         ))}
       </div>
@@ -111,10 +120,25 @@ function GlobalTasksPageSkeleton() {
 
 export default function Tasks() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<StatusFilter>("all");
   const [newOpen, setNewOpen] = useState(false);
+  const [buildingFilter, setBuildingFilter] = useState<string>(BUILDING_FILTER_ALL);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>(ASSIGNEE_FILTER_ALL);
+  const [sortBy, setSortBy] = useState<GlobalTasksSortBy>("date_desc");
 
-  const tasksQuery = useAllTasks(true);
+  const { data: ownerAccess } = useIsOrgOwner();
+  const isOwner = ownerAccess?.isOwner === true;
+  const teamQuery = useTeamMembers(isOwner);
+
+  const filters = useMemo(
+    () => ({
+      locationId: buildingFilter === BUILDING_FILTER_ALL ? undefined : buildingFilter,
+      assigneeId: !isOwner || assigneeFilter === ASSIGNEE_FILTER_ALL ? undefined : assigneeFilter,
+      sortBy,
+    }),
+    [buildingFilter, assigneeFilter, sortBy, isOwner],
+  );
+
+  const tasksQuery = useGlobalTasks(filters, true);
   const propertiesQuery = useProperties(true);
   const createTask = useCreateTask();
   const updateStatus = useUpdateTaskStatus();
@@ -129,18 +153,12 @@ export default function Tasks() {
     console.error("[Tasks] tasks query:", tasksQuery.error);
   }, [tasksQuery.isError, tasksQuery.error]);
 
-  const filteredTasks = useMemo(() => {
-    const list = tasksQuery.data ?? [];
-    if (filter === "all") return list;
-    if (filter === "todo") return list.filter((t) => t.status === "todo");
-    return list.filter((t) => t.status === "in_progress");
-  }, [tasksQuery.data, filter]);
-
   function handleStatusClick(task: GlobalTaskRow) {
     const next = nextCyclicTaskStatus(task.status);
     updateStatus.mutate({ taskId: task.id, nextStatus: next, locationId: task.location_id });
   }
 
+  const list = tasksQuery.data ?? [];
   const hasProperties = (propertiesQuery.data?.length ?? 0) > 0;
 
   if (tasksQuery.isLoading) {
@@ -151,9 +169,9 @@ export default function Tasks() {
     <div className="flex flex-1 flex-col space-y-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Wszystkie zadania</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Zadania</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Zadania ze wszystkich nieruchomości, do których masz dostęp w administracji.
+            Globalna skrzynka zadań ze wszystkich nieruchomości, do których masz dostęp w administracji.
           </p>
         </div>
         <Button
@@ -167,27 +185,67 @@ export default function Tasks() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <ToggleGroup
-          type="single"
-          value={filter}
-          onValueChange={(v) => {
-            if (v) setFilter(v as StatusFilter);
-          }}
-          className="justify-start"
-          variant="outline"
-          size="sm"
-        >
-          <ToggleGroupItem value="all" aria-label="Wszystkie zadania">
-            Wszystkie
-          </ToggleGroupItem>
-          <ToggleGroupItem value="todo" aria-label="Do zrobienia">
-            Do zrobienia
-          </ToggleGroupItem>
-          <ToggleGroupItem value="in_progress" aria-label="W trakcie">
-            W trakcie
-          </ToggleGroupItem>
-        </ToggleGroup>
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+        <div className="grid w-full gap-3 sm:grid-cols-2 lg:flex lg:max-w-none lg:flex-1 lg:flex-wrap lg:items-end lg:gap-4">
+          <div className="space-y-2 min-w-[200px]">
+            <Label htmlFor="tasks-filter-building" className="text-xs text-muted-foreground">
+              Budynek
+            </Label>
+            <Select value={buildingFilter} onValueChange={setBuildingFilter}>
+              <SelectTrigger id="tasks-filter-building" className="w-full sm:w-[220px]">
+                <SelectValue placeholder="Wszystkie budynki" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={BUILDING_FILTER_ALL}>Wszystkie budynki</SelectItem>
+                {(propertiesQuery.data ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 min-w-[200px]">
+            <Label htmlFor="tasks-sort" className="text-xs text-muted-foreground">
+              Sortowanie
+            </Label>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as GlobalTasksSortBy)}>
+              <SelectTrigger id="tasks-sort" className="w-full sm:w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date_desc">Najnowsze</SelectItem>
+                <SelectItem value="priority_desc">Najwyższy priorytet</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isOwner ? (
+            <div className="space-y-2 min-w-[200px]">
+              <Label htmlFor="tasks-filter-assignee" className="text-xs text-muted-foreground">
+                Pracownik
+              </Label>
+              <Select
+                value={assigneeFilter}
+                onValueChange={setAssigneeFilter}
+                disabled={teamQuery.isLoading}
+              >
+                <SelectTrigger id="tasks-filter-assignee" className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Wszyscy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ASSIGNEE_FILTER_ALL}>Wszyscy</SelectItem>
+                  {(teamQuery.data ?? []).map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>
+                      {m.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {tasksQuery.isError ? (
@@ -197,21 +255,23 @@ export default function Tasks() {
             Odśwież
           </Button>
         </p>
-      ) : filteredTasks.length === 0 ? (
+      ) : list.length === 0 ? (
         <div
           className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/10 px-4 py-12 text-center"
           role="status"
         >
           <p className="text-sm text-muted-foreground">
-            {tasksQuery.data?.length === 0
-              ? "Brak zadań dla Twoich nieruchomości."
-              : "Brak zadań dla wybranego filtru."}
+            Brak zadań dla wybranych filtrów lub nie masz jeszcze żadnych zadań.
           </p>
         </div>
       ) : (
-        <ul className="max-h-[min(640px,calc(100vh-240px))] space-y-1.5 overflow-y-auto pr-1" aria-label="Lista zadań">
-          {filteredTasks.map((task) => {
+        <ul
+          className="max-h-[min(640px,calc(100vh-280px))] space-y-1.5 overflow-y-auto pr-1"
+          aria-label="Lista zadań"
+        >
+          {list.map((task) => {
             const buildingName = task.location?.name?.trim() || "—";
+            const assigneeName = task.assignee?.full_name?.trim();
             return (
               <li key={task.id}>
                 <div
@@ -234,24 +294,39 @@ export default function Tasks() {
                     }
                   }}
                 >
-                  <button
-                    type="button"
+                  <div
                     data-task-status-control
+                    role="button"
+                    tabIndex={0}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleStatusClick(task);
                     }}
-                    disabled={updateStatus.isPending}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleStatusClick(task);
+                      }
+                    }}
                     aria-label={statusAriaLabel(task.status)}
                   >
-                    <TaskStatusIcon status={task.status} />
-                  </button>
+                    <Checkbox
+                      checked={checkboxCheckedState(task.status)}
+                      disabled={updateStatus.isPending}
+                      className="pointer-events-none"
+                      aria-hidden
+                    />
+                  </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-semibold text-sm text-foreground">{task.title}</p>
-                      <Badge variant="secondary" className="max-w-[min(100%,200px)] shrink-0 truncate font-normal text-xs">
+                      <Badge
+                        variant="secondary"
+                        className="max-w-[min(100%,220px)] shrink-0 truncate font-normal text-xs"
+                      >
                         {buildingName}
                       </Badge>
                     </div>
@@ -285,6 +360,14 @@ export default function Tasks() {
                       />
                       {PRIORITY_LABELS[task.priority]}
                     </Badge>
+
+                    {task.assignee_id ? (
+                      <Avatar className="h-8 w-8 border border-border/60" title={assigneeName || undefined}>
+                        <AvatarFallback className="text-[10px] font-medium">
+                          {initialsFromFullName(assigneeName)}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : null}
 
                     {task.visibility === "board_visible" ? (
                       <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wide">
@@ -332,6 +415,7 @@ function GlobalNewTaskDialog({
   const [assigneeId, setAssigneeId] = useState<string>("__none__");
   const [boardVisible, setBoardVisible] = useState(false);
 
+  const formEnabled = Boolean(locationId.trim());
   const adminsQuery = usePropertyAdministrators(locationId || undefined, Boolean(open && locationId));
 
   useEffect(() => {
@@ -391,12 +475,15 @@ function GlobalNewTaskDialog({
         <DialogHeader>
           <DialogTitle>Nowe zadanie</DialogTitle>
           <DialogDescription>
-            Wybierz budynek, potem uzupełnij szczegóły. Zadanie zapisze się na liście globalnej i na karcie nieruchomości.
+            Najpierw wybierz budynek — potem uzupełnij szczegóły. Zadanie pojawi się na liście globalnej i na karcie
+            nieruchomości.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Nieruchomość</Label>
+            <Label>
+              Nieruchomość <span className="text-destructive">*</span>
+            </Label>
             <Popover open={propertyOpen} onOpenChange={setPropertyOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -451,7 +538,7 @@ function GlobalNewTaskDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Np. Przegląd instalacji"
-              disabled={pending}
+              disabled={pending || !formEnabled}
               autoComplete="off"
               required
             />
@@ -462,7 +549,7 @@ function GlobalNewTaskDialog({
             <Select
               value={priority}
               onValueChange={(v) => setPriority(v as TaskPriority)}
-              disabled={pending}
+              disabled={pending || !formEnabled}
             >
               <SelectTrigger id="global-task-priority">
                 <SelectValue />
@@ -482,10 +569,14 @@ function GlobalNewTaskDialog({
             <Select
               value={assigneeId}
               onValueChange={setAssigneeId}
-              disabled={pending || !locationId || adminsQuery.isLoading}
+              disabled={pending || !formEnabled || adminsQuery.isLoading}
             >
               <SelectTrigger id="global-task-assignee">
-                <SelectValue placeholder={locationId ? "Wybierz administratora" : "Najpierw wybierz budynek"} />
+                <SelectValue
+                  placeholder={
+                    formEnabled ? "Wybierz administratora" : "Najpierw wybierz budynek"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Nie przypisuj</SelectItem>
@@ -511,7 +602,7 @@ function GlobalNewTaskDialog({
               id="global-task-visibility"
               checked={boardVisible}
               onCheckedChange={setBoardVisible}
-              disabled={pending}
+              disabled={pending || !formEnabled}
               aria-describedby="global-task-vis-desc"
             />
           </div>
