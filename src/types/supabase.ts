@@ -1698,6 +1698,64 @@ export type Database = {
           },
         ]
       }
+      property_tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          location_id: string
+          priority: Database["public"]["Enums"]["property_task_priority"]
+          status: Database["public"]["Enums"]["property_task_status"]
+          title: string
+          visibility: Database["public"]["Enums"]["property_task_visibility"]
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          location_id: string
+          priority?: Database["public"]["Enums"]["property_task_priority"]
+          status?: Database["public"]["Enums"]["property_task_status"]
+          title: string
+          visibility?: Database["public"]["Enums"]["property_task_visibility"]
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          location_id?: string
+          priority?: Database["public"]["Enums"]["property_task_priority"]
+          status?: Database["public"]["Enums"]["property_task_status"]
+          title?: string
+          visibility?: Database["public"]["Enums"]["property_task_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_tasks_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       repair_logs: {
         Row: {
           cost: number
@@ -1945,6 +2003,45 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "property_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -2595,6 +2692,21 @@ export type Database = {
       get_my_orgs: { Args: never; Returns: string[] }
       get_my_orgs_safe: { Args: never; Returns: string[] }
       get_profile_by_email: { Args: { target_email: string }; Returns: Json }
+      get_property_tasks_with_comment_counts: {
+        Args: { p_location_id: string }
+        Returns: {
+          assignee_id: string
+          comments_count: number
+          created_at: string
+          created_by: string
+          id: string
+          location_id: string
+          priority: Database["public"]["Enums"]["property_task_priority"]
+          status: Database["public"]["Enums"]["property_task_status"]
+          title: string
+          visibility: Database["public"]["Enums"]["property_task_visibility"]
+        }[]
+      }
       get_user_highest_role: { Args: { p_org_id: string }; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
       has_location_access: {
@@ -2664,6 +2776,14 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      property_task_location_id: {
+        Args: { p_task_id: string }
+        Returns: string
+      }
+      property_task_user_has_access: {
+        Args: { p_location_id: string }
+        Returns: boolean
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -3269,6 +3389,9 @@ export type Database = {
     Enums: {
       fleet_role: "admin" | "driver"
       priority_level: "low" | "medium" | "high" | "emergency"
+      property_task_priority: "low" | "medium" | "urgent"
+      property_task_status: "todo" | "in_progress" | "done"
+      property_task_visibility: "internal_only" | "board_visible"
       task_status: "pending" | "in_progress" | "done" | "cancelled"
       task_type:
         | "sop_standard"
@@ -3412,6 +3535,9 @@ export const Constants = {
     Enums: {
       fleet_role: ["admin", "driver"],
       priority_level: ["low", "medium", "high", "emergency"],
+      property_task_priority: ["low", "medium", "urgent"],
+      property_task_status: ["todo", "in_progress", "done"],
+      property_task_visibility: ["internal_only", "board_visible"],
       task_status: ["pending", "in_progress", "done", "cancelled"],
       task_type: [
         "sop_standard",
