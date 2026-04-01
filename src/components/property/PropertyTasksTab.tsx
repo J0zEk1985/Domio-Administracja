@@ -138,6 +138,7 @@ function NewPropertyTaskDialog({
     }
 
     const input: CreatePropertyTaskInput = {
+      locationId,
       title: trimmed,
       priority,
       visibility: boardVisible ? "board_visible" : "internal_only",
@@ -265,8 +266,8 @@ export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = 
 
   const tasksQuery = useTasks(locationId, true);
   const adminsQuery = usePropertyAdministrators(locationId, Boolean(locationId));
-  const createTask = useCreateTask(locationId);
-  const updateStatus = useUpdateTaskStatus(locationId);
+  const createTask = useCreateTask();
+  const updateStatus = useUpdateTaskStatus();
 
   useEffect(() => {
     if (!tasksQuery.isError || !tasksQuery.error) return;
@@ -291,7 +292,7 @@ export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = 
   function handleStatusClick(task: PropertyTaskWithCommentCount) {
     if (!allowMutations) return;
     const next = nextCyclicTaskStatus(task.status);
-    updateStatus.mutate({ taskId: task.id, nextStatus: next });
+    updateStatus.mutate({ taskId: task.id, nextStatus: next, locationId });
   }
 
   return (

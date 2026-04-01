@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import { getOrgAndActor, hasLocationAdministrationAccess } from "@/lib/orgAccess";
+import { globalTasksQueryKey, type GlobalTaskRow } from "@/hooks/useGlobalTasks";
 import type { Database } from "@/types/supabase";
 import type {
   PropertyTaskWithCommentCount,
@@ -74,18 +75,19 @@ export function useTasks(locationId: string | undefined, enabled: boolean = true
 }
 
 export type CreatePropertyTaskInput = {
+  locationId: string;
   title: string;
   priority: TaskPriority;
   visibility: TaskVisibility;
   assignee_id: string | null;
 };
 
-export function useCreateTask(locationId: string | undefined) {
+export function useCreateTask() {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreatePropertyTaskInput) => {
-      if (!locationId) throw new Error("Brak identyfikatora nieruchomości.");
+      if (!input.locationId?.trim()) throw new Error("Brak identyfikatora nieruchomości.");
 
       const {
         data: { user },
@@ -98,7 +100,7 @@ export function useCreateTask(locationId: string | undefined) {
       if (!user?.id) throw new Error("Brak zalogowanego użytkownika.");
 
       const { error } = await supabase.from("property_tasks").insert({
-        location_id: locationId,
+        location_id: input.locationId,
         title: input.title.trim(),
         priority: input.priority,
         visibility: input.visibility,
@@ -112,10 +114,9 @@ export function useCreateTask(locationId: string | undefined) {
         throw error;
       }
     },
-    onSuccess: async () => {
-      if (locationId) {
-        await qc.invalidateQueries({ queryKey: propertyTasksQueryKey(locationId) });
-      }
+    onSuccess: async (_data, variables) => {
+      await qc.invalidateQueries({ queryKey: propertyTasksQueryKey(variables.locationId) });
+      await qc.invalidateQueries({ queryKey: globalTasksQueryKey });
     },
     onError: (err: unknown) => {
       const msg =
@@ -139,9 +140,15 @@ export function nextCyclicTaskStatus(current: TaskStatus): TaskStatus {
 export type UpdateTaskStatusVars = {
   taskId: string;
   nextStatus: TaskStatus;
+  locationId: string;
 };
 
-export function useUpdateTaskStatus(locationId: string | undefined) {
+type StatusMutationContext = {
+  previous?: PropertyTaskWithCommentCount[];
+  previousGlobal?: GlobalTaskRow[];
+};
+
+export function useUpdateTaskStatus() {
   const qc = useQueryClient();
 
   return useMutation({
@@ -152,12 +159,11 @@ export function useUpdateTaskStatus(locationId: string | undefined) {
         throw error;
       }
     },
-    onMutate: async ({ taskId, nextStatus }) => {
-      if (!locationId) return {};
-
+    onMutate: async ({ taskId, nextStatus, locationId }): Promise<StatusMutationContext> => {
       await qc.cancelQueries({ queryKey: propertyTasksQueryKey(locationId) });
-      const previous = qc.getQueryData<PropertyTaskWithCommentCount[]>(propertyTasksQueryKey(locationId));
+      await qc.cancelQueries({ queryKey: globalTasksQueryKey });
 
+      const previous = qc.getQueryData<PropertyTaskWithCommentCount[]>(propertyTasksQueryKey(locationId));
       if (previous) {
         qc.setQueryData(
           propertyTasksQueryKey(locationId),
@@ -165,11 +171,22 @@ export function useUpdateTaskStatus(locationId: string | undefined) {
         );
       }
 
-      return { previous };
+      const previousGlobal = qc.getQueryData<GlobalTaskRow[]>(globalTasksQueryKey);
+      if (previousGlobal) {
+        qc.setQueryData(
+          globalTasksQueryKey,
+          previousGlobal.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t)),
+        );
+      }
+
+      return { previous, previousGlobal };
     },
-    onError: (err: unknown, _vars, context) => {
-      if (locationId && context?.previous !== undefined) {
-        qc.setQueryData(propertyTasksQueryKey(locationId), context.previous);
+    onError: (err: unknown, vars, context) => {
+      if (vars?.locationId && context?.previous !== undefined) {
+        qc.setQueryData(propertyTasksQueryKey(vars.locationId), context.previous);
+      }
+      if (context?.previousGlobal !== undefined) {
+        qc.setQueryData(globalTasksQueryKey, context.previousGlobal);
       }
       const msg =
         err instanceof Error
@@ -180,10 +197,11 @@ export function useUpdateTaskStatus(locationId: string | undefined) {
       toast.error(msg);
       console.error("[useUpdateTaskStatus]", err);
     },
-    onSettled: async () => {
-      if (locationId) {
-        await qc.invalidateQueries({ queryKey: propertyTasksQueryKey(locationId) });
+    onSettled: async (_d, _e, vars) => {
+      if (vars?.locationId) {
+        await qc.invalidateQueries({ queryKey: propertyTasksQueryKey(vars.locationId) });
       }
+      await qc.invalidateQueries({ queryKey: globalTasksQueryKey });
     },
   });
 }
