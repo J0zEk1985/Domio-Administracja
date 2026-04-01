@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { ChevronsUpDown, MessageSquare, Plus } from "lucide-react";
-import { useGlobalTasks, type GlobalTaskRow, type GlobalTasksSortBy } from "@/hooks/useGlobalTasks";
+import { useGlobalTasks, type GlobalTaskRow } from "@/hooks/useGlobalTasks";
 import {
   useCreateTask,
   useUpdateTaskStatus,
@@ -57,6 +57,7 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
 
 const BUILDING_FILTER_ALL = "__all__";
 const ASSIGNEE_FILTER_ALL = "__all__";
+const PRIORITY_FILTER_ALL = "__all_priority__";
 
 function formatTaskDate(iso: string): string {
   try {
@@ -123,7 +124,7 @@ export default function Tasks() {
   const [newOpen, setNewOpen] = useState(false);
   const [buildingFilter, setBuildingFilter] = useState<string>(BUILDING_FILTER_ALL);
   const [assigneeFilter, setAssigneeFilter] = useState<string>(ASSIGNEE_FILTER_ALL);
-  const [sortBy, setSortBy] = useState<GlobalTasksSortBy>("date_desc");
+  const [priorityFilter, setPriorityFilter] = useState<string>(PRIORITY_FILTER_ALL);
 
   const { data: ownerAccess } = useIsOrgOwner();
   const isOwner = ownerAccess?.isOwner === true;
@@ -133,9 +134,10 @@ export default function Tasks() {
     () => ({
       locationId: buildingFilter === BUILDING_FILTER_ALL ? undefined : buildingFilter,
       assigneeId: !isOwner || assigneeFilter === ASSIGNEE_FILTER_ALL ? undefined : assigneeFilter,
-      sortBy,
+      priorityFilter:
+        priorityFilter === PRIORITY_FILTER_ALL ? undefined : (priorityFilter as TaskPriority),
     }),
-    [buildingFilter, assigneeFilter, sortBy, isOwner],
+    [buildingFilter, assigneeFilter, priorityFilter, isOwner],
   );
 
   const tasksQuery = useGlobalTasks(filters, true);
@@ -207,16 +209,18 @@ export default function Tasks() {
           </div>
 
           <div className="space-y-2 min-w-[200px]">
-            <Label htmlFor="tasks-sort" className="text-xs text-muted-foreground">
-              Sortowanie
+            <Label htmlFor="tasks-priority-filter" className="text-xs text-muted-foreground">
+              Filtrowanie: Priorytet
             </Label>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as GlobalTasksSortBy)}>
-              <SelectTrigger id="tasks-sort" className="w-full sm:w-[220px]">
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger id="tasks-priority-filter" className="w-full sm:w-[220px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date_desc">Najnowsze</SelectItem>
-                <SelectItem value="priority_desc">Najwyższy priorytet</SelectItem>
+                <SelectItem value={PRIORITY_FILTER_ALL}>Wszystkie priorytety</SelectItem>
+                <SelectItem value="low">{PRIORITY_LABELS.low}</SelectItem>
+                <SelectItem value="medium">{PRIORITY_LABELS.medium}</SelectItem>
+                <SelectItem value="urgent">{PRIORITY_LABELS.urgent}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -471,7 +475,7 @@ function GlobalNewTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-full sm:max-w-screen-md">
         <DialogHeader>
           <DialogTitle>Nowe zadanie</DialogTitle>
           <DialogDescription>
@@ -491,18 +495,23 @@ function GlobalNewTaskDialog({
                   variant="outline"
                   role="combobox"
                   aria-expanded={propertyOpen}
-                  className="w-full justify-between font-normal"
+                  className="h-auto min-w-0 w-full max-w-full justify-between gap-2 overflow-hidden py-2 font-normal"
                   disabled={pending || !canSubmit}
                 >
                   {selectedProperty ? (
-                    <span className="truncate text-left">
-                      {selectedProperty.name}
-                      <span className="ml-1 text-muted-foreground">— {selectedProperty.address}</span>
+                    <span
+                      className="min-w-0 flex-1 truncate text-left"
+                      title={`${selectedProperty.name} — ${selectedProperty.address}`}
+                    >
+                      <span className="text-foreground">{selectedProperty.name}</span>
+                      <span className="text-muted-foreground"> — {selectedProperty.address}</span>
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">Wybierz nieruchomość…</span>
+                    <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+                      Wybierz nieruchomość…
+                    </span>
                   )}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" aria-hidden />
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
@@ -515,13 +524,17 @@ function GlobalNewTaskDialog({
                         <CommandItem
                           key={p.id}
                           value={`${p.name} ${p.address}`}
+                          className="min-w-0"
+                          title={`${p.name} — ${p.address}`}
                           onSelect={() => {
                             setLocationId(p.id);
                             setPropertyOpen(false);
                           }}
                         >
-                          <span className="font-medium">{p.name}</span>
-                          <span className="ml-1 text-muted-foreground">— {p.address}</span>
+                          <span className="min-w-0 flex-1 truncate">
+                            <span className="font-medium">{p.name}</span>
+                            <span className="text-muted-foreground"> — {p.address}</span>
+                          </span>
                         </CommandItem>
                       ))}
                     </CommandGroup>

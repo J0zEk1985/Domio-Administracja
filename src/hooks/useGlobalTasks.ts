@@ -9,17 +9,14 @@ const GC_MS = 30_000;
 /** Root segment — invaliduje wszystkie warianty listy globalnej. */
 export const GLOBAL_TASKS_QUERY_ROOT = "global-tasks" as const;
 
-export type GlobalTasksSortBy = "date_desc" | "priority_desc";
-
 export type GlobalTasksFilters = {
   locationId?: string;
   assigneeId?: string;
-  sortBy: GlobalTasksSortBy;
+  /** When set, only tasks with this priority are returned. */
+  priorityFilter?: TaskPriority;
 };
 
-const DEFAULT_FILTERS: GlobalTasksFilters = {
-  sortBy: "date_desc",
-};
+const DEFAULT_FILTERS: GlobalTasksFilters = {};
 
 export function globalTasksQueryKey(
   filters: GlobalTasksFilters = DEFAULT_FILTERS,
@@ -74,12 +71,8 @@ function mapGlobalRow(row: RowWithEmbeds): GlobalTaskRow {
   };
 }
 
-function applySort(rows: GlobalTaskRow[], sortBy: GlobalTasksSortBy): GlobalTaskRow[] {
-  if (sortBy === "date_desc") {
-    return [...rows].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
-  }
+/** Default list order: urgent first, then by creation time (newest first). */
+function applyDefaultSort(rows: GlobalTaskRow[]): GlobalTaskRow[] {
   return [...rows].sort((a, b) => {
     const dw = priorityWeight(b.priority) - priorityWeight(a.priority);
     if (dw !== 0) return dw;
@@ -98,6 +91,9 @@ async function fetchGlobalTasks(filters: GlobalTasksFilters): Promise<GlobalTask
   if (filters.assigneeId?.trim()) {
     q = q.eq("assignee_id", filters.assigneeId.trim());
   }
+  if (filters.priorityFilter) {
+    q = q.eq("priority", filters.priorityFilter);
+  }
 
   q = q.order("created_at", { ascending: false });
 
@@ -115,7 +111,7 @@ export function useGlobalTasks(filters: GlobalTasksFilters = DEFAULT_FILTERS, en
   return useQuery({
     queryKey: globalTasksQueryKey(filters),
     queryFn: () => fetchGlobalTasks(filters),
-    select: (rows) => applySort(rows, filters.sortBy),
+    select: (rows) => applyDefaultSort(rows),
     enabled,
     staleTime: STALE_MS,
     gcTime: GC_MS,
