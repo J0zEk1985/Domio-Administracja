@@ -18,6 +18,7 @@ import { useProperty, usePropertyAdministrators } from "@/hooks/useProperties";
 import { usePropertyTasksCanEdit } from "@/hooks/usePropertyTasks";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
+import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { toast } from "@/components/ui/sonner";
@@ -181,6 +182,11 @@ export default function PropertyDetails() {
 
         <TabsContent value="general" className="mt-6 space-y-6">
           <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
+          <PropertySerwisQrAccessCard
+            property={property}
+            canManage={portalAccessQuery.data === true}
+            accessPending={portalAccessQuery.isLoading}
+          />
           <PropertyExternalAccessCard
             property={property}
             canManage={portalAccessQuery.data === true}

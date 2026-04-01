@@ -131,6 +131,10 @@ export type PropertyDetail = {
   boardPortalToken: string;
   /** `cleaning_locations.public_report_token` — resident issue form URL. */
   publicReportToken: string;
+  /** `cleaning_locations.issue_qr_token` — Serwis public issue form (`/zgloszenie?token=`). */
+  issueQrToken: string | null;
+  /** `cleaning_locations.qr_code_token` — legacy fallback if `issue_qr_token` is null. */
+  qrCodeToken: string | null;
 };
 
 async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
@@ -139,7 +143,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const { data: row, error } = await supabase
     .from("cleaning_locations")
     .select(
-      "id, name, address, org_id, is_admin_active, square_meters, visibility_config, board_portal_token, public_report_token",
+      "id, name, address, org_id, is_admin_active, square_meters, visibility_config, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
     )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
@@ -172,6 +176,8 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
     adminData,
     boardPortalToken: row.board_portal_token ?? "",
     publicReportToken: row.public_report_token ?? "",
+    issueQrToken: row.issue_qr_token ?? null,
+    qrCodeToken: row.qr_code_token ?? null,
   };
 }
 
