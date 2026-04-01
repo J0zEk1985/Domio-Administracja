@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -236,6 +236,8 @@ export type Database = {
           is_cleaning_active: boolean | null
           is_maintenance_active: boolean | null
           issue_qr_token: string | null
+          board_portal_token: string
+          public_report_token: string
           latitude: number | null
           location_master_id: string | null
           longitude: number | null
@@ -283,6 +285,8 @@ export type Database = {
           is_cleaning_active?: boolean | null
           is_maintenance_active?: boolean | null
           issue_qr_token?: string | null
+          board_portal_token?: string
+          public_report_token?: string
           latitude?: number | null
           location_master_id?: string | null
           longitude?: number | null
@@ -330,6 +334,8 @@ export type Database = {
           is_cleaning_active?: boolean | null
           is_maintenance_active?: boolean | null
           issue_qr_token?: string | null
+          board_portal_token?: string
+          public_report_token?: string
           latitude?: number | null
           location_master_id?: string | null
           longitude?: number | null

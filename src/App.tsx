@@ -16,6 +16,7 @@ import Properties from "./pages/Properties.tsx";
 import PropertyDetails from "./pages/PropertyDetails.tsx";
 import TaskDetails from "./pages/TaskDetails.tsx";
 import Tasks from "./pages/Tasks.tsx";
+import BoardPortal from "./pages/BoardPortal.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +35,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/portal/board/:token" element={<BoardPortal />} />
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
               <Route element={<DashboardLayout />}>

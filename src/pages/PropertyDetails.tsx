@@ -15,8 +15,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useProperty, usePropertyAdministrators } from "@/hooks/useProperties";
+import { usePropertyTasksCanEdit } from "@/hooks/usePropertyTasks";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
+import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -85,6 +87,7 @@ export default function PropertyDetails() {
 
   const propertyQuery = useProperty(propertyId, Boolean(propertyId));
   const adminsQuery = usePropertyAdministrators(propertyId, Boolean(propertyId && propertyQuery.isSuccess));
+  const portalAccessQuery = usePropertyTasksCanEdit(propertyId);
 
   useEffect(() => {
     if (!propertyQuery.isError || !propertyQuery.error) return;
@@ -176,8 +179,13 @@ export default function PropertyDetails() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general" className="mt-6">
+        <TabsContent value="general" className="mt-6 space-y-6">
           <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
+          <PropertyExternalAccessCard
+            property={property}
+            canManage={portalAccessQuery.data === true}
+            accessPending={portalAccessQuery.isLoading}
+          />
         </TabsContent>
 
         <TabsContent value="admins" className="mt-6">

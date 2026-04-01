@@ -127,6 +127,10 @@ export type PropertyDetail = {
   name: string;
   address: string;
   adminData: PropertyAdminData;
+  /** `cleaning_locations.board_portal_token` — public board portal URL. */
+  boardPortalToken: string;
+  /** `cleaning_locations.public_report_token` — resident issue form URL. */
+  publicReportToken: string;
 };
 
 async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
@@ -134,7 +138,9 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
 
   const { data: row, error } = await supabase
     .from("cleaning_locations")
-    .select("id, name, address, org_id, is_admin_active, square_meters, visibility_config")
+    .select(
+      "id, name, address, org_id, is_admin_active, square_meters, visibility_config, board_portal_token, public_report_token",
+    )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
     .maybeSingle();
@@ -164,6 +170,8 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
     name: row.name?.trim() || "—",
     address: row.address?.trim() || "—",
     adminData,
+    boardPortalToken: row.board_portal_token ?? "",
+    publicReportToken: row.public_report_token ?? "",
   };
 }
 

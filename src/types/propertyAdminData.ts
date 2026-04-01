@@ -2,6 +2,12 @@ import type { Json } from "@/types/supabase";
 
 export const PROPERTY_ADMIN_DATA_VERSION = 1 as const;
 
+/** UUID tokens on `cleaning_locations` for guest portals (database columns, not `visibility_config`). */
+export type PropertyLocationPortalTokens = {
+  boardPortalToken: string;
+  publicReportToken: string;
+};
+
 export type CommunityBoardMember = {
   id: string;
   fullName: string;
