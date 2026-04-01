@@ -39,7 +39,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { title: "Pulpit", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Nieruchomości", url: "/properties", icon: Building2 },
+  { title: "Budynki", url: "/properties", icon: Building2 },
   { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning, badge: "3" },
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ClipboardCheck },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
