@@ -17,6 +17,7 @@ import {
 import { useProperty, usePropertyAdministrators } from "@/hooks/useProperties";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
+import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -168,7 +169,7 @@ export default function PropertyDetails() {
             Administratorzy
           </TabsTrigger>
           <TabsTrigger value="issues" className="text-xs sm:text-sm">
-            Zgłoszenia
+            Zadania
           </TabsTrigger>
           <TabsTrigger value="contracts" className="text-xs sm:text-sm leading-tight">
             Umowy i Przeglądy
@@ -260,7 +261,7 @@ export default function PropertyDetails() {
         </TabsContent>
 
         <TabsContent value="issues" className="mt-6">
-          <ModulePlaceholder />
+          <PropertyTasksTabWithAccess locationId={property.id} />
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-6">
