@@ -527,6 +527,42 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          address: string | null
+          category: Database["public"]["Enums"]["company_category"]
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          tax_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          category: Database["public"]["Enums"]["company_category"]
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          tax_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          category?: Database["public"]["Enums"]["company_category"]
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          tax_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       e_board_messages: {
         Row: {
           audience: string | null
@@ -1485,6 +1521,69 @@ export type Database = {
           },
         ]
       }
+      property_contracts: {
+        Row: {
+          company_id: string
+          contract_number: string
+          created_at: string
+          currency: string
+          document_url: string
+          end_date: string | null
+          id: string
+          location_id: string
+          net_value: number
+          notice_period_months: number | null
+          start_date: string
+          type: Database["public"]["Enums"]["property_contract_type"]
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          contract_number: string
+          created_at?: string
+          currency?: string
+          document_url?: string
+          end_date?: string | null
+          id?: string
+          location_id: string
+          net_value: number
+          notice_period_months?: number | null
+          start_date: string
+          type: Database["public"]["Enums"]["property_contract_type"]
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          contract_number?: string
+          created_at?: string
+          currency?: string
+          document_url?: string
+          end_date?: string | null
+          id?: string
+          location_id?: string
+          net_value?: number
+          notice_period_months?: number | null
+          start_date?: string
+          type?: Database["public"]["Enums"]["property_contract_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_contracts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_issues: {
         Row: {
           ai_confidence_score: number | null
@@ -1659,6 +1758,63 @@ export type Database = {
             columns: ["reporter_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_policies: {
+        Row: {
+          company_id: string
+          coverage_amount: number
+          created_at: string
+          document_url: string
+          end_date: string
+          id: string
+          location_id: string
+          policy_number: string
+          premium_amount: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          coverage_amount: number
+          created_at?: string
+          document_url?: string
+          end_date: string
+          id?: string
+          location_id: string
+          policy_number: string
+          premium_amount?: number
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          coverage_amount?: number
+          created_at?: string
+          document_url?: string
+          end_date?: string
+          id?: string
+          location_id?: string
+          policy_number?: string
+          premium_amount?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_policies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_policies_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -3391,10 +3547,48 @@ export type Database = {
         }
         Returns: string
       }
+      upsert_company_by_tax_id: {
+        Args: {
+          p_address?: string
+          p_category: Database["public"]["Enums"]["company_category"]
+          p_email?: string
+          p_name: string
+          p_phone?: string
+          p_tax_id: string
+        }
+        Returns: {
+          address: string | null
+          category: Database["public"]["Enums"]["company_category"]
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          tax_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "companies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      user_has_location_access_docs: {
+        Args: { p_location_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
+      company_category: "contractor" | "insurer" | "utility" | "other"
       fleet_role: "admin" | "driver"
       priority_level: "low" | "medium" | "high" | "emergency"
+      property_contract_type:
+        | "cleaning"
+        | "maintenance"
+        | "administration"
+        | "elevator"
+        | "other"
       property_task_priority: "low" | "medium" | "urgent"
       property_task_status: "todo" | "in_progress" | "done"
       property_task_visibility: "internal_only" | "board_visible"
@@ -3539,8 +3733,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      company_category: ["contractor", "insurer", "utility", "other"],
       fleet_role: ["admin", "driver"],
       priority_level: ["low", "medium", "high", "emergency"],
+      property_contract_type: [
+        "cleaning",
+        "maintenance",
+        "administration",
+        "elevator",
+        "other",
+      ],
       property_task_priority: ["low", "medium", "urgent"],
       property_task_status: ["todo", "in_progress", "done"],
       property_task_visibility: ["internal_only", "board_visible"],
