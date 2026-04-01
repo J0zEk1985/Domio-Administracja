@@ -8,7 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import type { PropertyDetail, PropertyAdminData } from "@/hooks/useProperties";
 import { useUpdatePropertyAdminData } from "@/hooks/useProperties";
-import { computeContractNetPln, type CommunityBoardMember } from "@/types/propertyAdminData";
+import {
+  computeContractNetPln,
+  isValidOptionalEmail,
+  type CommunityBoardMember,
+} from "@/types/propertyAdminData";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -68,12 +72,28 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
     setDraft((d) => ({ ...d, notes: { ...d.notes, [key]: value } }));
   }
 
+  function setBoardEmail(value: string) {
+    setDraft((d) => ({ ...d, boardEmail: value }));
+  }
+
+  function setAccessField(key: keyof NonNullable<PropertyAdminData["accessCodes"]>, value: string) {
+    setDraft((d) => ({
+      ...d,
+      accessCodes: {
+        intercom: d.accessCodes?.intercom ?? "",
+        keypad: d.accessCodes?.keypad ?? "",
+        gate: d.accessCodes?.gate ?? "",
+        [key]: value,
+      },
+    }));
+  }
+
   function addBoardMember() {
     setDraft((d) => ({
       ...d,
       board: [
         ...d.board,
-        { id: crypto.randomUUID(), fullName: "", role: "", phone: "" },
+        { id: crypto.randomUUID(), fullName: "", email: "", phone: "" },
       ],
     }));
   }
@@ -92,6 +112,18 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canEdit || !dirty) return;
+    if (!isValidOptionalEmail(draft.boardEmail ?? "")) {
+      toast.error("Niepoprawny adres e-mail Zarządu Wspólnoty.");
+      return;
+    }
+    for (const m of draft.board) {
+      if (!isValidOptionalEmail(m.email ?? "")) {
+        toast.error(
+          `Niepoprawny e-mail w zarządzie${m.fullName.trim() ? ` (${m.fullName.trim()})` : ""}.`,
+        );
+        return;
+      }
+    }
     save.mutate(draft, {
       onSuccess: () => {
         toast.success("Zapisano informacje o nieruchomości.");
@@ -243,6 +275,19 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
               className={cn(!canEdit && "bg-muted/40")}
             />
           </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="board-email-global">E-mail Zarządu Wspólnoty</Label>
+            <Input
+              id="board-email-global"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={draft.boardEmail ?? ""}
+              onChange={(e) => setBoardEmail(e.target.value)}
+              disabled={disabled}
+              className={cn(!canEdit && "bg-muted/40")}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="nip">NIP</Label>
             <Input
@@ -261,6 +306,48 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
               onChange={(e) => setFormal("regon", e.target.value)}
               disabled={disabled}
               className={cn(!canEdit && "bg-muted/40")}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Kody dostępu</CardTitle>
+          <CardDescription>Domofon, szyfrator i brama — dane pomocnicze dla operacji w terenie.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="code-intercom">Kod do domofonu</Label>
+            <Input
+              id="code-intercom"
+              value={draft.accessCodes?.intercom ?? ""}
+              onChange={(e) => setAccessField("intercom", e.target.value)}
+              disabled={disabled}
+              className={cn(!canEdit && "bg-muted/40")}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="code-keypad">Kod do szyfratora</Label>
+            <Input
+              id="code-keypad"
+              value={draft.accessCodes?.keypad ?? ""}
+              onChange={(e) => setAccessField("keypad", e.target.value)}
+              disabled={disabled}
+              className={cn(!canEdit && "bg-muted/40")}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="code-gate">Kod do bramy</Label>
+            <Input
+              id="code-gate"
+              value={draft.accessCodes?.gate ?? ""}
+              onChange={(e) => setAccessField("gate", e.target.value)}
+              disabled={disabled}
+              className={cn(!canEdit && "bg-muted/40")}
+              autoComplete="off"
             />
           </div>
         </CardContent>
@@ -292,7 +379,7 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
               <div key={m.id}>
                 {idx > 0 ? <Separator className="mb-4" /> : null}
                 <div className="grid gap-3 md:grid-cols-12 md:items-end">
-                  <div className="space-y-2 md:col-span-4">
+                  <div className="space-y-2 md:col-span-3">
                     <Label htmlFor={`board-name-${m.id}`}>Imię i nazwisko</Label>
                     <Input
                       id={`board-name-${m.id}`}
@@ -302,12 +389,14 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
                       className={cn(!canEdit && "bg-muted/40")}
                     />
                   </div>
-                  <div className="space-y-2 md:col-span-3">
-                    <Label htmlFor={`board-role-${m.id}`}>Funkcja</Label>
+                  <div className="space-y-2 md:col-span-4">
+                    <Label htmlFor={`board-email-${m.id}`}>E-mail</Label>
                     <Input
-                      id={`board-role-${m.id}`}
-                      value={m.role}
-                      onChange={(e) => updateBoardMember(m.id, { role: e.target.value })}
+                      id={`board-email-${m.id}`}
+                      type="email"
+                      inputMode="email"
+                      value={m.email ?? ""}
+                      onChange={(e) => updateBoardMember(m.id, { email: e.target.value })}
                       disabled={disabled}
                       className={cn(!canEdit && "bg-muted/40")}
                     />

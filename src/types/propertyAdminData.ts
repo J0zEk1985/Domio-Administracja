@@ -5,12 +5,20 @@ export const PROPERTY_ADMIN_DATA_VERSION = 1 as const;
 export type CommunityBoardMember = {
   id: string;
   fullName: string;
-  role: string;
+  email?: string;
   phone: string;
+};
+
+export type PropertyAccessCodes = {
+  intercom?: string;
+  keypad?: string;
+  gate?: string;
 };
 
 export type PropertyAdminData = {
   version: number;
+  /** Globalny e-mail do zarządu (wspólnoty). */
+  boardEmail?: string;
   finance: {
     usableAreaM2: number | null;
     garageAreaM2: number | null;
@@ -23,6 +31,7 @@ export type PropertyAdminData = {
     nip: string;
     regon: string;
   };
+  accessCodes?: PropertyAccessCodes;
   board: CommunityBoardMember[];
   notes: {
     administration: string;
@@ -34,6 +43,7 @@ export type PropertyAdminData = {
 export function createDefaultPropertyAdminData(): PropertyAdminData {
   return {
     version: PROPERTY_ADMIN_DATA_VERSION,
+    boardEmail: "",
     finance: {
       usableAreaM2: null,
       garageAreaM2: null,
@@ -45,6 +55,11 @@ export function createDefaultPropertyAdminData(): PropertyAdminData {
       communityName: "",
       nip: "",
       regon: "",
+    },
+    accessCodes: {
+      intercom: "",
+      keypad: "",
+      gate: "",
     },
     board: [],
     notes: {
@@ -65,6 +80,16 @@ function parseNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function parseAccessCodes(v: unknown): NonNullable<PropertyAdminData["accessCodes"]> {
+  const base = { intercom: "", keypad: "", gate: "" };
+  if (!isRecord(v)) return base;
+  return {
+    intercom: typeof v.intercom === "string" ? v.intercom : "",
+    keypad: typeof v.keypad === "string" ? v.keypad : "",
+    gate: typeof v.gate === "string" ? v.gate : "",
+  };
+}
+
 function parseBoard(v: unknown): CommunityBoardMember[] {
   if (!Array.isArray(v)) return [];
   const out: CommunityBoardMember[] = [];
@@ -75,7 +100,7 @@ function parseBoard(v: unknown): CommunityBoardMember[] {
     out.push({
       id,
       fullName: typeof item.fullName === "string" ? item.fullName : "",
-      role: typeof item.role === "string" ? item.role : "",
+      email: typeof item.email === "string" ? item.email : "",
       phone: typeof item.phone === "string" ? item.phone : "",
     });
   }
@@ -108,6 +133,8 @@ export function parsePropertyAdminData(
   const ver = parseNumber(raw.version);
   base.version = ver != null && ver >= 1 ? Math.floor(ver) : PROPERTY_ADMIN_DATA_VERSION;
 
+  base.boardEmail = typeof raw.boardEmail === "string" ? raw.boardEmail : "";
+
   const fin = isRecord(raw.finance) ? raw.finance : {};
   base.finance.usableAreaM2 = parseNumber(fin.usableAreaM2) ?? (squareMetersColumn != null ? squareMetersColumn : null);
   base.finance.garageAreaM2 = parseNumber(fin.garageAreaM2);
@@ -120,6 +147,8 @@ export function parsePropertyAdminData(
   base.formal.communityName = typeof form.communityName === "string" ? form.communityName : "";
   base.formal.nip = typeof form.nip === "string" ? form.nip : "";
   base.formal.regon = typeof form.regon === "string" ? form.regon : "";
+
+  base.accessCodes = parseAccessCodes(raw.accessCodes);
 
   base.board = parseBoard(raw.board);
 
@@ -144,6 +173,13 @@ export function mergeVisibilityConfigWithAdminData(
       : {};
   prev.admin_data = adminData as unknown as Record<string, unknown>;
   return prev as Json;
+}
+
+/** Pusty lub poprawny format e-mail (prosta walidacja UI). */
+export function isValidOptionalEmail(value: string): boolean {
+  const t = value.trim();
+  if (t === "") return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
 /** Net contract value from finance fields (PLN, informational). */

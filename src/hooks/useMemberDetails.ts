@@ -24,7 +24,12 @@ export type MemberDetailsData = {
   roleCode: string;
   roleLabelPl: string;
   fullName: string;
+  /** Główny e-mail konta (profiles.email); do wyświetlenia jako stały. */
+  authEmail: string;
+  /** E-mail do kontaktu (fallback contact_email) — używany m.in. w nagłówku strony. */
   email: string;
+  /** Telefon z `profiles.phone`. */
+  phone: string;
   isActive: boolean;
 };
 
@@ -49,14 +54,16 @@ async function fetchMemberDetails(membershipId: string): Promise<MemberDetailsDa
 
   const { data: prof, error: pErr } = await supabase
     .from("profiles")
-    .select("full_name, email, contact_email")
+    .select("full_name, email, contact_email, phone")
     .eq("id", row.user_id)
     .maybeSingle();
 
   if (pErr) throw pErr;
 
+  const authEmail = prof?.email?.trim() ?? "";
   const email = prof?.email?.trim() || prof?.contact_email?.trim() || "—";
   const fullName = prof?.full_name?.trim() || "—";
+  const phone = prof?.phone?.trim() ?? "";
   const roleCode = row.role?.trim() ?? "";
 
   return {
@@ -66,7 +73,9 @@ async function fetchMemberDetails(membershipId: string): Promise<MemberDetailsDa
     roleCode,
     roleLabelPl: mapMembershipRoleToPolish(roleCode),
     fullName,
+    authEmail,
     email,
+    phone,
     isActive: row.is_active !== false,
   };
 }
@@ -238,6 +247,31 @@ export function useUpdateMemberRole(membershipId: string | undefined) {
       const msg = e instanceof Error ? e.message : "Nie udało się zapisać roli.";
       toast.error(msg);
       console.error("[useUpdateMemberRole]", e);
+    },
+  });
+}
+
+export function useUpdateMemberPhone(membershipId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (phone: string) => {
+      if (!membershipId) throw new Error("Brak identyfikatora.");
+      const detail = await fetchMemberDetails(membershipId);
+      const normalized = phone.trim() === "" ? null : phone.trim();
+      const { error } = await supabase.from("profiles").update({ phone: normalized }).eq("id", detail.userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Zapisano numer telefonu.");
+      if (membershipId) {
+        void qc.invalidateQueries({ queryKey: memberDetailsQueryKey(membershipId) });
+      }
+      void qc.invalidateQueries({ queryKey: [TEAM_MEMBERS_QUERY_KEY] });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się zapisać telefonu.";
+      toast.error(msg);
+      console.error("[useUpdateMemberPhone]", e);
     },
   });
 }
