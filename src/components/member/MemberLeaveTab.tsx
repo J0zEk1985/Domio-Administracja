@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { MemberDetailsData } from "@/hooks/useMemberDetails";
 import {
@@ -39,13 +40,24 @@ function toIsoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
 }
 
+function formatLeavePeriod(isoFrom: string, isoTo: string): string {
+  try {
+    const df = parseISO(isoFrom);
+    const dt = parseISO(isoTo);
+    if (!isValid(df) || !isValid(dt)) return `${isoFrom} - ${isoTo}`;
+    return `${format(df, "dd.MM.yyyy")} - ${format(dt, "dd.MM.yyyy")}`;
+  } catch {
+    return `${isoFrom} - ${isoTo}`;
+  }
+}
+
 export function MemberLeaveTab({ member }: Props) {
   const { data: leaves, isLoading: leavesLoading } = useMemberLeaves(member.membershipId, true);
   const { data: substitutes = [] } = useAdminTeamPickList(member.userId, member.orgId, true);
   const createLeave = useCreateStaffLeave(member.membershipId);
 
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateStart, setDateStart] = useState<Date | undefined>(undefined);
+  const [dateEnd, setDateEnd] = useState<Date | undefined>(undefined);
   const [substituteId, setSubstituteId] = useState<string>("");
 
   const nameByUserId = useMemo(() => {
@@ -59,11 +71,11 @@ export function MemberLeaveTab({ member }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!dateFrom || !dateTo || !substituteId) return;
-    const from = toIsoDate(dateFrom);
-    const to = toIsoDate(dateTo);
+    if (!dateStart || !dateEnd || !substituteId) return;
+    const from = toIsoDate(dateStart);
+    const to = toIsoDate(dateEnd);
     if (from > to) {
-      toast.error("Data „do” nie może być wcześniejsza niż „od”.");
+      toast.error("Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.");
       return;
     }
     createLeave.mutate(
@@ -79,15 +91,16 @@ export function MemberLeaveTab({ member }: Props) {
       },
       {
         onSuccess: () => {
-          setDateFrom(undefined);
-          setDateTo(undefined);
+          setDateStart(undefined);
+          setDateEnd(undefined);
           setSubstituteId("");
         },
       },
     );
   }
 
-  const rangeInvalid = dateFrom && dateTo && toIsoDate(dateFrom) > toIsoDate(dateTo);
+  const rangeInvalid =
+    dateStart && dateEnd && toIsoDate(dateStart) > toIsoDate(dateEnd);
 
   return (
     <div className="space-y-6">
@@ -95,63 +108,70 @@ export function MemberLeaveTab({ member }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Zgłoś urlop</CardTitle>
           <CardDescription>
-            Zakres dat i zastępstwo są zapisywane w <code className="text-xs">location_holidays</code> (pole{" "}
-            <code className="text-xs">description</code> — format JSON zgodny z panelem Administracja).
+            Zakres dat oraz identyfikator zastępcy zapisywane są w polu <code className="text-xs">description</code>{" "}
+            (format <code className="text-xs">DOMIO_ADMIN_LEAVE_V1</code>) oraz{" "}
+            <code className="text-xs">holiday_date</code> ustawiane na datę rozpoczęcia.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-lg">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Data od</Label>
+                <Label htmlFor="leave-start">Data rozpoczęcia</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
+                      id="leave-start"
                       type="button"
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !dateFrom && "text-muted-foreground",
+                        !dateStart && "text-muted-foreground",
                       )}
                       disabled={createLeave.isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                      {dateFrom ? format(dateFrom, "d MMM yyyy", { locale: pl }) : "Wybierz datę"}
+                      {dateStart ? format(dateStart, "d MMM yyyy", { locale: pl }) : "Wybierz datę"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus locale={pl} />
+                    <Calendar mode="single" selected={dateStart} onSelect={setDateStart} initialFocus locale={pl} />
                   </PopoverContent>
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label>Data do</Label>
+                <Label htmlFor="leave-end">Data zakończenia</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
+                      id="leave-end"
                       type="button"
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !dateTo && "text-muted-foreground",
+                        !dateEnd && "text-muted-foreground",
                       )}
                       disabled={createLeave.isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                      {dateTo ? format(dateTo, "d MMM yyyy", { locale: pl }) : "Wybierz datę"}
+                      {dateEnd ? format(dateEnd, "d MMM yyyy", { locale: pl }) : "Wybierz datę"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus locale={pl} />
+                    <Calendar mode="single" selected={dateEnd} onSelect={setDateEnd} initialFocus locale={pl} />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
-            {rangeInvalid && <p className="text-sm text-destructive">Data „do” nie może być wcześniejsza niż „od”.</p>}
+            {rangeInvalid && (
+              <p className="text-sm text-destructive" role="alert">
+                Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.
+              </p>
+            )}
             <div className="space-y-2">
-              <Label>Zastępstwo</Label>
+              <Label htmlFor="leave-sub">Zastępstwo</Label>
               <Select value={substituteId} onValueChange={setSubstituteId} disabled={createLeave.isPending}>
-                <SelectTrigger>
+                <SelectTrigger id="leave-sub">
                   <SelectValue placeholder="Wybierz pracownika administracji" />
                 </SelectTrigger>
                 <SelectContent>
@@ -169,8 +189,8 @@ export function MemberLeaveTab({ member }: Props) {
             <Button
               type="submit"
               disabled={
-                !dateFrom ||
-                !dateTo ||
+                !dateStart ||
+                !dateEnd ||
                 !substituteId ||
                 Boolean(rangeInvalid) ||
                 createLeave.isPending
@@ -192,12 +212,16 @@ export function MemberLeaveTab({ member }: Props) {
 
       <Card className="border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Zaplanowane urlopy</CardTitle>
-          <CardDescription>Historia wpisów dla tego pracownika.</CardDescription>
+          <CardTitle className="text-base">Historia urlopów</CardTitle>
+          <CardDescription>Zaplanowane urlopy dla tego pracownika.</CardDescription>
         </CardHeader>
         <CardContent>
           {leavesLoading ? (
-            <p className="text-sm text-muted-foreground">Ładowanie…</p>
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
           ) : !leaves || leaves.length === 0 ? (
             <p className="text-sm text-muted-foreground">Brak zapisanych urlopów.</p>
           ) : (
@@ -205,16 +229,16 @@ export function MemberLeaveTab({ member }: Props) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Od</TableHead>
-                    <TableHead>Do</TableHead>
+                    <TableHead>Okres</TableHead>
                     <TableHead>Zastępstwo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {leaves.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell>{row.payload.date_from}</TableCell>
-                      <TableCell>{row.payload.date_to}</TableCell>
+                      <TableCell className="font-medium tabular-nums">
+                        {formatLeavePeriod(row.payload.date_from, row.payload.date_to)}
+                      </TableCell>
                       <TableCell>
                         {nameByUserId.get(row.payload.substitute_user_id) ?? row.payload.substitute_user_id}
                       </TableCell>

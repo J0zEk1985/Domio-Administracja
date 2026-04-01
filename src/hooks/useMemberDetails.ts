@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { mapMembershipRoleToPolish } from "@/lib/membershipRolePl";
 import { TEAM_ADMIN_ROLES, TEAM_MEMBERS_QUERY_KEY } from "@/hooks/useTeamMembers";
@@ -77,6 +78,7 @@ export function useMemberDetails(membershipId: string | undefined, enabled: bool
     enabled: Boolean(membershipId && enabled),
     staleTime: STALE_MS,
     gcTime: GC_MS,
+    refetchOnMount: "always",
   });
 }
 
@@ -122,6 +124,7 @@ export function useMemberBuildings(membershipId: string | undefined, enabled: bo
     enabled: Boolean(membershipId && enabled),
     staleTime: STALE_MS,
     gcTime: GC_MS,
+    refetchOnMount: "always",
   });
 }
 
@@ -165,6 +168,7 @@ export function useMemberLeaves(membershipId: string | undefined, enabled: boole
     enabled: Boolean(membershipId && enabled),
     staleTime: STALE_MS,
     gcTime: GC_MS,
+    refetchOnMount: "always",
   });
 }
 
@@ -204,6 +208,7 @@ export function useAdminTeamPickList(excludeUserId: string | undefined, orgId: s
     enabled: Boolean(enabled && excludeUserId && orgId),
     staleTime: STALE_MS,
     gcTime: GC_MS,
+    refetchOnMount: "always",
   });
 }
 
@@ -237,31 +242,45 @@ export function useUpdateMemberRole(membershipId: string | undefined) {
   });
 }
 
-export function useToggleLocationAccess(membershipId: string | undefined, userId: string | undefined) {
+export function useAssignLocationAccess(membershipId: string | undefined, userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { locationId: string; nextOn: boolean; existingAccessId: string | null }) => {
+    mutationFn: async (locationId: string) => {
       if (!userId) throw new Error("Brak użytkownika.");
-      if (params.nextOn) {
-        const { error } = await supabase.from("location_access").insert({
-          user_id: userId,
-          location_id: params.locationId,
-          access_type: "administration",
-        });
-        if (error) throw error;
-      } else if (params.existingAccessId) {
-        const { error } = await supabase.from("location_access").delete().eq("id", params.existingAccessId);
-        if (error) throw error;
-      }
+      const { error } = await supabase.from("location_access").insert({
+        user_id: userId,
+        location_id: locationId,
+        access_type: "administration",
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Zapisano przypisanie do budynku.");
+      toast.success("Przypisano budynek.");
       if (membershipId) void qc.invalidateQueries({ queryKey: memberBuildingsQueryKey(membershipId) });
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Nie udało się zaktualizować dostępu.";
+      const msg = e instanceof Error ? e.message : "Nie udało się przypisać budynku.";
       toast.error(msg);
-      console.error("[useToggleLocationAccess]", e);
+      console.error("[useAssignLocationAccess]", e);
+    },
+  });
+}
+
+export function useRevokeLocationAccess(membershipId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (accessId: string) => {
+      const { error } = await supabase.from("location_access").delete().eq("id", accessId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usunięto przypisanie budynku.");
+      if (membershipId) void qc.invalidateQueries({ queryKey: memberBuildingsQueryKey(membershipId) });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się usunąć przypisania.";
+      toast.error(msg);
+      console.error("[useRevokeLocationAccess]", e);
     },
   });
 }
@@ -284,8 +303,15 @@ export function useCreateStaffLeave(membershipId: string | undefined) {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Zapisano urlop.");
+    onSuccess: (_data, variables) => {
+      const { date_from, date_to } = variables.payload;
+      let periodLabel = `${date_from} – ${date_to}`;
+      try {
+        periodLabel = `${format(parseISO(date_from), "dd.MM.yyyy")} – ${format(parseISO(date_to), "dd.MM.yyyy")}`;
+      } catch {
+        /* keep ISO fallback */
+      }
+      toast.success(`Urlop zapisany: ${periodLabel}.`);
       if (membershipId) void qc.invalidateQueries({ queryKey: memberLeavesQueryKey(membershipId) });
     },
     onError: (e: unknown) => {
