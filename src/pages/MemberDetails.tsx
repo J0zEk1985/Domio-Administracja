@@ -85,10 +85,10 @@ export default function MemberDetails() {
           <TabsTrigger value="leave">Urlopy i zastępstwa</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="mt-6">
-          <MemberProfileRoleTab member={member} />
+          <MemberProfileRoleTab member={member} canEdit={ownerAccess?.isOwner === true} />
         </TabsContent>
         <TabsContent value="buildings" className="mt-6">
-          <MemberBuildingsTab member={member} />
+          <MemberBuildingsTab member={member} canEdit={ownerAccess?.isOwner === true} />
         </TabsContent>
         <TabsContent value="leave" className="mt-6">
           <MemberLeaveTab member={member} />

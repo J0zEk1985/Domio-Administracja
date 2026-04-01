@@ -216,14 +216,16 @@ export default function Team() {
               className="max-w-md"
               aria-label="Filtruj listę pracowników"
             />
-            <Button
-              type="button"
-              className="shrink-0 gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:self-start"
-              onClick={() => setAddMemberOpen(true)}
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Dodaj pracownika
-            </Button>
+            {ownerAccess?.isOwner === true ? (
+              <Button
+                type="button"
+                className="shrink-0 gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:self-start"
+                onClick={() => setAddMemberOpen(true)}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Dodaj pracownika
+              </Button>
+            ) : null}
           </div>
 
           {isError && (

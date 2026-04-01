@@ -1,8 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { getOrgAndActor, hasLocationAdministrationAccess } from "@/lib/orgAccess";
+import {
+  mergeVisibilityConfigWithAdminData,
+  parsePropertyAdminData,
+  type PropertyAdminData,
+} from "@/types/propertyAdminData";
 
 const STALE_MS = 0;
 const GC_MS = 30_000;
+
+export type { PropertyAdminData };
 
 export const PROPERTIES_QUERY_KEY = "properties" as const;
 
@@ -19,25 +27,52 @@ export type PropertyListRow = {
 };
 
 async function fetchProperties(): Promise<PropertyListRow[]> {
-  const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
-  if (orgErr) {
-    console.error("[useProperties] get_my_org_id_safe:", orgErr);
-    throw orgErr;
-  }
-  if (!orgId || String(orgId).trim() === "") {
-    return [];
-  }
+  const actor = await getOrgAndActor();
+  const { orgId, isOwner, userId } = actor;
 
-  const { data: locs, error: locErr } = await supabase
-    .from("cleaning_locations")
-    .select("id, name, address")
-    .eq("org_id", orgId)
-    .eq("is_admin_active", true)
-    .order("name", { ascending: true });
+  let locs: { id: string; name: string | null; address: string }[] | null = null;
 
-  if (locErr) {
-    console.error("[useProperties] cleaning_locations:", locErr);
-    throw locErr;
+  if (isOwner) {
+    const { data, error } = await supabase
+      .from("cleaning_locations")
+      .select("id, name, address")
+      .eq("org_id", orgId)
+      .eq("is_admin_active", true)
+      .order("name", { ascending: true });
+    if (error) {
+      console.error("[useProperties] cleaning_locations:", error);
+      throw error;
+    }
+    locs = data;
+  } else {
+    const { data: accessRows, error: accErr } = await supabase
+      .from("location_access")
+      .select("location_id")
+      .eq("user_id", userId)
+      .eq("access_type", "administration");
+
+    if (accErr) {
+      console.error("[useProperties] location_access:", accErr);
+      throw accErr;
+    }
+
+    const locationIds = [...new Set((accessRows ?? []).map((a) => a.location_id).filter(Boolean))] as string[];
+    if (locationIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("cleaning_locations")
+      .select("id, name, address")
+      .eq("org_id", orgId)
+      .eq("is_admin_active", true)
+      .in("id", locationIds)
+      .order("name", { ascending: true });
+    if (error) {
+      console.error("[useProperties] cleaning_locations:", error);
+      throw error;
+    }
+    locs = data;
   }
 
   const rows = locs ?? [];
@@ -53,7 +88,7 @@ async function fetchProperties(): Promise<PropertyListRow[]> {
     .eq("access_type", "administration");
 
   if (accErr) {
-    console.error("[useProperties] location_access:", accErr);
+    console.error("[useProperties] location_access counts:", accErr);
     throw accErr;
   }
 
@@ -91,23 +126,17 @@ export type PropertyDetail = {
   id: string;
   name: string;
   address: string;
+  adminData: PropertyAdminData;
 };
 
 async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
-  const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
-  if (orgErr) {
-    console.error("[useProperty] get_my_org_id_safe:", orgErr);
-    throw orgErr;
-  }
-  if (!orgId || String(orgId).trim() === "") {
-    throw new Error("Brak organizacji.");
-  }
+  const actor = await getOrgAndActor();
 
   const { data: row, error } = await supabase
     .from("cleaning_locations")
-    .select("id, name, address, org_id, is_admin_active")
+    .select("id, name, address, org_id, is_admin_active, square_meters, visibility_config")
     .eq("id", propertyId)
-    .eq("org_id", orgId)
+    .eq("org_id", actor.orgId)
     .maybeSingle();
 
   if (error) {
@@ -121,10 +150,20 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
     throw new Error("Nieruchomość nie jest aktywna w module Administracja.");
   }
 
+  if (!actor.isOwner) {
+    const ok = await hasLocationAdministrationAccess(actor.userId, propertyId);
+    if (!ok) {
+      throw new Error("Nie znaleziono nieruchomości lub brak dostępu.");
+    }
+  }
+
+  const adminData = parsePropertyAdminData(row.visibility_config, row.square_meters);
+
   return {
     id: row.id,
     name: row.name?.trim() || "—",
     address: row.address?.trim() || "—",
+    adminData,
   };
 }
 
@@ -142,25 +181,19 @@ export function useProperty(propertyId: string | undefined, enabled: boolean = t
 export type PropertyAdministratorRow = {
   accessId: string;
   userId: string;
+  membershipId: string | null;
   fullName: string;
   email: string;
 };
 
 async function fetchPropertyAdministrators(propertyId: string): Promise<PropertyAdministratorRow[]> {
-  const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
-  if (orgErr) {
-    console.error("[usePropertyAdministrators] get_my_org_id_safe:", orgErr);
-    throw orgErr;
-  }
-  if (!orgId || String(orgId).trim() === "") {
-    throw new Error("Brak organizacji.");
-  }
+  const actor = await getOrgAndActor();
 
   const { data: loc, error: lErr } = await supabase
     .from("cleaning_locations")
-    .select("id")
+    .select("id, is_admin_active")
     .eq("id", propertyId)
-    .eq("org_id", orgId)
+    .eq("org_id", actor.orgId)
     .maybeSingle();
 
   if (lErr) {
@@ -169,6 +202,16 @@ async function fetchPropertyAdministrators(propertyId: string): Promise<Property
   }
   if (!loc) {
     throw new Error("Brak dostępu do tej nieruchomości.");
+  }
+  if (loc.is_admin_active !== true) {
+    throw new Error("Nieruchomość nie jest aktywna w module Administracja.");
+  }
+
+  if (!actor.isOwner) {
+    const ok = await hasLocationAdministrationAccess(actor.userId, propertyId);
+    if (!ok) {
+      throw new Error("Brak dostępu do tej nieruchomości.");
+    }
   }
 
   const { data: access, error: aErr } = await supabase
@@ -201,6 +244,25 @@ async function fetchPropertyAdministrators(propertyId: string): Promise<Property
     throw pErr;
   }
 
+  const { data: mems, error: memErr } = await supabase
+    .from("memberships")
+    .select("id, user_id")
+    .eq("org_id", actor.orgId)
+    .in("user_id", userIds)
+    .eq("is_active", true);
+
+  if (memErr) {
+    console.error("[usePropertyAdministrators] memberships:", memErr);
+    throw memErr;
+  }
+
+  const membershipByUser = new Map<string, string>();
+  for (const m of mems ?? []) {
+    if (m.user_id && !membershipByUser.has(m.user_id)) {
+      membershipByUser.set(m.user_id, m.id);
+    }
+  }
+
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   const seenUser = new Set<string>();
@@ -212,6 +274,7 @@ async function fetchPropertyAdministrators(propertyId: string): Promise<Property
     out.push({
       accessId: a.id,
       userId: a.user_id,
+      membershipId: membershipByUser.get(a.user_id) ?? null,
       fullName: p?.full_name?.trim() || "—",
       email: p?.email?.trim() || p?.contact_email?.trim() || "—",
     });
@@ -228,5 +291,58 @@ export function usePropertyAdministrators(propertyId: string | undefined, enable
     staleTime: STALE_MS,
     gcTime: GC_MS,
     refetchOnMount: "always",
+  });
+}
+
+async function updatePropertyAdminDataRequest(propertyId: string, adminData: PropertyAdminData): Promise<void> {
+  const actor = await getOrgAndActor();
+  if (!actor.isOwner) {
+    throw new Error("Tylko właściciel organizacji może zapisywać konfigurację.");
+  }
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("cleaning_locations")
+    .select("visibility_config, org_id, is_admin_active")
+    .eq("id", propertyId)
+    .eq("org_id", actor.orgId)
+    .maybeSingle();
+
+  if (fetchErr) {
+    console.error("[updatePropertyAdminData] fetch:", fetchErr);
+    throw fetchErr;
+  }
+  if (!row || row.is_admin_active !== true) {
+    throw new Error("Nie znaleziono nieruchomości lub brak dostępu.");
+  }
+
+  const nextConfig = mergeVisibilityConfigWithAdminData(row.visibility_config, adminData);
+
+  const { error: upErr } = await supabase
+    .from("cleaning_locations")
+    .update({ visibility_config: nextConfig })
+    .eq("id", propertyId)
+    .eq("org_id", actor.orgId);
+
+  if (upErr) {
+    console.error("[updatePropertyAdminData] update:", upErr);
+    throw upErr;
+  }
+}
+
+export function useUpdatePropertyAdminData(propertyId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (adminData: PropertyAdminData) => {
+      if (!propertyId) throw new Error("Brak identyfikatora nieruchomości.");
+      return updatePropertyAdminDataRequest(propertyId, adminData);
+    },
+    onSuccess: async () => {
+      if (propertyId) {
+        await qc.invalidateQueries({ queryKey: propertyQueryKey(propertyId) });
+      }
+    },
+    onError: (e: unknown) => {
+      console.error("[useUpdatePropertyAdminData]", e);
+    },
   });
 }

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +15,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useProperty, usePropertyAdministrators } from "@/hooks/useProperties";
+import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
+import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 function PropertyDetailsSkeleton() {
   return (
@@ -39,6 +42,7 @@ function AdministratorsSkeleton() {
           <TableRow>
             <TableHead>Imię i nazwisko</TableHead>
             <TableHead>E-mail</TableHead>
+            <TableHead className="w-[120px] text-right">Akcje</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -49,6 +53,9 @@ function AdministratorsSkeleton() {
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-48" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-8 w-24" />
               </TableCell>
             </TableRow>
           ))}
@@ -72,6 +79,9 @@ function ModulePlaceholder() {
 export default function PropertyDetails() {
   const { id: propertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: ownerAccess } = useIsOrgOwner();
+  const isOwner = ownerAccess?.isOwner === true;
+
   const propertyQuery = useProperty(propertyId, Boolean(propertyId));
   const adminsQuery = usePropertyAdministrators(propertyId, Boolean(propertyId && propertyQuery.isSuccess));
 
@@ -166,22 +176,7 @@ export default function PropertyDetails() {
         </TabsList>
 
         <TabsContent value="general" className="mt-6">
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">Informacje ogólne</CardTitle>
-              <CardDescription>Dane podstawowe nieruchomości (rozszerzymy w kolejnych iteracjach).</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                <span className="text-muted-foreground">Nazwa: </span>
-                <span className="font-medium">{property.name}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Adres: </span>
-                <span>{property.address}</span>
-              </div>
-            </CardContent>
-          </Card>
+          <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
         </TabsContent>
 
         <TabsContent value="admins" className="mt-6">
@@ -190,7 +185,8 @@ export default function PropertyDetails() {
               <CardTitle className="text-base">Administratorzy budynku</CardTitle>
               <CardDescription>
                 Pracownicy biura z dostępem administracyjnym (<code className="text-xs">location_access</code>,{" "}
-                <code className="text-xs">access_type: administration</code>).
+                <code className="text-xs">access_type: administration</code>). Kliknij wiersz, aby otworzyć profil w
+                Zespole.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -221,15 +217,40 @@ export default function PropertyDetails() {
                       <TableRow>
                         <TableHead>Imię i nazwisko</TableHead>
                         <TableHead>E-mail</TableHead>
+                        <TableHead className="w-[140px] text-right">Akcje</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(adminsQuery.data ?? []).map((row) => (
-                        <TableRow key={row.accessId}>
-                          <TableCell className="font-medium">{row.fullName}</TableCell>
-                          <TableCell className="text-muted-foreground">{row.email}</TableCell>
-                        </TableRow>
-                      ))}
+                      {(adminsQuery.data ?? []).map((row) => {
+                        const goTeam = row.membershipId
+                          ? () => navigate(`/team/${row.membershipId}`)
+                          : undefined;
+                        return (
+                          <TableRow
+                            key={row.accessId}
+                            className={cn(goTeam && "cursor-pointer")}
+                            onClick={goTeam}
+                          >
+                            <TableCell className="font-medium">{row.fullName}</TableCell>
+                            <TableCell className="text-muted-foreground">{row.email}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toast.info("Moduł Komunikacja w przygotowaniu");
+                                }}
+                              >
+                                <Mail className="h-3.5 w-3.5" aria-hidden />
+                                Napisz wiadomość
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

@@ -29,9 +29,11 @@ import type { MemberDetailsData } from "@/hooks/useMemberDetails";
 
 type Props = {
   member: MemberDetailsData;
+  /** Tylko właściciel może przypisywać i usuwać dostępy do budynków. */
+  canEdit?: boolean;
 };
 
-export function MemberBuildingsTab({ member }: Props) {
+export function MemberBuildingsTab({ member, canEdit = true }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { data: buildings, isLoading, isError } = useMemberBuildings(member.membershipId, true);
   const assign = useAssignLocationAccess(member.membershipId, member.userId);
@@ -67,23 +69,25 @@ export function MemberBuildingsTab({ member }: Props) {
             ).
           </CardDescription>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          className="shrink-0 gap-1.5"
-          onClick={() => setPickerOpen(true)}
-          disabled={accessBusy || unassigned.length === 0}
-        >
-          {assign.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            <Plus className="h-4 w-4" aria-hidden />
-          )}
-          Przypisz budynek
-        </Button>
+        {canEdit ? (
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={() => setPickerOpen(true)}
+            disabled={accessBusy || unassigned.length === 0}
+          >
+            {assign.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden />
+            )}
+            Przypisz budynek
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
-        {unassigned.length === 0 && assigned.length > 0 && (
+        {canEdit && unassigned.length === 0 && assigned.length > 0 && (
           <p className="text-xs text-muted-foreground">
             Wszystkie aktywne nieruchomości w administracji są już przypisane do tego pracownika.
           </p>
@@ -94,7 +98,9 @@ export function MemberBuildingsTab({ member }: Props) {
           </p>
         ) : assigned.length === 0 ? (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            Brak przypisanych budynków. Kliknij „Przypisz budynek”, aby wybrać nieruchomość z listy.
+            {canEdit
+              ? "Brak przypisanych budynków. Kliknij „Przypisz budynek”, aby wybrać nieruchomość z listy."
+              : "Brak przypisanych budynków."}
           </p>
         ) : (
           <div className="space-y-0 divide-y rounded-md border">
@@ -111,39 +117,44 @@ export function MemberBuildingsTab({ member }: Props) {
                     <p className="text-sm font-medium leading-tight">{b.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{b.address}</p>
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:pl-4">
-                    <Label htmlFor={`loc-sw-${b.id}`} className="text-xs text-muted-foreground sr-only sm:not-sr-only">
-                      Dostęp
-                    </Label>
-                    <Switch
-                      id={`loc-sw-${b.id}`}
-                      checked
-                      disabled={accessBusy}
-                      onCheckedChange={(on) => {
-                        if (!on && accessId) revoke.mutate(accessId);
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      disabled={accessBusy}
-                      onClick={() => revoke.mutate(accessId)}
-                    >
-                      {revokingThis ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        "Usuń"
-                      )}
-                    </Button>
-                  </div>
+                  {canEdit ? (
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:pl-4">
+                      <Label htmlFor={`loc-sw-${b.id}`} className="text-xs text-muted-foreground sr-only sm:not-sr-only">
+                        Dostęp
+                      </Label>
+                      <Switch
+                        id={`loc-sw-${b.id}`}
+                        checked
+                        disabled={accessBusy}
+                        onCheckedChange={(on) => {
+                          if (!on && accessId) revoke.mutate(accessId);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        disabled={accessBusy}
+                        onClick={() => revoke.mutate(accessId)}
+                      >
+                        {revokingThis ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          "Usuń"
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground shrink-0 sm:pl-4">Dostęp administracyjny</p>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
 
+        {canEdit ? (
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
           <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
             <DialogHeader className="border-b px-4 py-3 text-left">
@@ -185,6 +196,7 @@ export function MemberBuildingsTab({ member }: Props) {
             </Command>
           </DialogContent>
         </Dialog>
+        ) : null}
       </CardContent>
     </Card>
   );

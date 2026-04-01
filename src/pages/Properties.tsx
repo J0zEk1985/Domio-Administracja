@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,6 +16,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { useProperties } from "@/hooks/useProperties";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
+
+type NameSortDir = "asc" | "desc";
 
 function PropertiesTableSkeleton() {
   return (
@@ -23,7 +26,7 @@ function PropertiesTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nieruchomość</TableHead>
+            <TableHead className="w-[200px]">Nieruchomość</TableHead>
             <TableHead className="w-[100px] text-center hidden sm:table-cell">Administratorzy</TableHead>
             <TableHead className="w-[140px] text-right">Akcje</TableHead>
           </TableRow>
@@ -49,10 +52,40 @@ function PropertiesTableSkeleton() {
   );
 }
 
+function SortablePropertyHead({
+  direction,
+  onToggle,
+}: {
+  direction: NameSortDir;
+  onToggle: () => void;
+}) {
+  return (
+    <TableHead className="p-0">
+      <button
+        type="button"
+        className={cn(
+          "flex w-full items-center gap-1.5 px-2 py-3 text-left font-medium",
+          "hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        )}
+        onClick={onToggle}
+        aria-sort={direction === "asc" ? "ascending" : "descending"}
+      >
+        <span>Nieruchomość</span>
+        {direction === "asc" ? (
+          <ArrowUp className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+        ) : (
+          <ArrowDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 export default function Properties() {
   const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useProperties(true);
   const [search, setSearch] = useState("");
+  const [nameSort, setNameSort] = useState<NameSortDir>("asc");
 
   useEffect(() => {
     if (!isError || !error) return;
@@ -69,11 +102,21 @@ export default function Properties() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = search.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter(
-      (r) => r.name.toLowerCase().includes(q) || r.address.toLowerCase().includes(q),
-    );
-  }, [data, search]);
+    let rows = !q
+      ? [...data]
+      : data.filter(
+          (r) => r.name.toLowerCase().includes(q) || r.address.toLowerCase().includes(q),
+        );
+    rows.sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+      return nameSort === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [data, search, nameSort]);
+
+  function toggleNameSort() {
+    setNameSort((d) => (d === "asc" ? "desc" : "asc"));
+  }
 
   const listEmpty = !data || data.length === 0;
   const searchNoHits = !listEmpty && filtered.length === 0;
@@ -150,7 +193,7 @@ export default function Properties() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nieruchomość</TableHead>
+                    <SortablePropertyHead direction={nameSort} onToggle={toggleNameSort} />
                     <TableHead className="w-[100px] text-center hidden sm:table-cell">Administratorzy</TableHead>
                     <TableHead className="w-[140px] text-right">Akcje</TableHead>
                   </TableRow>

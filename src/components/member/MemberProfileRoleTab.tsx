@@ -24,9 +24,11 @@ const ROLE_OPTIONS: { value: (typeof TEAM_ADMIN_ROLES)[number]; label: string }[
 
 type Props = {
   member: MemberDetailsData;
+  /** Owner-only: edycja roli; dla pozostałych ról widok tylko do odczytu. */
+  canEdit?: boolean;
 };
 
-export function MemberProfileRoleTab({ member }: Props) {
+export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
   const [role, setRole] = useState(member.roleCode);
   const updateRole = useUpdateMemberRole(member.membershipId);
 
@@ -55,7 +57,7 @@ export function MemberProfileRoleTab({ member }: Props) {
         <form onSubmit={handleSave} className="max-w-md space-y-4">
           <div className="space-y-2">
             <Label>Rola w organizacji</Label>
-            <Select value={role} onValueChange={setRole} disabled={updateRole.isPending}>
+            <Select value={role} onValueChange={setRole} disabled={updateRole.isPending || !canEdit}>
               <SelectTrigger>
                 <SelectValue placeholder="Wybierz rolę" />
               </SelectTrigger>
@@ -68,16 +70,20 @@ export function MemberProfileRoleTab({ member }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" disabled={!dirty || !validRole || updateRole.isPending} className="gap-2">
-            {updateRole.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Zapisywanie…
-              </>
-            ) : (
-              "Zapisz rolę"
-            )}
-          </Button>
+          {canEdit ? (
+            <Button type="submit" disabled={!dirty || !validRole || updateRole.isPending} className="gap-2">
+              {updateRole.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Zapisywanie…
+                </>
+              ) : (
+                "Zapisz rolę"
+              )}
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">Tylko właściciel może zmieniać rolę w organizacji.</p>
+          )}
         </form>
       </CardContent>
     </Card>
