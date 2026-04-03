@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronsUpDown, Loader2, Plus, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
+import { CompanyDialog } from "@/components/companies/CompanyDialog";
 import { useCompanies, useCompanyById } from "@/hooks/useCompanies";
 import type { Company } from "@/types/contracts";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ function CompanyListItem({ company, onPick }: { company: Company; onPick: () => 
 
 export function CompanyComboBox({ value, onChange, disabled = false }: CompanyComboBoxProps) {
   const [open, setOpen] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [inputQuery, setInputQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -66,6 +68,7 @@ export function CompanyComboBox({ value, onChange, disabled = false }: CompanyCo
   const queryLabel = debouncedQuery.trim() || inputQuery.trim();
 
   return (
+    <>
     <Popover
       open={open}
       onOpenChange={(next) => {
@@ -142,12 +145,11 @@ export function CompanyComboBox({ value, onChange, disabled = false }: CompanyCo
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-auto w-full justify-start gap-2 py-2 text-left font-normal"
+                  className="h-auto w-full justify-start gap-2 py-2 text-left font-normal pointer-events-auto"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    console.log("[CompanyComboBox] open add company flow", {
-                      searchQuery: queryLabel,
-                    });
+                    setOpen(false);
+                    queueMicrotask(() => setShowCreateDialog(true));
                   }}
                 >
                   <Plus className="h-4 w-4 shrink-0" aria-hidden />
@@ -163,5 +165,15 @@ export function CompanyComboBox({ value, onChange, disabled = false }: CompanyCo
         </Command>
       </PopoverContent>
     </Popover>
+    <CompanyDialog
+      open={showCreateDialog}
+      onOpenChange={setShowCreateDialog}
+      initialSearchQuery={queryLabel}
+      onSuccess={(newCompanyId) => {
+        onChange(newCompanyId);
+        setShowCreateDialog(false);
+      }}
+    />
+    </>
   );
 }
