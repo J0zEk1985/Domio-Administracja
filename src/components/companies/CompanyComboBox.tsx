@@ -154,9 +154,7 @@ export function CompanyComboBox({ value, onChange, disabled = false }: CompanyCo
                 >
                   <Plus className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="leading-snug">
-                    {queryLabel
-                      ? `Dodaj nową firmę: ${queryLabel}`
-                      : "Dodaj nową firmę"}
+                    {queryLabel ? `Dodaj firmę: ${queryLabel}` : "Dodaj firmę"}
                   </span>
                 </Button>
               </CommandEmpty>
