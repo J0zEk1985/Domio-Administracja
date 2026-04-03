@@ -1593,6 +1593,69 @@ export type Database = {
           },
         ]
       }
+      property_inspections: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_url: string | null
+          execution_date: string
+          id: string
+          inspector_name: string | null
+          location_id: string
+          notes: string | null
+          protocol_number: string | null
+          status: Database["public"]["Enums"]["inspection_status"]
+          type: Database["public"]["Enums"]["inspection_type"]
+          updated_at: string
+          valid_until: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_url?: string | null
+          execution_date: string
+          id?: string
+          inspector_name?: string | null
+          location_id: string
+          notes?: string | null
+          protocol_number?: string | null
+          status?: Database["public"]["Enums"]["inspection_status"]
+          type: Database["public"]["Enums"]["inspection_type"]
+          updated_at?: string
+          valid_until: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_url?: string | null
+          execution_date?: string
+          id?: string
+          inspector_name?: string | null
+          location_id?: string
+          notes?: string | null
+          protocol_number?: string | null
+          status?: Database["public"]["Enums"]["inspection_status"]
+          type?: Database["public"]["Enums"]["inspection_type"]
+          updated_at?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_inspections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_inspections_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_issues: {
         Row: {
           ai_confidence_score: number | null
@@ -3591,6 +3654,28 @@ export type Database = {
     Enums: {
       company_category: "contractor" | "insurer" | "utility" | "other"
       fleet_role: "admin" | "driver"
+      inspection_status: "positive" | "positive_with_defects" | "negative"
+      inspection_type:
+        | "building"
+        | "building_5yr"
+        | "chimney"
+        | "gas"
+        | "electrical"
+        | "fire_safety"
+        | "elevator_udt"
+        | "elevator_electrical"
+        | "separator"
+        | "hydrophore"
+        | "rainwater_pump"
+        | "sewage_pump"
+        | "mechanical_ventilation"
+        | "car_platform"
+        | "treatment_plant"
+        | "garage_door"
+        | "entrance_gate"
+        | "barrier"
+        | "co_lpg_detectors"
+        | "other"
       priority_level: "low" | "medium" | "high" | "emergency"
       property_contract_type:
         | "cleaning"
@@ -3744,6 +3829,29 @@ export const Constants = {
     Enums: {
       company_category: ["contractor", "insurer", "utility", "other"],
       fleet_role: ["admin", "driver"],
+      inspection_status: ["positive", "positive_with_defects", "negative"],
+      inspection_type: [
+        "building",
+        "building_5yr",
+        "chimney",
+        "gas",
+        "electrical",
+        "fire_safety",
+        "elevator_udt",
+        "elevator_electrical",
+        "separator",
+        "hydrophore",
+        "rainwater_pump",
+        "sewage_pump",
+        "mechanical_ventilation",
+        "car_platform",
+        "treatment_plant",
+        "garage_door",
+        "entrance_gate",
+        "barrier",
+        "co_lpg_detectors",
+        "other",
+      ],
       priority_level: ["low", "medium", "high", "emergency"],
       property_contract_type: [
         "cleaning",
