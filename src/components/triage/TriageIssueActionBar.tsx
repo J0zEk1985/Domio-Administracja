@@ -58,6 +58,10 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
   );
 
   const status = issue.status ?? undefined;
+  if (status === "resolved" || status === "rejected") {
+    return null;
+  }
+
   const hint = statusActionHint(status);
   const isNew = status === "new";
   const broadcastDone = issue.is_public_broadcast === true;

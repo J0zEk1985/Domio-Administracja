@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Building2, User } from "lucide-react";
@@ -7,6 +8,9 @@ import { issuePriorityLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
 import { buildIssueTimeline } from "@/components/triage/issueTimeline";
 import { TriageIssueActionBar } from "@/components/triage/TriageIssueActionBar";
 import { IssuePhotoGallery } from "@/components/triage/IssuePhotoGallery";
+import { IssueAfterPhotosStrip } from "@/components/triage/IssueAfterPhotosStrip";
+import { IssueProtocolDialog } from "@/components/triage/IssueProtocolDialog";
+import { IssueCategorySelect } from "@/components/triage/IssueCategorySelect";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,6 +22,11 @@ function formatDt(iso: string | null | undefined): string {
   return format(d, "d MMM yyyy, HH:mm", { locale: pl });
 }
 
+function formatMoneyPl(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(Number(n))) return "—";
+  return new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(Number(n));
+}
+
 export type IssueDetailsPanelProps = {
   issue: TriageIssue | null;
   /** `triage` — pełny panel z akcjami koordynatora; `property` — podgląd w kontekście nieruchomości (bez paska akcji). */
@@ -25,8 +34,13 @@ export type IssueDetailsPanelProps = {
 };
 
 export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPanelProps) {
+  const [protocolOpen, setProtocolOpen] = useState(false);
   const showCoordinatorActions = variant === "triage";
   const embedded = variant === "property";
+
+  useEffect(() => {
+    setProtocolOpen(false);
+  }, [issue?.id]);
 
   if (!issue) {
     return (
@@ -52,7 +66,8 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
     issue.reporter_email?.trim() ||
     "—";
   const timeline = buildIssueTimeline(issue);
-  const isTerminal = issue.status === "resolved" || issue.status === "rejected";
+  const categoryEditable =
+    showCoordinatorActions && issue.status !== "resolved" && issue.status !== "rejected";
 
   const inner = (
     <div className="space-y-6 pb-8">
@@ -73,9 +88,20 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
               <Badge className="bg-emerald-600/90 font-normal hover:bg-emerald-600">Na giełdzie</Badge>
             ) : null}
           </div>
-          <p className="text-sm text-muted-foreground">
-            Utworzono: {formatDt(issue.created_at)} · Kategoria: {issue.category?.trim() || "—"}
-          </p>
+          <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">
+            <span>Utworzono: {formatDt(issue.created_at)}</span>
+            <span className="hidden sm:inline" aria-hidden>
+              ·
+            </span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">Kategoria:</span>
+              {categoryEditable ? (
+                <IssueCategorySelect issue={issue} />
+              ) : (
+                <span className="text-foreground">{issue.category?.trim() || "—"}</span>
+              )}
+            </span>
+          </div>
         </div>
 
         <section className="space-y-2">
@@ -85,16 +111,24 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
           </p>
         </section>
 
-        {isTerminal ? (
+        {issue.status === "resolved" ? (
           <section className="space-y-2">
-            <h2 className="text-sm font-medium text-foreground">
-              {issue.status === "rejected" ? "Odrzucenie" : "Zakończenie i wykonawstwo"}
-            </h2>
-            <div className="rounded-lg border border-border/60 bg-muted/10 p-4 text-sm space-y-2">
+            <h2 className="text-sm font-medium text-foreground">Rozwiązanie</h2>
+            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/10 p-4 text-sm">
               <p>
-                <span className="text-muted-foreground">Data zakończenia: </span>
-                {formatDt(issue.resolved_at ?? issue.created_at)}
+                <span className="text-muted-foreground">Data rozwiązania: </span>
+                {formatDt(issue.resolved_at)}
               </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <p>
+                  <span className="text-muted-foreground">Koszt robocizny: </span>
+                  {formatMoneyPl(issue.labor_cost)}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Koszt materiałów: </span>
+                  {formatMoneyPl(issue.total_material_cost)}
+                </p>
+              </div>
               {issue.assigned_staff?.full_name?.trim() ? (
                 <p>
                   <span className="text-muted-foreground">Przypisany technik: </span>
@@ -110,6 +144,24 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
               {issue.resolution_notes?.trim() ? (
                 <p className="whitespace-pre-wrap pt-1 text-muted-foreground">
                   <span className="font-medium text-foreground">Notatka: </span>
+                  {issue.resolution_notes.trim()}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {issue.status === "rejected" ? (
+          <section className="space-y-2">
+            <h2 className="text-sm font-medium text-foreground">Odrzucenie</h2>
+            <div className="rounded-lg border border-border/60 bg-muted/10 p-4 text-sm space-y-2">
+              <p>
+                <span className="text-muted-foreground">Data zakończenia: </span>
+                {formatDt(issue.resolved_at ?? issue.created_at)}
+              </p>
+              {issue.resolution_notes?.trim() ? (
+                <p className="whitespace-pre-wrap pt-1 text-muted-foreground">
+                  <span className="font-medium text-foreground">Powód: </span>
                   {issue.resolution_notes.trim()}
                 </p>
               ) : null}
@@ -142,8 +194,22 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-foreground">Zdjęcia (proof of work)</h2>
-          <IssuePhotoGallery issue={issue} />
+          {issue.status === "resolved" ? (
+            <>
+              <IssuePhotoGallery issue={issue} excludeAfter />
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Po realizacji</h3>
+                <IssueAfterPhotosStrip issue={issue} onOpenProtocol={() => setProtocolOpen(true)} />
+              </div>
+            </>
+          ) : (
+            <IssuePhotoGallery issue={issue} />
+          )}
         </section>
+
+        {issue.status === "resolved" ? (
+          <IssueProtocolDialog issue={issue} open={protocolOpen} onOpenChange={setProtocolOpen} />
+        ) : null}
 
         <Separator />
 

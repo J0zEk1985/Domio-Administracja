@@ -13,6 +13,10 @@ export function mapMembershipRoleToPolish(role: string): string {
     accountant: "Księgowa",
     bookkeeper: "Księgowa",
     cleaner: "Pracownik",
+    technik: "Technik",
+    technician: "Technik",
+    serwis: "Serwis",
+    service: "Serwis",
   };
   if (map[r]) return map[r];
   if (!r) return "—";

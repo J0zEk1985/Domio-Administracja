@@ -1,33 +1,38 @@
 import { useState } from "react";
 import { ImageIcon } from "lucide-react";
 
-import { collectIssuePhotoEntries, type IssuePhotoEntry } from "@/lib/collectIssuePhotoUrls";
+import { collectAfterPhotoEntries, type IssuePhotoEntry } from "@/lib/collectIssuePhotoUrls";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { ImageLightboxDialog } from "@/components/triage/ImageLightboxDialog";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type IssuePhotoGalleryProps = {
+export type IssueAfterPhotosStripProps = {
   issue: TriageIssue;
-  /** Hide “Po” images (shown separately, e.g. next to protocol). */
-  excludeAfter?: boolean;
+  onOpenProtocol: () => void;
 };
 
-export function IssuePhotoGallery({ issue, excludeAfter }: IssuePhotoGalleryProps) {
+export function IssueAfterPhotosStrip({ issue, onOpenProtocol }: IssueAfterPhotosStripProps) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const entries: IssuePhotoEntry[] = collectIssuePhotoEntries(issue, { excludeAfter });
+  const entries: IssuePhotoEntry[] = collectAfterPhotoEntries(issue);
 
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/20 py-12 text-center">
-        <ImageIcon className="h-10 w-10 text-muted-foreground/60" aria-hidden />
-        <p className="mt-3 text-sm text-muted-foreground">Brak zdjęć przy tym zgłoszeniu.</p>
+      <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/15 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <ImageIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+          Brak zdjęć „Po”.
+        </div>
+        <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={onOpenProtocol}>
+          Zobacz Protokół
+        </Button>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+      <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
         {entries.map((entry, idx) => (
           <button
             key={`${entry.url}-${idx}`}
@@ -51,6 +56,15 @@ export function IssuePhotoGallery({ issue, excludeAfter }: IssuePhotoGalleryProp
           </button>
         ))}
       </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="shrink-0 self-start sm:mt-0"
+        onClick={onOpenProtocol}
+      >
+        Zobacz Protokół
+      </Button>
       <ImageLightboxDialog
         url={lightboxUrl}
         open={lightboxUrl != null}
@@ -58,6 +72,6 @@ export function IssuePhotoGallery({ issue, excludeAfter }: IssuePhotoGalleryProp
           if (!o) setLightboxUrl(null);
         }}
       />
-    </>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { mapMembershipRoleToPolish } from "@/lib/membershipRolePl";
+import { isAssignableServiceStaffMember } from "@/lib/serviceMembership";
 
 export const ORG_ASSIGNABLE_STAFF_QUERY_KEY = "org-assignable-staff" as const;
 
@@ -24,7 +25,7 @@ async function fetchAssignableStaff(): Promise<AssignableStaffRow[]> {
 
   const { data: memberships, error: memErr } = await supabase
     .from("memberships")
-    .select("user_id, role")
+    .select("user_id, role, specializations")
     .eq("org_id", String(orgId))
     .eq("is_active", true);
 
@@ -32,7 +33,12 @@ async function fetchAssignableStaff(): Promise<AssignableStaffRow[]> {
     console.error("[useOrgAssignableStaff] memberships:", memErr);
     throw memErr;
   }
-  const rows = memberships ?? [];
+  const rows = (memberships ?? []).filter((m) =>
+    isAssignableServiceStaffMember({
+      role: m.role ?? "",
+      specializations: m.specializations ?? null,
+    }),
+  );
   if (rows.length === 0) return [];
 
   const userIds = [...new Set(rows.map((m) => m.user_id))];

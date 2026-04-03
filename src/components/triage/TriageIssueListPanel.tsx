@@ -1,4 +1,11 @@
 import { useMemo, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
@@ -229,6 +236,7 @@ export function TriageIssueListPanel({
   const list = issues ?? [];
   const filtered = useMemo(() => applyTriageInboxFilters(list, filters), [list, filters]);
   const showReset = filtersDirty(filters);
+  const [newIssueOpen, setNewIssueOpen] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 border-r border-border/40 bg-transparent pr-3">
@@ -238,6 +246,15 @@ export function TriageIssueListPanel({
       </div>
 
       <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-2">
+        <Button
+          type="button"
+          size="sm"
+          className="h-9 shrink-0 gap-1 px-3"
+          onClick={() => setNewIssueOpen(true)}
+        >
+          + Nowe Zgłoszenie
+        </Button>
+
         <Select
           value={filters.status}
           onValueChange={(v) => onFiltersChange({ ...filters, status: v as TriageInboxStatusFilter })}
@@ -284,6 +301,17 @@ export function TriageIssueListPanel({
           </Button>
         ) : null}
       </div>
+
+      <Dialog open={newIssueOpen} onOpenChange={setNewIssueOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nowe zgłoszenie</DialogTitle>
+            <DialogDescription>
+              Formularz tworzenia zgłoszenia zostanie podłączony w kolejnej iteracji.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
 
       <ScrollArea className="min-h-0 flex-1 pr-2">
         <div className="flex flex-col gap-2 pb-4">

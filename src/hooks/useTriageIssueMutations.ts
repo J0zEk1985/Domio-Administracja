@@ -211,6 +211,47 @@ export function useAssignStaffIssue() {
   });
 }
 
+export type UpdateIssueCategoryVars = { issueId: string; category: string | null };
+
+export function useUpdateIssueCategory() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ issueId, category }: UpdateIssueCategoryVars) => {
+      const { error } = await supabase
+        .from("property_issues")
+        .update({ category: category?.trim() || null })
+        .eq("id", issueId);
+
+      if (error) {
+        console.error("[useUpdateIssueCategory] update:", error);
+        throw error;
+      }
+    },
+    onMutate: async ({ issueId, category }): Promise<Ctx> => {
+      await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
+      const previous = qc.getQueryData<TriageIssue[]>(triageIssuesQueryKey());
+      qc.setQueryData<TriageIssue[]>(triageIssuesQueryKey(), (old) =>
+        patchIssue(old, issueId, { category: category?.trim() || null }),
+      );
+      return { previous };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) {
+        qc.setQueryData(triageIssuesQueryKey(), ctx.previous);
+      }
+      toast.error(errMessage(err));
+      console.error("[useUpdateIssueCategory]", err);
+    },
+    onSettled: async () => {
+      await invalidateTriageAndCount(qc);
+    },
+    onSuccess: () => {
+      toast.success("Kategoria zaktualizowana.");
+    },
+  });
+}
+
 export type AcceptOpenIssueVars = { issueId: string };
 
 export function useAcceptOpenIssue() {
