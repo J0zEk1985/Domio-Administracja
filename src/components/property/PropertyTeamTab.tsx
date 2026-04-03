@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronsUpDown, Loader2, Mail, Plus, Users } from "lucide-react";
+import { ChevronsUpDown, Loader2, Plus, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,8 +26,8 @@ import {
   useAssignableOrgMembersForLocation,
   useAssignEmployeeToPropertyLocation,
   usePropertyAdministrators,
+  useRevokePropertyLocationAccess,
 } from "@/hooks/useProperties";
-import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 type PropertyTeamTabProps = {
@@ -41,6 +41,7 @@ export function PropertyTeamTab({ locationId, isOrgOwner }: PropertyTeamTabProps
   const adminsQuery = usePropertyAdministrators(locationId, true);
   const assignableQuery = useAssignableOrgMembersForLocation(locationId, isOrgOwner);
   const assign = useAssignEmployeeToPropertyLocation(locationId);
+  const revokeAccess = useRevokePropertyLocationAccess(locationId);
 
   const assignBusy = assign.isPending;
 
@@ -157,12 +158,14 @@ export function PropertyTeamTab({ locationId, isOrgOwner }: PropertyTeamTabProps
                 <TableRow>
                   <TableHead>Imię i nazwisko</TableHead>
                   <TableHead>E-mail</TableHead>
-                  <TableHead className="w-[140px] text-right">Akcje</TableHead>
+                  {isOrgOwner ? <TableHead className="w-[72px] text-right">Akcje</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {admins.map((row) => {
                   const goTeam = row.membershipId ? () => navigate(`/team/${row.membershipId}`) : undefined;
+                  const revoking =
+                    revokeAccess.isPending && revokeAccess.variables === row.accessId;
                   return (
                     <TableRow
                       key={row.accessId}
@@ -171,21 +174,31 @@ export function PropertyTeamTab({ locationId, isOrgOwner }: PropertyTeamTabProps
                     >
                       <TableCell className="font-medium">{row.fullName}</TableCell>
                       <TableCell className="text-muted-foreground">{row.email}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toast.info("Moduł Komunikacja w przygotowaniu");
-                          }}
-                        >
-                          <Mail className="h-3.5 w-3.5" aria-hidden />
-                          Napisz wiadomość
-                        </Button>
-                      </TableCell>
+                      {isOrgOwner ? (
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            aria-label="Usuń dostęp do budynku"
+                            disabled={revoking}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                !window.confirm(
+                                  "Czy na pewno usunąć dostęp administracyjny tej osoby do tego budynku?",
+                                )
+                              ) {
+                                return;
+                              }
+                              revokeAccess.mutate(row.accessId);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })}

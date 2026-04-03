@@ -494,3 +494,26 @@ export function useAssignEmployeeToPropertyLocation(locationId: string | undefin
     },
   });
 }
+
+export function useRevokePropertyLocationAccess(locationId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (accessId: string) => {
+      const { error } = await supabase.from("location_access").delete().eq("id", accessId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usunięto dostęp do budynku.");
+      if (locationId) {
+        void qc.invalidateQueries({ queryKey: propertyAdministratorsQueryKey(locationId) });
+        void qc.invalidateQueries({ queryKey: assignableOrgMembersQueryKey(locationId) });
+      }
+      void qc.invalidateQueries({ queryKey: [PROPERTIES_QUERY_KEY] });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się usunąć dostępu.";
+      toast.error(msg);
+      console.error("[useRevokePropertyLocationAccess]", e);
+    },
+  });
+}

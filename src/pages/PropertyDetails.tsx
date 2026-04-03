@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useProperty, usePropertyAdministrators } from "@/hooks/useProperties";
+import {
+  useProperty,
+  usePropertyAdministrators,
+  useRevokePropertyLocationAccess,
+} from "@/hooks/useProperties";
 import { usePropertyTasksCanEdit } from "@/hooks/usePropertyTasks";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
@@ -40,7 +44,7 @@ function PropertyDetailsSkeleton() {
   );
 }
 
-function AdministratorsSkeleton() {
+function AdministratorsSkeleton({ showActions = true }: { showActions?: boolean }) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -48,7 +52,7 @@ function AdministratorsSkeleton() {
           <TableRow>
             <TableHead>Imię i nazwisko</TableHead>
             <TableHead>E-mail</TableHead>
-            <TableHead className="w-[120px] text-right">Akcje</TableHead>
+            {showActions ? <TableHead className="w-[72px] text-right">Akcje</TableHead> : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,9 +64,11 @@ function AdministratorsSkeleton() {
               <TableCell>
                 <Skeleton className="h-4 w-48" />
               </TableCell>
-              <TableCell className="text-right">
-                <Skeleton className="ml-auto h-8 w-24" />
-              </TableCell>
+              {showActions ? (
+                <TableCell className="text-right">
+                  <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+                </TableCell>
+              ) : null}
             </TableRow>
           ))}
         </TableBody>
@@ -80,6 +86,7 @@ export default function PropertyDetails() {
   const propertyQuery = useProperty(propertyId, Boolean(propertyId));
   const adminsQuery = usePropertyAdministrators(propertyId, Boolean(propertyId && propertyQuery.isSuccess));
   const portalAccessQuery = usePropertyTasksCanEdit(propertyId);
+  const revokeLocationAccess = useRevokePropertyLocationAccess(propertyId);
 
   useEffect(() => {
     if (!propertyQuery.isError || !propertyQuery.error) return;
@@ -214,7 +221,7 @@ export default function PropertyDetails() {
                 </Alert>
               )}
               {adminsQuery.isLoading ? (
-                <AdministratorsSkeleton />
+                <AdministratorsSkeleton showActions={isOwner} />
               ) : (adminsQuery.data ?? []).length === 0 ? (
                 <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                   Brak przypisanych administratorów dla tego obiektu.
@@ -226,7 +233,7 @@ export default function PropertyDetails() {
                       <TableRow>
                         <TableHead>Imię i nazwisko</TableHead>
                         <TableHead>E-mail</TableHead>
-                        <TableHead className="w-[140px] text-right">Akcje</TableHead>
+                        {isOwner ? <TableHead className="w-[72px] text-right">Akcje</TableHead> : null}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -234,6 +241,9 @@ export default function PropertyDetails() {
                         const goTeam = row.membershipId
                           ? () => navigate(`/team/${row.membershipId}`)
                           : undefined;
+                        const revoking =
+                          revokeLocationAccess.isPending &&
+                          revokeLocationAccess.variables === row.accessId;
                         return (
                           <TableRow
                             key={row.accessId}
@@ -242,21 +252,31 @@ export default function PropertyDetails() {
                           >
                             <TableCell className="font-medium">{row.fullName}</TableCell>
                             <TableCell className="text-muted-foreground">{row.email}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toast.info("Moduł Komunikacja w przygotowaniu");
-                                }}
-                              >
-                                <Mail className="h-3.5 w-3.5" aria-hidden />
-                                Napisz wiadomość
-                              </Button>
-                            </TableCell>
+                            {isOwner ? (
+                              <TableCell className="text-right">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  aria-label="Usuń dostęp do budynku"
+                                  disabled={revoking}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      !window.confirm(
+                                        "Czy na pewno usunąć dostęp administracyjny tej osoby do tego budynku?",
+                                      )
+                                    ) {
+                                      return;
+                                    }
+                                    revokeLocationAccess.mutate(row.accessId);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" aria-hidden />
+                                </Button>
+                              </TableCell>
+                            ) : null}
                           </TableRow>
                         );
                       })}
