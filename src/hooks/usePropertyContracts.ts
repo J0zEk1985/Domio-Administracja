@@ -5,6 +5,7 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { allContractsQueryKey } from "@/hooks/useAllContracts";
 import { supabase } from "@/lib/supabase";
 import type { PropertyContract } from "@/types/contracts";
 import type { AddContractFormValues } from "@/schemas/contractSchema";
@@ -104,6 +105,7 @@ export function useAddContract(): UseMutationResult<void, Error, AddContractVari
     mutationFn: insertPropertyContract,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["contracts", variables.locationId] });
+      void queryClient.invalidateQueries({ queryKey: allContractsQueryKey });
     },
   });
 }
@@ -149,6 +151,7 @@ export function useUpdateContract(): UseMutationResult<void, Error, UpdateContra
     mutationFn: updatePropertyContract,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["contracts", variables.locationId] });
+      void queryClient.invalidateQueries({ queryKey: allContractsQueryKey });
     },
   });
 }
@@ -178,6 +181,7 @@ export function useDeleteContract(): UseMutationResult<void, Error, DeleteContra
     mutationFn: deletePropertyContract,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["contracts", variables.locationId] });
+      void queryClient.invalidateQueries({ queryKey: allContractsQueryKey });
     },
   });
 }

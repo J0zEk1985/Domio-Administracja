@@ -16,6 +16,7 @@ import Properties from "./pages/Properties.tsx";
 import PropertyDetails from "./pages/PropertyDetails.tsx";
 import TaskDetails from "./pages/TaskDetails.tsx";
 import Tasks from "./pages/Tasks.tsx";
+import ContractsPage from "./pages/ContractsPage.tsx";
 import BoardPortal from "./pages/BoardPortal.tsx";
 
 const queryClient = new QueryClient({
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/:id" element={<MemberDetails />} />
                 <Route path="/tasks" element={<Tasks />} />
+                <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id/tasks/:taskId" element={<TaskDetails />} />
                 <Route path="/properties/:id" element={<PropertyDetails />} />
