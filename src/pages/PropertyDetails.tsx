@@ -20,6 +20,7 @@ import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
+import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -65,17 +66,6 @@ function AdministratorsSkeleton() {
           ))}
         </TableBody>
       </Table>
-    </div>
-  );
-}
-
-function ModulePlaceholder() {
-  return (
-    <div
-      className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/10 px-6 py-12 text-center"
-      role="status"
-    >
-      <p className="text-sm text-muted-foreground">Moduł w przygotowaniu</p>
     </div>
   );
 }
@@ -279,7 +269,7 @@ export default function PropertyDetails() {
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-6">
-          <ModulePlaceholder />
+          <PropertyContractsTab locationId={property.id} />
         </TabsContent>
       </Tabs>
     </div>
