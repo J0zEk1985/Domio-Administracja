@@ -69,6 +69,12 @@ async function insertPropertyContract({ locationId, values }: AddContractVariabl
       start_date: values.start_date,
       end_date: endTrimmed && endTrimmed.length > 0 ? endTrimmed : null,
       net_value: values.net_value,
+      vat_rate: values.vat_rate,
+      gross_value: values.gross_value,
+      custom_type_name:
+        values.type === "other" ? values.custom_type_name?.trim() ?? null : null,
+      notice_period_months:
+        values.notice_period_months === undefined ? null : values.notice_period_months,
       currency: "PLN",
       document_url: "",
     };

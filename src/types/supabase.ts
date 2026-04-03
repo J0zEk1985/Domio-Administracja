@@ -1527,8 +1527,10 @@ export type Database = {
           contract_number: string
           created_at: string
           currency: string
+          custom_type_name: string | null
           document_url: string
           end_date: string | null
+          gross_value: number | null
           id: string
           location_id: string
           net_value: number
@@ -1536,14 +1538,17 @@ export type Database = {
           start_date: string
           type: Database["public"]["Enums"]["property_contract_type"]
           updated_at: string
+          vat_rate: number | null
         }
         Insert: {
           company_id: string
           contract_number: string
           created_at?: string
           currency?: string
+          custom_type_name?: string | null
           document_url?: string
           end_date?: string | null
+          gross_value?: number | null
           id?: string
           location_id: string
           net_value: number
@@ -1551,14 +1556,17 @@ export type Database = {
           start_date: string
           type: Database["public"]["Enums"]["property_contract_type"]
           updated_at?: string
+          vat_rate?: number | null
         }
         Update: {
           company_id?: string
           contract_number?: string
           created_at?: string
           currency?: string
+          custom_type_name?: string | null
           document_url?: string
           end_date?: string | null
+          gross_value?: number | null
           id?: string
           location_id?: string
           net_value?: number
@@ -1566,6 +1574,7 @@ export type Database = {
           start_date?: string
           type?: Database["public"]["Enums"]["property_contract_type"]
           updated_at?: string
+          vat_rate?: number | null
         }
         Relationships: [
           {
