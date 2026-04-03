@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { CompanyCategory } from "@/types/contracts";
+import type { Company, CompanyCategory } from "@/types/contracts";
 
 export const COMPANY_CATEGORIES = ["contractor", "insurer", "utility", "other"] as const satisfies readonly CompanyCategory[];
 
@@ -51,4 +51,19 @@ export function parseCompanySearchSeed(query: string | undefined): Partial<Compa
     return { tax_id: digits };
   }
   return { name: t };
+}
+
+export function companyRowToFormValues(company: Company): CompanyFormValues {
+  const cat = company.category;
+  const category = COMPANY_CATEGORIES.includes(cat as (typeof COMPANY_CATEGORIES)[number])
+    ? (cat as CompanyFormValues["category"])
+    : "contractor";
+  return {
+    name: company.name.trim(),
+    tax_id: company.tax_id.replace(/\D/g, "").slice(0, 10),
+    category,
+    email: company.email?.trim() ? company.email.trim() : undefined,
+    phone: company.phone?.trim() ? company.phone.trim() : undefined,
+    address: company.address?.trim() ? company.address.trim() : undefined,
+  };
 }

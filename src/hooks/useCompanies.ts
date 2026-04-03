@@ -6,6 +6,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import type { Database } from "@/types/supabase";
 import type { Company, CompanyCategory } from "@/types/contracts";
 
 export const COMPANIES_STALE_MS = 5 * 60 * 1000;
@@ -120,6 +121,47 @@ export function useUpsertCompany(): UseMutationResult<Company, Error, UpsertComp
     mutationFn: upsertCompanyRpc,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+  });
+}
+
+export type UpdateCompanyPayload = UpsertCompanyPayload & { id: string };
+
+async function updateCompanyById(payload: UpdateCompanyPayload): Promise<Company> {
+  try {
+    const patch: Database["public"]["Tables"]["companies"]["Update"] = {
+      name: payload.name,
+      tax_id: payload.tax_id,
+      category: payload.category,
+      email: payload.email ?? null,
+      phone: payload.phone ?? null,
+      address: payload.address ?? null,
+    };
+    const { data, error } = await supabase.from("companies").update(patch).eq("id", payload.id).select("*").single();
+    if (error) {
+      console.error("[useUpdateCompany] update:", error);
+      throw error;
+    }
+    if (!data) {
+      const missing = new Error("Update company returned no row");
+      console.error("[useUpdateCompany]", missing);
+      throw missing;
+    }
+    return data as Company;
+  } catch (err) {
+    console.error("[useUpdateCompany] updateCompanyById:", err);
+    throw err;
+  }
+}
+
+export function useUpdateCompany(): UseMutationResult<Company, Error, UpdateCompanyPayload> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateCompanyById,
+    onSuccess: (row) => {
+      void queryClient.invalidateQueries({ queryKey: ["companies"] });
+      void queryClient.invalidateQueries({ queryKey: companyByIdQueryKey(row.id) });
     },
   });
 }

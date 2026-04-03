@@ -27,10 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUpsertCompany } from "@/hooks/useCompanies";
+import { useUpdateCompany, useUpsertCompany } from "@/hooks/useCompanies";
+import type { Company } from "@/types/contracts";
 import {
   companyFormDefaultValues,
   companyFormSchema,
+  companyRowToFormValues,
   type CompanyFormValues,
   COMPANY_CATEGORIES,
   COMPANY_CATEGORY_LABELS,
@@ -50,17 +52,25 @@ function apiErrorMessage(err: unknown): string {
 export interface CompanyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode?: "create" | "edit";
+  /** Wymagane przy `mode: "edit"` — rekord z katalogu firm. */
+  company?: Company | null;
   initialSearchQuery?: string;
-  onSuccess: (newCompanyId: string) => void;
+  onSuccess: (companyId: string) => void;
 }
 
 export function CompanyDialog({
   open,
   onOpenChange,
+  mode = "create",
+  company,
   initialSearchQuery,
   onSuccess,
 }: CompanyDialogProps) {
   const upsert = useUpsertCompany();
+  const update = useUpdateCompany();
+  const isEdit = mode === "edit" && Boolean(company?.id);
+  const saving = upsert.isPending || update.isPending;
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companyFormSchema),
@@ -71,15 +81,34 @@ export function CompanyDialog({
 
   useEffect(() => {
     if (!open) return;
+    if (isEdit && company) {
+      reset(companyRowToFormValues(company));
+      return;
+    }
     reset({
       ...companyFormDefaultValues,
       ...parseCompanySearchSeed(initialSearchQuery),
     });
-  }, [open, initialSearchQuery, reset]);
+  }, [open, initialSearchQuery, reset, isEdit, company]);
 
   async function handleSubmit(values: CompanyFormValues) {
     try {
-      const company = await upsert.mutateAsync({
+      if (isEdit && company?.id) {
+        const row = await update.mutateAsync({
+          id: company.id,
+          name: values.name.trim(),
+          tax_id: values.tax_id,
+          category: values.category,
+          email: values.email ?? null,
+          phone: values.phone ?? null,
+          address: values.address ?? null,
+        });
+        onSuccess(row.id);
+        onOpenChange(false);
+        reset(companyFormDefaultValues);
+        return;
+      }
+      const created = await upsert.mutateAsync({
         name: values.name.trim(),
         tax_id: values.tax_id,
         category: values.category,
@@ -87,12 +116,12 @@ export function CompanyDialog({
         phone: values.phone ?? null,
         address: values.address ?? null,
       });
-      onSuccess(company.id);
+      onSuccess(created.id);
       onOpenChange(false);
       reset(companyFormDefaultValues);
     } catch (err) {
       toast.error(apiErrorMessage(err));
-      console.error("[CompanyDialog] upsert:", err);
+      console.error("[CompanyDialog] save:", err);
     }
   }
 
@@ -103,10 +132,11 @@ export function CompanyDialog({
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Nowa firma</DialogTitle>
+          <DialogTitle>{isEdit ? "Edycja firmy" : "Nowa firma"}</DialogTitle>
           <DialogDescription>
-            Dane zapisują się w globalnym katalogu firm (unikalność po NIP). Po zapisie firma zostanie wybrana w
-            formularzu.
+            {isEdit
+              ? "Zaktualizuj dane firmy w globalnym katalogu (unikalność po NIP)."
+              : "Dane zapisują się w globalnym katalogu firm (unikalność po NIP). Po zapisie firma zostanie wybrana w formularzu."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -118,7 +148,7 @@ export function CompanyDialog({
                 <FormItem>
                   <FormLabel>Nazwa</FormLabel>
                   <FormControl>
-                    <Input {...field} autoComplete="organization" disabled={upsert.isPending} />
+                    <Input {...field} autoComplete="organization" disabled={saving} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,7 +166,7 @@ export function CompanyDialog({
                       inputMode="numeric"
                       autoComplete="off"
                       placeholder="10 cyfr"
-                      disabled={upsert.isPending}
+                      disabled={saving}
                       onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     />
                   </FormControl>
@@ -153,7 +183,7 @@ export function CompanyDialog({
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={upsert.isPending}
+                    disabled={saving}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -184,7 +214,7 @@ export function CompanyDialog({
                       value={field.value ?? ""}
                       type="tel"
                       autoComplete="tel"
-                      disabled={upsert.isPending}
+                      disabled={saving}
                     />
                   </FormControl>
                   <FormMessage />
@@ -203,7 +233,7 @@ export function CompanyDialog({
                       value={field.value ?? ""}
                       type="email"
                       autoComplete="email"
-                      disabled={upsert.isPending}
+                      disabled={saving}
                     />
                   </FormControl>
                   <FormMessage />
@@ -221,7 +251,7 @@ export function CompanyDialog({
                       {...field}
                       value={field.value ?? ""}
                       autoComplete="street-address"
-                      disabled={upsert.isPending}
+                      disabled={saving}
                     />
                   </FormControl>
                   <FormMessage />
@@ -233,12 +263,12 @@ export function CompanyDialog({
                 type="button"
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                disabled={upsert.isPending}
+                disabled={saving}
               >
                 Anuluj
               </Button>
-              <Button type="submit" disabled={upsert.isPending}>
-                {upsert.isPending ? "Zapisywanie…" : "Zapisz firmę"}
+              <Button type="submit" disabled={saving}>
+                {saving ? "Zapisywanie…" : isEdit ? "Zapisz zmiany" : "Zapisz firmę"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/sonner";
 import { getOrgAndActor, hasLocationAdministrationAccess } from "@/lib/orgAccess";
 import {
   mergeVisibilityConfigWithAdminData,
@@ -357,6 +358,139 @@ export function useUpdatePropertyAdminData(propertyId: string | undefined) {
     },
     onError: (e: unknown) => {
       console.error("[useUpdatePropertyAdminData]", e);
+    },
+  });
+}
+
+export type AssignableOrgMemberOption = {
+  membershipId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+};
+
+export function assignableOrgMembersQueryKey(locationId: string) {
+  return ["org-members-assignable", locationId] as const;
+}
+
+async function fetchAssignableOrgMembers(locationId: string): Promise<AssignableOrgMemberOption[]> {
+  const actor = await getOrgAndActor();
+  if (!actor.isOwner) {
+    return [];
+  }
+
+  const { data: loc, error: lErr } = await supabase
+    .from("cleaning_locations")
+    .select("id, org_id, is_admin_active")
+    .eq("id", locationId)
+    .maybeSingle();
+
+  if (lErr) {
+    console.error("[fetchAssignableOrgMembers] cleaning_locations:", lErr);
+    throw lErr;
+  }
+  if (!loc || loc.org_id !== actor.orgId || loc.is_admin_active !== true) {
+    return [];
+  }
+
+  const { data: mems, error: mErr } = await supabase
+    .from("memberships")
+    .select("id, user_id")
+    .eq("org_id", actor.orgId)
+    .eq("is_active", true);
+
+  if (mErr) {
+    console.error("[fetchAssignableOrgMembers] memberships:", mErr);
+    throw mErr;
+  }
+
+  const memberships = (mems ?? []).filter((m): m is { id: string; user_id: string } =>
+    Boolean(m.id && m.user_id),
+  );
+  if (memberships.length === 0) {
+    return [];
+  }
+
+  const { data: accessRows, error: aErr } = await supabase
+    .from("location_access")
+    .select("user_id")
+    .eq("location_id", locationId)
+    .eq("access_type", "administration");
+
+  if (aErr) {
+    console.error("[fetchAssignableOrgMembers] location_access:", aErr);
+    throw aErr;
+  }
+
+  const assigned = new Set(
+    (accessRows ?? []).map((r) => r.user_id).filter((id): id is string => Boolean(id)),
+  );
+
+  const candidates = memberships.filter((m) => !assigned.has(m.user_id));
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  const userIds = [...new Set(candidates.map((c) => c.user_id))];
+  const { data: profiles, error: pErr } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, contact_email")
+    .in("id", userIds);
+
+  if (pErr) {
+    console.error("[fetchAssignableOrgMembers] profiles:", pErr);
+    throw pErr;
+  }
+
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  return candidates
+    .map((m) => {
+      const p = profileById.get(m.user_id);
+      return {
+        membershipId: m.id,
+        userId: m.user_id,
+        fullName: p?.full_name?.trim() || "—",
+        email: p?.email?.trim() || p?.contact_email?.trim() || "—",
+      };
+    })
+    .sort((a, b) => a.fullName.localeCompare(b.fullName, "pl", { sensitivity: "base" }));
+}
+
+export function useAssignableOrgMembersForLocation(locationId: string | undefined, enabled: boolean = true) {
+  return useQuery({
+    queryKey: locationId ? assignableOrgMembersQueryKey(locationId) : ["org-members-assignable", "none"],
+    queryFn: () => fetchAssignableOrgMembers(locationId!),
+    enabled: Boolean(locationId && enabled),
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+  });
+}
+
+export function useAssignEmployeeToPropertyLocation(locationId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      if (!locationId) throw new Error("Brak identyfikatora nieruchomości.");
+      const { error } = await supabase.from("location_access").insert({
+        user_id: userId,
+        location_id: locationId,
+        access_type: "administration",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Przypisano pracownika do budynku.");
+      if (locationId) {
+        void qc.invalidateQueries({ queryKey: propertyAdministratorsQueryKey(locationId) });
+        void qc.invalidateQueries({ queryKey: assignableOrgMembersQueryKey(locationId) });
+      }
+      void qc.invalidateQueries({ queryKey: [PROPERTIES_QUERY_KEY] });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się przypisać pracownika.";
+      toast.error(msg);
+      console.error("[useAssignEmployeeToPropertyLocation]", e);
     },
   });
 }

@@ -1,9 +1,12 @@
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/contracts/DataTableColumnHeader";
 import { PROPERTY_CONTRACT_TYPE_LABELS } from "@/schemas/contractSchema";
 import type { PropertyContract, PropertyContractType } from "@/types/contracts";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+
+const contractNavLinkClass = "hover:underline text-primary font-medium";
 
 const plnFormatter = new Intl.NumberFormat("pl-PL", {
   style: "currency",
@@ -51,11 +54,18 @@ export const contractsColumns: ColumnDef<PropertyContract>[] = [
     accessorFn: (row) => row.location?.name?.trim() || "",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Nieruchomość" />,
     enableSorting: true,
-    cell: ({ row }) => (
-      <span className="font-medium text-foreground">
-        {row.original.location?.name?.trim() || "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const name = row.original.location?.name?.trim() || "—";
+      const locationId = row.original.location_id;
+      if (!locationId) {
+        return <span className="text-muted-foreground">{name}</span>;
+      }
+      return (
+        <Link to={`/properties/${locationId}`} className={contractNavLinkClass}>
+          {name}
+        </Link>
+      );
+    },
   },
   {
     id: "company",
@@ -65,9 +75,16 @@ export const contractsColumns: ColumnDef<PropertyContract>[] = [
     cell: ({ row }) => {
       const name = row.original.company?.name?.trim() || "—";
       const nip = row.original.company?.tax_id?.trim();
+      const companyId = row.original.company_id;
       return (
         <div className="flex flex-col gap-0.5">
-          <span className="font-medium text-foreground">{name}</span>
+          {companyId ? (
+            <Link to={`/companies/${companyId}`} className={contractNavLinkClass}>
+              {name}
+            </Link>
+          ) : (
+            <span className="font-medium text-foreground">{name}</span>
+          )}
           {nip ? <span className="text-xs text-muted-foreground">NIP {nip}</span> : null}
         </div>
       );

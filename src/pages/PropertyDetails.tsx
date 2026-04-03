@@ -21,6 +21,7 @@ import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralIn
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
+import { PropertyTeamTab } from "@/components/property/PropertyTeamTab";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -155,12 +156,15 @@ export default function PropertyDetails() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full max-w-3xl grid-cols-2 sm:grid-cols-4 h-auto gap-1 p-1">
+        <TabsList className="grid h-auto w-full max-w-5xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 lg:grid-cols-5">
           <TabsTrigger value="general" className="text-xs sm:text-sm">
             Informacje ogólne
           </TabsTrigger>
           <TabsTrigger value="admins" className="text-xs sm:text-sm">
             Administratorzy
+          </TabsTrigger>
+          <TabsTrigger value="team" className="text-xs sm:text-sm">
+            Zespół
           </TabsTrigger>
           <TabsTrigger value="issues" className="text-xs sm:text-sm">
             Zadania
@@ -262,6 +266,10 @@ export default function PropertyDetails() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="team" className="mt-6">
+          <PropertyTeamTab locationId={property.id} isOrgOwner={isOwner} />
         </TabsContent>
 
         <TabsContent value="issues" className="mt-6">

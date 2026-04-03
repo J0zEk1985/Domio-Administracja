@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useAllContracts } from "@/hooks/useAllContracts";
+import { CompaniesDataTable } from "@/components/companies/CompaniesDataTable";
 import { ContractsDataTable } from "@/components/contracts/ContractsDataTable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
 
 export default function ContractsPage() {
@@ -21,11 +23,22 @@ export default function ContractsPage() {
       <div className="space-y-1">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Umowy i Firmy</h1>
         <p className="text-sm text-muted-foreground">
-          Zarządzaj wszystkimi umowami w swoich nieruchomościach. Widok uwzględnia tylko dane, do których masz
-          uprawnienia.
+          Zarządzaj umowami oraz globalnym katalogiem firm. Widok uwzględnia tylko dane, do których masz uprawnienia.
         </p>
       </div>
-      <ContractsDataTable data={contractsQuery.data ?? []} isLoading={contractsQuery.isPending} />
+
+      <Tabs defaultValue="contracts" className="w-full">
+        <TabsList>
+          <TabsTrigger value="contracts">Umowy</TabsTrigger>
+          <TabsTrigger value="companies">Firmy</TabsTrigger>
+        </TabsList>
+        <TabsContent value="contracts" className="mt-6">
+          <ContractsDataTable data={contractsQuery.data ?? []} isLoading={contractsQuery.isPending} />
+        </TabsContent>
+        <TabsContent value="companies" className="mt-6">
+          <CompaniesDataTable />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
