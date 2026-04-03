@@ -25,6 +25,7 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
 
   const building = issue.location?.name?.trim() || "Budynek bez nazwy";
   const category = issue.category?.trim() || "Bez kategorii";
+  const isClosed = issue.status === "resolved" || issue.status === "rejected";
 
   return (
     <button
@@ -35,6 +36,7 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
         "hover:border-primary/30 hover:shadow-md",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         selected ? "border-primary/50 ring-1 ring-primary/30" : "border-border/70",
+        isClosed && "opacity-[0.72]",
       )}
     >
       <div className="flex items-start gap-2">
@@ -45,7 +47,14 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
         />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-sm font-semibold leading-tight text-foreground">{building}</p>
+            <p
+              className={cn(
+                "truncate text-sm font-semibold leading-tight text-foreground",
+                isClosed && "line-through decoration-muted-foreground/60",
+              )}
+            >
+              {building}
+            </p>
             <Badge variant={issuePriorityBadgeVariant(issue.priority)} className="shrink-0 text-[10px]">
               {issuePriorityLabelPl(issue.priority)}
             </Badge>

@@ -1,6 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
+import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { triageIssuesQueryKey, type TriageIssue } from "@/hooks/useTriageIssues";
 import type { Database } from "@/types/supabase";
 
@@ -15,6 +16,11 @@ function errMessage(err: unknown): string {
 }
 
 type Ctx = { previous: TriageIssue[] | undefined };
+
+async function invalidateTriageAndCount(qc: QueryClient): Promise<void> {
+  await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+  await qc.invalidateQueries({ queryKey: pendingIssuesCountQueryKey() });
+}
 
 function patchIssue(
   list: TriageIssue[] | undefined,
@@ -64,7 +70,7 @@ export function useRejectIssue() {
       console.error("[useRejectIssue]", err);
     },
     onSettled: async () => {
-      await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+      await invalidateTriageAndCount(qc);
     },
     onSuccess: () => {
       toast.success("Zgłoszenie odrzucone.");
@@ -112,7 +118,7 @@ export function useDelegateIssue() {
       console.error("[useDelegateIssue]", err);
     },
     onSettled: async () => {
-      await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+      await invalidateTriageAndCount(qc);
     },
     onSuccess: () => {
       toast.success("Delegacja zapisana.");
@@ -153,7 +159,7 @@ export function useBroadcastIssue() {
       console.error("[useBroadcastIssue]", err);
     },
     onSettled: async () => {
-      await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+      await invalidateTriageAndCount(qc);
     },
     onSuccess: () => {
       toast.success("Wysłano na giełdę.");
@@ -197,7 +203,7 @@ export function useAssignStaffIssue() {
       console.error("[useAssignStaffIssue]", err);
     },
     onSettled: async () => {
-      await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+      await invalidateTriageAndCount(qc);
     },
     onSuccess: () => {
       toast.success("Przypisano do pracownika.");
@@ -238,7 +244,7 @@ export function useAcceptOpenIssue() {
       console.error("[useAcceptOpenIssue]", err);
     },
     onSettled: async () => {
-      await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+      await invalidateTriageAndCount(qc);
     },
     onSuccess: () => {
       toast.success("Zgłoszenie zaakceptowane.");

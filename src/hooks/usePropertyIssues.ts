@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
+import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { triageIssuesQueryKey } from "@/hooks/useTriageIssues";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import type { Database } from "@/types/supabase";
@@ -129,6 +130,7 @@ export function useCreatePropertyIssue() {
       toast.success("Zgłoszenie zostało zapisane.");
       await qc.invalidateQueries({ queryKey: propertyIssuesQueryKey(variables.locationId) });
       await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
+      await qc.invalidateQueries({ queryKey: pendingIssuesCountQueryKey() });
     },
     onError: (err: unknown) => {
       const msg =

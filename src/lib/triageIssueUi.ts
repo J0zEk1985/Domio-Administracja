@@ -12,6 +12,9 @@ export const TRIAGE_ACTIVE_STATUSES: readonly IssueStatus[] = [
   "delegated",
 ] as const;
 
+/** Closed / archive statuses (Linear-style “done” column). */
+export const TERMINAL_ISSUE_STATUSES: readonly IssueStatus[] = ["resolved", "rejected"] as const;
+
 export function issueStatusLabelPl(status: IssueStatus | null | undefined): string {
   if (!status) return "—";
   const map: Record<IssueStatus, string> = {

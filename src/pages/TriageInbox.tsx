@@ -2,23 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { GripVertical } from "lucide-react";
 
-import { useTriageIssues, type TriageIssue } from "@/hooks/useTriageIssues";
-import {
-  TriageIssueListPanel,
-  type TriageListFilter,
-} from "@/components/triage/TriageIssueListPanel";
+import { useTriageIssues } from "@/hooks/useTriageIssues";
+import { TriageIssueListPanel } from "@/components/triage/TriageIssueListPanel";
 import { IssueDetailsPanel } from "@/components/triage/IssueDetailsPanel";
+import {
+  applyTriageInboxFilters,
+  DEFAULT_TRIAGE_INBOX_FILTERS,
+  type TriageInboxFiltersState,
+} from "@/lib/triageInboxFilters";
 import { cn } from "@/lib/utils";
-
-function filterIssues(issues: TriageIssue[], f: TriageListFilter): TriageIssue[] {
-  if (f === "all") return issues;
-  return issues.filter((i) => i.status === f);
-}
 
 export default function TriageInbox() {
   const { data: issues, isLoading } = useTriageIssues();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<TriageListFilter>("all");
+  const [filters, setFilters] = useState<TriageInboxFiltersState>(DEFAULT_TRIAGE_INBOX_FILTERS);
+
+  const filteredIssues = useMemo(
+    () => applyTriageInboxFilters(issues ?? [], filters),
+    [issues, filters],
+  );
 
   const selectedIssue = useMemo(
     () => (issues ?? []).find((i) => i.id === selectedId) ?? null,
@@ -26,19 +28,17 @@ export default function TriageInbox() {
   );
 
   useEffect(() => {
-    const list = issues ?? [];
-    if (list.length === 0) {
+    if (!issues?.length) {
       setSelectedId(null);
       return;
     }
-    const f = filterIssues(list, filter);
-    if (f.length === 0) {
+    if (filteredIssues.length === 0) {
       setSelectedId(null);
       return;
     }
-    if (selectedId && f.some((i) => i.id === selectedId)) return;
-    setSelectedId(f[0]!.id);
-  }, [issues, filter, selectedId]);
+    if (selectedId && filteredIssues.some((i) => i.id === selectedId)) return;
+    setSelectedId(filteredIssues[0]!.id);
+  }, [issues, filteredIssues, selectedId]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] min-h-[480px] flex-col gap-4 p-4 md:p-6">
@@ -57,8 +57,8 @@ export default function TriageInbox() {
             isLoading={isLoading}
             selectedId={selectedId}
             onSelectId={setSelectedId}
-            filter={filter}
-            onFilterChange={setFilter}
+            filters={filters}
+            onFiltersChange={setFilters}
           />
         </Panel>
 

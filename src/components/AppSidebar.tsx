@@ -27,12 +27,12 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
+import { usePendingIssuesCount } from "@/hooks/usePendingIssuesCount";
 
 type NavItem = {
   title: string;
   url: string;
   icon: typeof LayoutDashboard;
-  badge?: string;
   /** If true, link is rendered only when `condition` passes */
   ownerOnly?: boolean;
 };
@@ -40,7 +40,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { title: "Pulpit", url: "/dashboard", icon: LayoutDashboard },
   { title: "Budynki", url: "/properties", icon: Building2 },
-  { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning, badge: "3" },
+  { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ShieldCheck },
   { title: "Zadania", url: "/tasks", icon: ListTodo },
@@ -51,6 +51,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { data: ownerAccess, isLoading: ownerLoading } = useIsOrgOwner();
+  const { data: pendingIssuesCount = 0 } = usePendingIssuesCount();
   const showTeam = !ownerLoading && ownerAccess?.isOwner === true;
 
   const visibleItems = navItems.filter((item) => !item.ownerOnly || showTeam);
@@ -91,14 +92,14 @@ export function AppSidebar() {
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span className="flex-1">{item.title}</span>}
-                      {!collapsed && item.badge && (
+                      {!collapsed && item.url === "/issues" && pendingIssuesCount > 0 ? (
                         <Badge
                           variant="secondary"
-                          className="h-5 min-w-5 justify-center rounded-full bg-destructive/10 px-1.5 text-[10px] font-medium text-destructive"
+                          className="h-5 min-w-5 justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground"
                         >
-                          {item.badge}
+                          {pendingIssuesCount > 99 ? "99+" : pendingIssuesCount}
                         </Badge>
-                      )}
+                      ) : null}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

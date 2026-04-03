@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { subMonths } from "date-fns";
 import { supabase } from "@/lib/supabase";
-import { TRIAGE_ACTIVE_STATUSES } from "@/lib/triageIssueUi";
 import type { Database } from "@/types/supabase";
+
+/** Cap rows returned to the browser; combined with a time window. */
+const MAX_TRIAGE_ISSUES = 300;
+const HISTORY_MONTHS = 6;
 
 const STALE_MS = 0;
 const GC_MS = 60_000;
@@ -38,6 +42,8 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     return [];
   }
 
+  const since = subMonths(new Date(), HISTORY_MONTHS);
+
   const { data, error } = await supabase
     .from("property_issues")
     .select(
@@ -50,8 +56,9 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     `,
     )
     .eq("org_id", String(orgId))
-    .in("status", [...TRIAGE_ACTIVE_STATUSES])
-    .order("created_at", { ascending: false });
+    .gte("created_at", since.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(MAX_TRIAGE_ISSUES);
 
   if (error) {
     console.error("[useTriageIssues] property_issues:", error);
