@@ -31,10 +31,7 @@ async function fetchCompanies(searchQuery?: string): Promise<Company[]> {
 
     const term = searchQuery?.trim();
     if (term) {
-      const safe = term.replace(/[%_]/g, "");
-      if (safe) {
-        query = query.or(`name.ilike.%${safe}%,tax_id.ilike.%${safe}%`);
-      }
+      query = query.or(`name.ilike.%${term}%,tax_id.ilike.%${term}%`);
     }
 
     const { data, error } = await query;
@@ -49,10 +46,40 @@ async function fetchCompanies(searchQuery?: string): Promise<Company[]> {
   }
 }
 
-export function useCompanies(searchQuery?: string): UseQueryResult<Company[], Error> {
+export function useCompanies(
+  searchQuery?: string,
+  options?: { enabled?: boolean },
+): UseQueryResult<Company[], Error> {
   return useQuery({
     queryKey: companiesQueryKey(searchQuery),
     queryFn: () => fetchCompanies(searchQuery),
+    staleTime: COMPANIES_STALE_MS,
+    enabled: options?.enabled ?? true,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export const companyByIdQueryKey = (id: string) => ["companies", "byId", id] as const;
+
+async function fetchCompanyById(id: string): Promise<Company | null> {
+  try {
+    const { data, error } = await supabase.from("companies").select("*").eq("id", id).maybeSingle();
+    if (error) {
+      console.error("[useCompanyById] fetchCompanyById:", error);
+      throw error;
+    }
+    return data as Company | null;
+  } catch (err) {
+    console.error("[useCompanyById] fetchCompanyById:", err);
+    throw err;
+  }
+}
+
+export function useCompanyById(id: string | undefined): UseQueryResult<Company | null, Error> {
+  return useQuery({
+    queryKey: id ? companyByIdQueryKey(id) : ["companies", "byId", "__none__"],
+    queryFn: () => fetchCompanyById(id as string),
+    enabled: Boolean(id),
     staleTime: COMPANIES_STALE_MS,
   });
 }
