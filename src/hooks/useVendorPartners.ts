@@ -1,0 +1,43 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import type { Database } from "@/types/supabase";
+
+export const VENDOR_PARTNERS_QUERY_KEY = "vendor-partners" as const;
+
+export type VendorPartnerRow = Pick<
+  Database["public"]["Tables"]["vendor_partners"]["Row"],
+  "id" | "name" | "service_type"
+>;
+
+async function fetchVendorPartners(): Promise<VendorPartnerRow[]> {
+  const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
+  if (orgErr) {
+    console.error("[useVendorPartners] get_my_org_id_safe:", orgErr);
+    throw orgErr;
+  }
+  if (!orgId || String(orgId).trim() === "") {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("vendor_partners")
+    .select("id, name, service_type")
+    .eq("org_id", String(orgId))
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[useVendorPartners] vendor_partners:", error);
+    throw error;
+  }
+
+  return (data ?? []) as VendorPartnerRow[];
+}
+
+export function useVendorPartners(enabled: boolean = true) {
+  return useQuery({
+    queryKey: [VENDOR_PARTNERS_QUERY_KEY],
+    queryFn: fetchVendorPartners,
+    enabled,
+    staleTime: 60_000,
+  });
+}

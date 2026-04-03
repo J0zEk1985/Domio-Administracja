@@ -991,6 +991,55 @@ export type Database = {
           },
         ]
       }
+      location_vendor_routing: {
+        Row: {
+          created_at: string
+          id: string
+          issue_category: string
+          location_id: string
+          org_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issue_category: string
+          location_id: string
+          org_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issue_category?: string
+          location_id?: string
+          org_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_vendor_routing_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_vendor_routing_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_vendor_routing_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           city: string | null
@@ -1698,7 +1747,7 @@ export type Database = {
           photo_url: string | null
           photos_after: string[] | null
           photos_before: string[] | null
-          priority: string | null
+          priority: Database["public"]["Enums"]["issue_priority_enum"] | null
           reporter_email: string | null
           reporter_id: string | null
           reporter_name: string | null
@@ -1711,7 +1760,7 @@ export type Database = {
           signed_by: string | null
           source: string | null
           started_at: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["issue_status_enum"] | null
           total_material_cost: number | null
           transfer_reason: string | null
           waiting_reason: string | null
@@ -1742,7 +1791,7 @@ export type Database = {
           photo_url?: string | null
           photos_after?: string[] | null
           photos_before?: string[] | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["issue_priority_enum"] | null
           reporter_email?: string | null
           reporter_id?: string | null
           reporter_name?: string | null
@@ -1755,7 +1804,7 @@ export type Database = {
           signed_by?: string | null
           source?: string | null
           started_at?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["issue_status_enum"] | null
           total_material_cost?: number | null
           transfer_reason?: string | null
           waiting_reason?: string | null
@@ -1786,7 +1835,7 @@ export type Database = {
           photo_url?: string | null
           photos_after?: string[] | null
           photos_before?: string[] | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["issue_priority_enum"] | null
           reporter_email?: string | null
           reporter_id?: string | null
           reporter_name?: string | null
@@ -1799,7 +1848,7 @@ export type Database = {
           signed_by?: string | null
           source?: string | null
           started_at?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["issue_status_enum"] | null
           total_material_cost?: number | null
           transfer_reason?: string | null
           waiting_reason?: string | null
@@ -3691,6 +3740,16 @@ export type Database = {
         | "barrier"
         | "co_lpg_detectors"
         | "other"
+      issue_priority_enum: "low" | "medium" | "high" | "critical"
+      issue_status_enum:
+        | "new"
+        | "open"
+        | "pending_admin_approval"
+        | "in_progress"
+        | "waiting_for_parts"
+        | "delegated"
+        | "resolved"
+        | "rejected"
       priority_level: "low" | "medium" | "high" | "emergency"
       property_contract_type:
         | "cleaning"
@@ -3867,6 +3926,17 @@ export const Constants = {
         "barrier",
         "co_lpg_detectors",
         "other",
+      ],
+      issue_priority_enum: ["low", "medium", "high", "critical"],
+      issue_status_enum: [
+        "new",
+        "open",
+        "pending_admin_approval",
+        "in_progress",
+        "waiting_for_parts",
+        "delegated",
+        "resolved",
+        "rejected",
       ],
       priority_level: ["low", "medium", "high", "emergency"],
       property_contract_type: [

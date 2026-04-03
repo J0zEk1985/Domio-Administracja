@@ -20,6 +20,7 @@ import ContractsPage from "./pages/ContractsPage.tsx";
 import InspectionsPage from "./pages/InspectionsPage.tsx";
 import CompanyDetailsPage from "./pages/CompanyDetailsPage.tsx";
 import BoardPortal from "./pages/BoardPortal.tsx";
+import TriageInbox from "./pages/TriageInbox.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/:id" element={<MemberDetails />} />
+                <Route path="/issues" element={<TriageInbox />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/inspections" element={<InspectionsPage />} />
