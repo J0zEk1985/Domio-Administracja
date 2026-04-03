@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { format, isValid, parseISO } from "date-fns";
+import { pl } from "date-fns/locale";
 import {
   AlertTriangle,
   ExternalLink,
@@ -13,6 +15,8 @@ import {
 import { ContractDialog } from "@/components/contracts/ContractDialog";
 import { contractTypeDisplayLabel } from "@/components/contracts/columns";
 import { AddInspectionDialog } from "@/components/inspections/AddInspectionDialog";
+import { CKobSyncButton } from "@/components/inspections/CKobSyncButton";
+import { InspectionCKobStatusCell } from "@/components/inspections/columns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +83,16 @@ function formatGrossDisplay(gross: number | null | undefined): string {
     return "—";
   }
   return plnFormatter.format(Number(gross));
+}
+
+function formatCkobLastSyncLabel(iso: string): string {
+  try {
+    const d = parseISO(iso);
+    if (!isValid(d)) return iso;
+    return format(d, "d MMM yyyy, HH:mm", { locale: pl });
+  } catch {
+    return iso;
+  }
 }
 
 function apiErrorMessage(err: unknown): string {
@@ -182,6 +196,7 @@ function InspectionsTableSkeleton() {
             <TableHead className="min-w-[8rem]">Data wykonania</TableHead>
             <TableHead className="min-w-[8rem]">Ważne do</TableHead>
             <TableHead className="min-w-[8rem]">Status</TableHead>
+            <TableHead className="min-w-[7rem]">c-KOB</TableHead>
             <TableHead className="w-[100px] text-right">Akcje</TableHead>
           </TableRow>
         </TableHeader>
@@ -203,6 +218,9 @@ function InspectionsTableSkeleton() {
               <TableCell>
                 <Skeleton className="h-5 w-28 rounded-full" />
               </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-20" />
+              </TableCell>
               <TableCell className="text-right">
                 <Skeleton className="ml-auto h-8 w-8 rounded-md" />
               </TableCell>
@@ -214,7 +232,13 @@ function InspectionsTableSkeleton() {
   );
 }
 
-export function PropertyContractsTab({ locationId }: { locationId: string }) {
+export function PropertyContractsTab({
+  locationId,
+  cKobBuildingId,
+}: {
+  locationId: string;
+  cKobBuildingId: string | null;
+}) {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<PropertyContractWithCompany | null>(null);
@@ -245,6 +269,21 @@ export function PropertyContractsTab({ locationId }: { locationId: string }) {
 
   const contractRows = contractsQuery.data ?? [];
   const inspectionRows = inspectionsQuery.data ?? [];
+
+  const latestCkobSyncAt = useMemo(() => {
+    let best: string | null = null;
+    let bestMs = -Infinity;
+    for (const r of inspectionRows) {
+      const raw = r.c_kob_last_sync_at?.trim();
+      if (!raw) continue;
+      const ms = Date.parse(raw);
+      if (Number.isFinite(ms) && ms >= bestMs) {
+        bestMs = ms;
+        best = raw;
+      }
+    }
+    return best;
+  }, [inspectionRows]);
 
   function handleContractDialogOpenChange(next: boolean) {
     setContractDialogOpen(next);
@@ -415,16 +454,19 @@ export function PropertyContractsTab({ locationId }: { locationId: string }) {
               Protokoły techniczne i terminy ważności — jedno zapytanie z firmą wykonawcy.
             </CardDescription>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="shrink-0 gap-1.5"
-            onClick={() => setInspectionDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Dodaj przegląd
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <CKobSyncButton locationId={locationId} cKobBuildingId={cKobBuildingId} />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="shrink-0 gap-1.5"
+              onClick={() => setInspectionDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Dodaj własny
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <AddInspectionDialog
@@ -445,13 +487,14 @@ export function PropertyContractsTab({ locationId }: { locationId: string }) {
                     <TableHead className="min-w-[8rem]">Data wykonania</TableHead>
                     <TableHead className="min-w-[8rem]">Ważne do</TableHead>
                     <TableHead className="min-w-[8rem]">Status</TableHead>
+                    <TableHead className="min-w-[7rem]">c-KOB</TableHead>
                     <TableHead className="w-[100px] text-right">Akcje</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {inspectionRows.length === 0 ? (
                     <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={6} className="h-36 text-center align-middle">
+                      <TableCell colSpan={7} className="h-36 text-center align-middle">
                         <p className="text-sm text-muted-foreground">Brak zapisanych przeglądów dla tej nieruchomości.</p>
                       </TableCell>
                     </TableRow>
@@ -486,6 +529,9 @@ export function PropertyContractsTab({ locationId }: { locationId: string }) {
                               {statusLabel}
                             </span>
                           </TableCell>
+                          <TableCell>
+                            <InspectionCKobStatusCell row={row} />
+                          </TableCell>
                           <TableCell className="text-right">
                             {docUrl ? (
                               <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
@@ -510,6 +556,11 @@ export function PropertyContractsTab({ locationId }: { locationId: string }) {
               </Table>
             </div>
           )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            {latestCkobSyncAt
+              ? `Ostatnia synchronizacja c-KOB (wg rekordów): ${formatCkobLastSyncLabel(latestCkobSyncAt)}.`
+              : "Brak zapisanej daty synchronizacji c-KOB w załadowanych przeglądach."}
+          </p>
         </CardContent>
       </Card>
     </div>

@@ -128,6 +128,8 @@ export type PropertyDetail = {
   name: string;
   address: string;
   adminData: PropertyAdminData;
+  /** `cleaning_locations.c_kob_building_id` — identifier in państwowym systemie c-KOB (pull sync). */
+  cKobBuildingId: string | null;
   /** `cleaning_locations.board_portal_token` — public board portal URL. */
   boardPortalToken: string;
   /** `cleaning_locations.public_report_token` — resident issue form URL. */
@@ -144,7 +146,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const { data: row, error } = await supabase
     .from("cleaning_locations")
     .select(
-      "id, name, address, org_id, is_admin_active, square_meters, visibility_config, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
+      "id, name, address, org_id, is_admin_active, square_meters, visibility_config, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
     )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
@@ -170,11 +172,13 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
 
   const adminData = parsePropertyAdminData(row.visibility_config, row.square_meters);
 
+  const ckob = row.c_kob_building_id?.trim();
   return {
     id: row.id,
     name: row.name?.trim() || "—",
     address: row.address?.trim() || "—",
     adminData,
+    cKobBuildingId: ckob && ckob.length > 0 ? ckob : null,
     boardPortalToken: row.board_portal_token ?? "",
     publicReportToken: row.public_report_token ?? "",
     issueQrToken: row.issue_qr_token ?? null,

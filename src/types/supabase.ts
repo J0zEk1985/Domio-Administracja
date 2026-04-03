@@ -219,6 +219,7 @@ export type Database = {
           auto_notify_issues: boolean | null
           billing_details: string | null
           board_portal_token: string
+          c_kob_building_id: string | null
           cleaning_rate: number | null
           client_id: string | null
           client_notification_email: string | null
@@ -268,6 +269,7 @@ export type Database = {
           auto_notify_issues?: boolean | null
           billing_details?: string | null
           board_portal_token?: string
+          c_kob_building_id?: string | null
           cleaning_rate?: number | null
           client_id?: string | null
           client_notification_email?: string | null
@@ -317,6 +319,7 @@ export type Database = {
           auto_notify_issues?: boolean | null
           billing_details?: string | null
           board_portal_token?: string
+          c_kob_building_id?: string | null
           cleaning_rate?: number | null
           client_id?: string | null
           client_notification_email?: string | null
@@ -1595,6 +1598,10 @@ export type Database = {
       }
       property_inspections: {
         Row: {
+          c_kob_error_log: string | null
+          c_kob_id: string | null
+          c_kob_last_sync_at: string | null
+          c_kob_sync_status: Database["public"]["Enums"]["sync_status"]
           company_id: string
           created_at: string
           document_url: string | null
@@ -1610,6 +1617,10 @@ export type Database = {
           valid_until: string
         }
         Insert: {
+          c_kob_error_log?: string | null
+          c_kob_id?: string | null
+          c_kob_last_sync_at?: string | null
+          c_kob_sync_status?: Database["public"]["Enums"]["sync_status"]
           company_id: string
           created_at?: string
           document_url?: string | null
@@ -1625,6 +1636,10 @@ export type Database = {
           valid_until: string
         }
         Update: {
+          c_kob_error_log?: string | null
+          c_kob_id?: string | null
+          c_kob_last_sync_at?: string | null
+          c_kob_sync_status?: Database["public"]["Enums"]["sync_status"]
           company_id?: string
           created_at?: string
           document_url?: string | null
@@ -3686,6 +3701,7 @@ export type Database = {
       property_task_priority: "low" | "medium" | "urgent"
       property_task_status: "todo" | "in_progress" | "done"
       property_task_visibility: "internal_only" | "board_visible"
+      sync_status: "not_synced" | "pending" | "synced" | "error"
       task_status: "pending" | "in_progress" | "done" | "cancelled"
       task_type:
         | "sop_standard"
@@ -3863,6 +3879,7 @@ export const Constants = {
       property_task_priority: ["low", "medium", "urgent"],
       property_task_status: ["todo", "in_progress", "done"],
       property_task_visibility: ["internal_only", "board_visible"],
+      sync_status: ["not_synced", "pending", "synced", "error"],
       task_status: ["pending", "in_progress", "done", "cancelled"],
       task_type: [
         "sop_standard",

@@ -297,7 +297,7 @@ export default function PropertyDetails() {
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-6">
-          <PropertyContractsTab locationId={property.id} />
+          <PropertyContractsTab locationId={property.id} cKobBuildingId={property.cKobBuildingId} />
         </TabsContent>
       </Tabs>
     </div>
