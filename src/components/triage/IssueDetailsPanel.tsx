@@ -20,19 +20,27 @@ function formatDt(iso: string | null | undefined): string {
 
 export type IssueDetailsPanelProps = {
   issue: TriageIssue | null;
+  /** `triage` — pełny panel z akcjami koordynatora; `property` — podgląd w kontekście nieruchomości (bez paska akcji). */
+  variant?: "triage" | "property";
 };
 
-export function IssueDetailsPanel({ issue }: IssueDetailsPanelProps) {
+export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPanelProps) {
+  const showCoordinatorActions = variant === "triage";
+  const embedded = variant === "property";
+
   if (!issue) {
     return (
       <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/15 px-6 text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
           <Building2 className="h-7 w-7" aria-hidden />
         </div>
-        <h3 className="mt-4 text-lg font-semibold tracking-tight">Wybierz zgłoszenie z listy</h3>
+        <h3 className="mt-4 text-lg font-semibold tracking-tight">
+          {embedded ? "Brak wybranego zgłoszenia" : "Wybierz zgłoszenie z listy"}
+        </h3>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Po lewej znajduje się kolejka triage. Kliknij kartę, aby zobaczyć szczegóły, zdjęcia i akcje
-          koordynatorskie.
+          {embedded
+            ? "Wybierz pozycję na liście, aby zobaczyć szczegóły."
+            : "Po lewej znajduje się kolejka triage. Kliknij kartę, aby zobaczyć szczegóły, zdjęcia i akcje koordynatorskie."}
         </p>
       </div>
     );
@@ -44,11 +52,11 @@ export function IssueDetailsPanel({ issue }: IssueDetailsPanelProps) {
     issue.reporter_email?.trim() ||
     "—";
   const timeline = buildIssueTimeline(issue);
+  const isTerminal = issue.status === "resolved" || issue.status === "rejected";
 
-  return (
-    <ScrollArea className="h-full min-h-0 pr-3">
-      <div className="space-y-6 pb-8">
-        <TriageIssueActionBar issue={issue} />
+  const inner = (
+    <div className="space-y-6 pb-8">
+        {showCoordinatorActions ? <TriageIssueActionBar issue={issue} /> : null}
 
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -76,6 +84,38 @@ export function IssueDetailsPanel({ issue }: IssueDetailsPanelProps) {
             {issue.description?.trim() || "Brak opisu tekstowego."}
           </p>
         </section>
+
+        {isTerminal ? (
+          <section className="space-y-2">
+            <h2 className="text-sm font-medium text-foreground">
+              {issue.status === "rejected" ? "Odrzucenie" : "Zakończenie i wykonawstwo"}
+            </h2>
+            <div className="rounded-lg border border-border/60 bg-muted/10 p-4 text-sm space-y-2">
+              <p>
+                <span className="text-muted-foreground">Data zakończenia: </span>
+                {formatDt(issue.resolved_at ?? issue.created_at)}
+              </p>
+              {issue.assigned_staff?.full_name?.trim() ? (
+                <p>
+                  <span className="text-muted-foreground">Przypisany technik: </span>
+                  {issue.assigned_staff.full_name}
+                </p>
+              ) : null}
+              {issue.delegated_vendor?.name?.trim() ? (
+                <p>
+                  <span className="text-muted-foreground">Partner zewnętrzny: </span>
+                  {issue.delegated_vendor.name}
+                </p>
+              ) : null}
+              {issue.resolution_notes?.trim() ? (
+                <p className="whitespace-pre-wrap pt-1 text-muted-foreground">
+                  <span className="font-medium text-foreground">Notatka: </span>
+                  {issue.resolution_notes.trim()}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <section className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-border/60 bg-muted/10 p-3">
@@ -149,7 +189,12 @@ export function IssueDetailsPanel({ issue }: IssueDetailsPanelProps) {
             )}
           </div>
         </section>
-      </div>
-    </ScrollArea>
+    </div>
   );
+
+  if (embedded) {
+    return <div className="pr-1">{inner}</div>;
+  }
+
+  return <ScrollArea className="h-full min-h-0 pr-3">{inner}</ScrollArea>;
 }
