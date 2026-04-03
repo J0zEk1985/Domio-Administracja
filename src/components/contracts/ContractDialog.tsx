@@ -28,14 +28,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAddContract } from "@/hooks/usePropertyContracts";
+import { useAddContract, useUpdateContract } from "@/hooks/usePropertyContracts";
 import {
   addContractFormSchema,
   type AddContractFormValues,
+  propertyContractToFormValues,
   PROPERTY_CONTRACT_TYPES,
   PROPERTY_CONTRACT_TYPE_LABELS,
   VAT_RATE_OPTIONS,
 } from "@/schemas/contractSchema";
+import type { PropertyContract } from "@/types/contracts";
 import { toast } from "@/components/ui/sonner";
 
 function computeGrossValue(net: number, vatPercent: number): number {
@@ -65,15 +67,19 @@ function apiErrorMessage(err: unknown): string {
   return "Nie udało się zapisać umowy.";
 }
 
-export interface AddContractDialogProps {
+export interface ContractDialogProps {
   locationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  contract?: PropertyContract;
 }
 
-export function AddContractDialog({ locationId, open, onOpenChange }: AddContractDialogProps) {
+export function ContractDialog({ locationId, open, onOpenChange, contract }: ContractDialogProps) {
   const addContract = useAddContract();
+  const updateContract = useUpdateContract();
   const [zeroVatVariant, setZeroVatVariant] = useState<"0" | "zw">("0");
+
+  const isEdit = Boolean(contract?.id);
 
   const form = useForm<AddContractFormValues>({
     resolver: zodResolver(addContractFormSchema),
@@ -87,18 +93,41 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
   const contractType = useWatch({ control, name: "type", defaultValue: "cleaning" });
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (contract) {
+      reset(propertyContractToFormValues(contract));
+      setZeroVatVariant("0");
+    } else {
       reset(DEFAULT_VALUES);
       setZeroVatVariant("0");
     }
-  }, [open, reset]);
+  }, [open, contract?.id, reset, contract]);
 
   useEffect(() => {
     const gross = computeGrossValue(Number(netValue), Number(vatRate));
     setValue("gross_value", gross, { shouldValidate: true, shouldDirty: false });
   }, [netValue, vatRate, setValue]);
 
+  const isPending = addContract.isPending || updateContract.isPending;
+
   function handleSubmit(values: AddContractFormValues) {
+    if (isEdit && contract) {
+      updateContract.mutate(
+        { id: contract.id, locationId, values },
+        {
+          onSuccess: () => {
+            toast.success("Umowa została zaktualizowana.");
+            onOpenChange(false);
+          },
+          onError: (err) => {
+            toast.error(apiErrorMessage(err));
+            console.error("[ContractDialog] update:", err);
+          },
+        },
+      );
+      return;
+    }
+
     addContract.mutate(
       { locationId, values },
       {
@@ -108,7 +137,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
         },
         onError: (err) => {
           toast.error(apiErrorMessage(err));
-          console.error("[AddContractDialog] submit:", err);
+          console.error("[ContractDialog] insert:", err);
         },
       },
     );
@@ -118,9 +147,11 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nowa umowa</DialogTitle>
+          <DialogTitle>{isEdit ? "Edytuj umowę" : "Nowa umowa"}</DialogTitle>
           <DialogDescription>
-            Wypełnij dane umowy. Pola oznaczone jako wymagane muszą zostać uzupełnione przed zapisem.
+            {isEdit
+              ? "Zaktualizuj dane umowy. Zmiany zapisują się po potwierdzeniu."
+              : "Wypełnij dane umowy. Pola oznaczone jako wymagane muszą zostać uzupełnione przed zapisem."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -135,7 +166,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                     <CompanyComboBox
                       value={field.value}
                       onChange={field.onChange}
-                      disabled={addContract.isPending}
+                      disabled={isPending}
                     />
                   </FormControl>
                   <FormMessage />
@@ -149,11 +180,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Typ umowy</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={addContract.isPending}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange} disabled={isPending}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Wybierz typ" />
@@ -185,7 +212,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                           {...field}
                           value={field.value ?? ""}
                           autoComplete="off"
-                          disabled={addContract.isPending}
+                          disabled={isPending}
                           placeholder="np. Ochrona, Ogrzewanie…"
                         />
                       </FormControl>
@@ -203,7 +230,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                 <FormItem>
                   <FormLabel>Numer umowy</FormLabel>
                   <FormControl>
-                    <Input {...field} autoComplete="off" disabled={addContract.isPending} />
+                    <Input {...field} autoComplete="off" disabled={isPending} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -218,7 +245,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                   <FormItem>
                     <FormLabel>Data rozpoczęcia</FormLabel>
                     <FormControl>
-                      <Input {...field} type="date" disabled={addContract.isPending} />
+                      <Input {...field} type="date" disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -235,7 +262,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                         {...field}
                         value={field.value ?? ""}
                         type="date"
-                        disabled={addContract.isPending}
+                        disabled={isPending}
                       />
                     </FormControl>
                     <FormMessage />
@@ -259,7 +286,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                           min={0}
                           step="0.01"
                           className="pr-14"
-                          disabled={addContract.isPending}
+                          disabled={isPending}
                           name={field.name}
                           onBlur={field.onBlur}
                           ref={field.ref}
@@ -297,7 +324,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                             field.onChange(Number(v));
                           }
                         }}
-                        disabled={addContract.isPending}
+                        disabled={isPending}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -362,7 +389,7 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                       inputMode="numeric"
                       min={0}
                       step={1}
-                      disabled={addContract.isPending}
+                      disabled={isPending}
                       placeholder="Opcjonalnie"
                       name={field.name}
                       onBlur={field.onBlur}
@@ -384,12 +411,12 @@ export function AddContractDialog({ locationId, open, onOpenChange }: AddContrac
                 type="button"
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                disabled={addContract.isPending}
+                disabled={isPending}
               >
                 Anuluj
               </Button>
-              <Button type="submit" disabled={addContract.isPending}>
-                {addContract.isPending ? "Zapisywanie…" : "Zapisz umowę"}
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Zapisywanie…" : isEdit ? "Zapisz zmiany" : "Zapisz umowę"}
               </Button>
             </DialogFooter>
           </form>

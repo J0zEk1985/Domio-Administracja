@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { PropertyContractType } from "@/types/contracts";
+import type { PropertyContract, PropertyContractType } from "@/types/contracts";
 
 export const PROPERTY_CONTRACT_TYPES = [
   "cleaning",
@@ -70,3 +70,27 @@ export const addContractFormSchema = z
   );
 
 export type AddContractFormValues = z.infer<typeof addContractFormSchema>;
+
+function normalizeVatRate(raw: number | null | undefined): 0 | 8 | 23 {
+  if (raw === 0 || raw === 8 || raw === 23) return raw;
+  return 23;
+}
+
+export function propertyContractToFormValues(contract: PropertyContract): AddContractFormValues {
+  const vat = normalizeVatRate(contract.vat_rate);
+  const net = contract.net_value;
+  const gross = Math.round(net * (1 + vat / 100) * 100) / 100;
+
+  return {
+    company_id: contract.company_id,
+    type: contract.type,
+    contract_number: contract.contract_number,
+    start_date: contract.start_date.slice(0, 10),
+    end_date: contract.end_date ? contract.end_date.slice(0, 10) : "",
+    net_value: net,
+    vat_rate: vat,
+    gross_value: gross,
+    custom_type_name: contract.custom_type_name ?? "",
+    notice_period_months: contract.notice_period_months ?? undefined,
+  };
+}
