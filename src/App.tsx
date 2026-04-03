@@ -17,6 +17,7 @@ import PropertyDetails from "./pages/PropertyDetails.tsx";
 import TaskDetails from "./pages/TaskDetails.tsx";
 import Tasks from "./pages/Tasks.tsx";
 import ContractsPage from "./pages/ContractsPage.tsx";
+import InspectionsPage from "./pages/InspectionsPage.tsx";
 import CompanyDetailsPage from "./pages/CompanyDetailsPage.tsx";
 import BoardPortal from "./pages/BoardPortal.tsx";
 
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/team/:id" element={<MemberDetails />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/contracts" element={<ContractsPage />} />
+                <Route path="/inspections" element={<InspectionsPage />} />
                 <Route path="/companies/:id" element={<CompanyDetailsPage />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id/tasks/:taskId" element={<TaskDetails />} />

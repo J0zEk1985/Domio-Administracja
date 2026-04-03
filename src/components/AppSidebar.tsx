@@ -2,7 +2,7 @@ import {
   LayoutDashboard,
   Building2,
   MessageSquareWarning,
-  ClipboardCheck,
+  ShieldCheck,
   FileText,
   ListTodo,
   Users,
@@ -41,8 +41,8 @@ const navItems: NavItem[] = [
   { title: "Pulpit", url: "/dashboard", icon: LayoutDashboard },
   { title: "Budynki", url: "/properties", icon: Building2 },
   { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning, badge: "3" },
-  { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ClipboardCheck },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
+  { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ShieldCheck },
   { title: "Zadania", url: "/tasks", icon: ListTodo },
   { title: "Zespół", url: "/team", icon: Users, ownerOnly: true },
 ];

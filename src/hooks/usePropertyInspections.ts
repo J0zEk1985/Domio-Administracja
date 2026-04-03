@@ -6,6 +6,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
+import { allInspectionsQueryKey } from "@/hooks/useAllInspections";
 import type { AddInspectionFormValues } from "@/schemas/inspectionSchema";
 import { supabase } from "@/lib/supabase";
 import type { Company } from "@/types/contracts";
@@ -96,6 +97,7 @@ export function useAddInspection(): UseMutationResult<void, Error, AddInspection
     mutationFn: insertPropertyInspection,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: propertyInspectionsQueryKey(variables.locationId) });
+      void queryClient.invalidateQueries({ queryKey: allInspectionsQueryKey });
     },
   });
 }
