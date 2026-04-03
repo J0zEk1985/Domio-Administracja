@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Headphones, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Copy, Headphones, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import type { PropertyDetail, PropertyAdminData } from "@/hooks/useProperties";
-import { useUpdatePropertyAdminData } from "@/hooks/useProperties";
+import { useUpdatePropertyGeneral } from "@/hooks/useProperties";
+import { propertyLocationFormSchema } from "@/schemas/locationSchema";
 import {
   computeContractNetPln,
   isValidOptionalEmail,
@@ -32,17 +33,34 @@ function parseOptionalNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeCkobBuildingId(value: string | null | undefined): string | null {
+  const t = (value ?? "").trim();
+  return t.length > 0 ? t : null;
+}
+
 export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
-  const save = useUpdatePropertyAdminData(property.id);
+  const save = useUpdatePropertyGeneral(property.id);
+  const integrationsCardRef = useRef<HTMLDivElement>(null);
+  const ckobInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<PropertyAdminData>(property.adminData);
+  const [ckobDraft, setCkobDraft] = useState(() => property.cKobBuildingId ?? "");
 
   useEffect(() => {
     setDraft(property.adminData);
   }, [property.id, property.adminData]);
 
+  useEffect(() => {
+    setCkobDraft(property.cKobBuildingId ?? "");
+  }, [property.id, property.cKobBuildingId]);
+
+  const ckobDirty = useMemo(
+    () => normalizeCkobBuildingId(ckobDraft) !== normalizeCkobBuildingId(property.cKobBuildingId),
+    [ckobDraft, property.cKobBuildingId],
+  );
+
   const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(property.adminData),
-    [draft, property.adminData],
+    () => JSON.stringify(draft) !== JSON.stringify(property.adminData) || ckobDirty,
+    [draft, property.adminData, ckobDirty],
   );
 
   const netPln = useMemo(() => computeContractNetPln(draft.finance), [draft.finance]);
@@ -59,6 +77,9 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
 
   const canEdit = isOwner;
   const disabled = !canEdit || save.isPending;
+
+  const storedCkobDisplay = property.cKobBuildingId?.trim() ?? "";
+  const hasStoredCkob = storedCkobDisplay.length > 0;
 
   function setFinance<K extends keyof PropertyAdminData["finance"]>(key: K, value: PropertyAdminData["finance"][K]) {
     setDraft((d) => ({ ...d, finance: { ...d.finance, [key]: value } }));
@@ -124,15 +145,25 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
         return;
       }
     }
-    save.mutate(draft, {
-      onSuccess: () => {
-        toast.success("Zapisano informacje o nieruchomości.");
+    const ckobParsed = propertyLocationFormSchema.safeParse({ c_kob_building_id: ckobDraft });
+    if (!ckobParsed.success) {
+      const msg =
+        ckobParsed.error.flatten().fieldErrors.c_kob_building_id?.[0] ?? "Niepoprawne ID c-KOB.";
+      toast.error(msg);
+      return;
+    }
+    save.mutate(
+      { adminData: draft, cKobBuildingId: ckobParsed.data.cKobBuildingId },
+      {
+        onSuccess: () => {
+          toast.success("Zapisano informacje o nieruchomości.");
+        },
+        onError: (err: unknown) => {
+          const msg = err instanceof Error ? err.message : "Nie udało się zapisać.";
+          toast.error(msg);
+        },
       },
-      onError: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Nie udało się zapisać.";
-        toast.error(msg);
-      },
-    });
+    );
   }
 
   function handleAiPlaceholder() {
@@ -156,6 +187,84 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="prop-addr-ro">Pełny adres</Label>
             <Input id="prop-addr-ro" value={property.address} readOnly disabled className="bg-muted/40" />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="prop-ckob-summary">ID Książki Obiektu (c-KOB)</Label>
+            {hasStoredCkob ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <code
+                  id="prop-ckob-summary"
+                  className="max-w-full break-all rounded-md border border-border/80 bg-muted/30 px-2 py-1.5 text-sm font-mono text-foreground"
+                >
+                  {storedCkobDisplay}
+                </code>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  aria-label="Skopiuj ID c-KOB do schowka"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(storedCkobDisplay);
+                      toast.success("Skopiowano do schowka.");
+                    } catch {
+                      toast.error("Nie udało się skopiować do schowka.");
+                    }
+                  }}
+                >
+                  <Copy className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span id="prop-ckob-summary">Brak przypisanego ID c-KOB</span>
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-muted-foreground underline-offset-4 hover:text-foreground"
+                    onClick={() => {
+                      integrationsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      window.setTimeout(() => ckobInputRef.current?.focus(), 350);
+                    }}
+                  >
+                    Uzupełnij
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        ref={integrationsCardRef}
+        id="property-integrations-ckob"
+        className="border-border/60 shadow-sm scroll-mt-4"
+      >
+        <CardHeader>
+          <CardTitle className="text-base">Integracje zewnętrzne</CardTitle>
+          <CardDescription>Połączenia z systemami zewnętrznymi używane przy synchronizacji danych.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 max-w-xl">
+            <Label htmlFor="ckob-building-id">ID Książki Obiektu w c-KOB</Label>
+            <Input
+              ref={ckobInputRef}
+              id="ckob-building-id"
+              value={ckobDraft}
+              onChange={(e) => setCkobDraft(e.target.value)}
+              disabled={disabled}
+              autoComplete="off"
+              placeholder="Wklej identyfikator z systemu c-KOB"
+              className={cn(!canEdit && "bg-muted/40")}
+            />
+            <p className="text-sm text-muted-foreground">
+              Unikalny identyfikator obiektu skopiowany z państwowego systemu c-KOB. Niezbędny do synchronizacji
+              przeglądów.
+            </p>
           </div>
         </CardContent>
       </Card>

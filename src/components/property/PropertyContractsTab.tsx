@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
+import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   ExternalLink,
@@ -26,7 +27,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -40,8 +50,12 @@ import type { PropertyContractWithCompany } from "@/hooks/usePropertyContracts";
 import { usePropertyInspections } from "@/hooks/usePropertyInspections";
 import type { PropertyInspectionWithCompany } from "@/hooks/usePropertyInspections";
 import {
+  INSPECTION_STATUSES,
   INSPECTION_STATUS_LABELS,
+  INSPECTION_TYPES,
   INSPECTION_TYPE_LABELS,
+  type InspectionStatus,
+  type InspectionType,
 } from "@/schemas/inspectionSchema";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -93,6 +107,37 @@ function formatCkobLastSyncLabel(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function CompanyNameLink({
+  companyId,
+  name,
+}: {
+  companyId: string | null | undefined;
+  name: string;
+}) {
+  const label = name.trim();
+  if (companyId && label.length > 0) {
+    return (
+      <Link
+        to={`/companies/${companyId}`}
+        className="font-medium text-primary transition-colors hover:underline"
+      >
+        {label}
+      </Link>
+    );
+  }
+  return <span className="text-muted-foreground">{label.length > 0 ? label : "—"}</span>;
+}
+
+function executionDateMs(iso: string): number {
+  const s = iso.slice(0, 10);
+  const [y, m, d] = s.split("-").map((x) => Number(x));
+  if (!y || !m || !d) {
+    const t = Date.parse(iso);
+    return Number.isFinite(t) ? t : 0;
+  }
+  return new Date(y, m - 1, d).getTime();
 }
 
 function apiErrorMessage(err: unknown): string {
@@ -242,6 +287,9 @@ export function PropertyContractsTab({
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<PropertyContractWithCompany | null>(null);
+  const [inspectionTypeFilter, setInspectionTypeFilter] = useState<"all" | InspectionType>("all");
+  const [inspectionStatusFilter, setInspectionStatusFilter] = useState<"all" | InspectionStatus>("all");
+  const [hideHistoricalInspections, setHideHistoricalInspections] = useState(false);
 
   const contractsQuery = usePropertyContracts(locationId, { enabled: Boolean(locationId) });
   const inspectionsQuery = usePropertyInspections(locationId, { enabled: Boolean(locationId) });
@@ -269,6 +317,61 @@ export function PropertyContractsTab({
 
   const contractRows = contractsQuery.data ?? [];
   const inspectionRows = inspectionsQuery.data ?? [];
+
+  useEffect(() => {
+    setInspectionTypeFilter("all");
+    setInspectionStatusFilter("all");
+    setHideHistoricalInspections(false);
+  }, [locationId]);
+
+  const inspectionTypesPresent = useMemo(() => {
+    const seen = new Set<InspectionType>();
+    for (const r of inspectionRows) {
+      seen.add(r.type);
+    }
+    return INSPECTION_TYPES.filter((t) => seen.has(t));
+  }, [inspectionRows]);
+
+  useEffect(() => {
+    if (inspectionTypeFilter !== "all" && !inspectionTypesPresent.includes(inspectionTypeFilter)) {
+      setInspectionTypeFilter("all");
+    }
+  }, [inspectionTypeFilter, inspectionTypesPresent]);
+
+  const maxExecutionMsByType = useMemo(() => {
+    const m = new Map<InspectionType, number>();
+    for (const r of inspectionRows) {
+      const ms = executionDateMs(r.execution_date);
+      const cur = m.get(r.type);
+      if (cur === undefined || ms > cur) {
+        m.set(r.type, ms);
+      }
+    }
+    return m;
+  }, [inspectionRows]);
+
+  const filteredInspectionRows = useMemo(() => {
+    let list = inspectionRows;
+    if (inspectionTypeFilter !== "all") {
+      list = list.filter((r) => r.type === inspectionTypeFilter);
+    }
+    if (inspectionStatusFilter !== "all") {
+      list = list.filter((r) => r.status === inspectionStatusFilter);
+    }
+    if (hideHistoricalInspections) {
+      list = list.filter((r) => {
+        const maxMs = maxExecutionMsByType.get(r.type);
+        return maxMs !== undefined && executionDateMs(r.execution_date) === maxMs;
+      });
+    }
+    return list;
+  }, [
+    inspectionRows,
+    inspectionTypeFilter,
+    inspectionStatusFilter,
+    hideHistoricalInspections,
+    maxExecutionMsByType,
+  ]);
 
   const latestCkobSyncAt = useMemo(() => {
     let best: string | null = null;
@@ -363,7 +466,7 @@ export function PropertyContractsTab({
                   ) : (
                     contractRows.map((row) => {
                       const company = row.company;
-                      const name = company?.name?.trim() || "—";
+                      const name = company?.name?.trim() ?? "";
                       const email = company?.email?.trim();
                       const phone = company?.phone?.trim();
                       const typeLabel = contractTypeDisplayLabel(row);
@@ -379,7 +482,9 @@ export function PropertyContractsTab({
                               {typeLabel}
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-semibold text-foreground">{name}</TableCell>
+                          <TableCell>
+                            <CompanyNameLink companyId={row.company_id} name={name} />
+                          </TableCell>
                           <TableCell className="tabular-nums text-foreground">
                             {formatGrossDisplay(row.gross_value)}
                           </TableCell>
@@ -447,25 +552,81 @@ export function PropertyContractsTab({
       </Card>
 
       <Card className="border-border/60 shadow-sm">
-        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="text-base">Oś czasu przeglądów (Compliance)</CardTitle>
-            <CardDescription>
-              Protokoły techniczne i terminy ważności — jedno zapytanie z firmą wykonawcy.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <CKobSyncButton locationId={locationId} cKobBuildingId={cKobBuildingId} />
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="shrink-0 gap-1.5"
-              onClick={() => setInspectionDialogOpen(true)}
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Dodaj własny
-            </Button>
+        <CardHeader className="flex flex-col gap-3 space-y-0">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="text-base">Oś czasu przeglądów (Compliance)</CardTitle>
+              <CardDescription>
+                Protokoły techniczne i terminy ważności — jedno zapytanie z firmą wykonawcy.
+              </CardDescription>
+            </div>
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:w-auto sm:max-w-[min(100%,42rem)]">
+              {!inspectionsQuery.isLoading && inspectionRows.length > 0 ? (
+                <>
+                  <Select
+                    value={inspectionTypeFilter}
+                    onValueChange={(v) => setInspectionTypeFilter(v as "all" | InspectionType)}
+                  >
+                    <SelectTrigger className="h-8 w-[min(100%,11rem)] text-xs" aria-label="Filtr typu przeglądu">
+                      <SelectValue placeholder="Typ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">
+                        Wszystkie typy
+                      </SelectItem>
+                      {inspectionTypesPresent.map((t) => (
+                        <SelectItem key={t} value={t} className="text-xs">
+                          {INSPECTION_TYPE_LABELS[t]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={inspectionStatusFilter}
+                    onValueChange={(v) => setInspectionStatusFilter(v as "all" | InspectionStatus)}
+                  >
+                    <SelectTrigger className="h-8 w-[min(100%,10rem)] text-xs" aria-label="Filtr statusu protokołu">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">
+                        Wszystkie statusy
+                      </SelectItem>
+                      {INSPECTION_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s} className="text-xs">
+                          {INSPECTION_STATUS_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1.5">
+                    <Switch
+                      id="hide-historical-inspections"
+                      checked={hideHistoricalInspections}
+                      onCheckedChange={setHideHistoricalInspections}
+                      className="scale-90"
+                    />
+                    <Label
+                      htmlFor="hide-historical-inspections"
+                      className="cursor-pointer whitespace-nowrap text-xs font-normal text-muted-foreground"
+                    >
+                      Ukryj historyczne
+                    </Label>
+                  </div>
+                </>
+              ) : null}
+              <CKobSyncButton locationId={locationId} cKobBuildingId={cKobBuildingId} />
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="shrink-0 gap-1.5"
+                onClick={() => setInspectionDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Dodaj własny
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -477,7 +638,7 @@ export function PropertyContractsTab({
 
           {inspectionsQuery.isLoading ? (
             <InspectionsTableSkeleton />
-          ) : (
+          ) : inspectionRows.length === 0 ? (
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
@@ -492,15 +653,40 @@ export function PropertyContractsTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inspectionRows.length === 0 ? (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={7} className="h-36 text-center align-middle">
-                        <p className="text-sm text-muted-foreground">Brak zapisanych przeglądów dla tej nieruchomości.</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    inspectionRows.map((row: PropertyInspectionWithCompany) => {
-                      const companyName = row.company?.name?.trim() || "—";
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="h-36 text-center align-middle">
+                      <p className="text-sm text-muted-foreground">Brak zapisanych przeglądów dla tej nieruchomości.</p>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <>
+              {filteredInspectionRows.length === 0 ? (
+                <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/10 px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-foreground">Brak przeglądów spełniających kryteria</p>
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                    Zmień filtry albo wyłącz opcję ukrywania starszych wpisów dla tego samego typu (wg daty wykonania).
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[10rem]">Typ przeglądu</TableHead>
+                        <TableHead className="min-w-[10rem]">Wykonawca (firma)</TableHead>
+                        <TableHead className="min-w-[8rem]">Data wykonania</TableHead>
+                        <TableHead className="min-w-[8rem]">Ważne do</TableHead>
+                        <TableHead className="min-w-[8rem]">Status</TableHead>
+                        <TableHead className="min-w-[7rem]">c-KOB</TableHead>
+                        <TableHead className="w-[100px] text-right">Akcje</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInspectionRows.map((row: PropertyInspectionWithCompany) => {
+                      const companyName = row.company?.name?.trim() ?? "";
                       const typeLabel = INSPECTION_TYPE_LABELS[row.type] ?? row.type;
                       const statusLabel = INSPECTION_STATUS_LABELS[row.status] ?? row.status;
                       const docUrl = row.document_url?.trim();
@@ -512,7 +698,9 @@ export function PropertyContractsTab({
                               {typeLabel}
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-medium text-foreground">{companyName}</TableCell>
+                          <TableCell>
+                            <CompanyNameLink companyId={row.company_id} name={companyName} />
+                          </TableCell>
                           <TableCell className="tabular-nums text-foreground">
                             {formatIsoDateLabel(row.execution_date)}
                           </TableCell>
@@ -550,11 +738,12 @@ export function PropertyContractsTab({
                           </TableCell>
                         </TableRow>
                       );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
             {latestCkobSyncAt

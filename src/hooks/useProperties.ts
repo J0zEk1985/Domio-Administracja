@@ -313,7 +313,16 @@ export function usePropertyAdministrators(propertyId: string | undefined, enable
   });
 }
 
-async function updatePropertyAdminDataRequest(propertyId: string, adminData: PropertyAdminData): Promise<void> {
+export type PropertyGeneralSavePayload = {
+  adminData: PropertyAdminData;
+  /** Normalized: trim; empty → persisted as `null`. */
+  cKobBuildingId: string | null;
+};
+
+async function updatePropertyGeneralRequest(
+  propertyId: string,
+  payload: PropertyGeneralSavePayload,
+): Promise<void> {
   const actor = await getOrgAndActor();
   if (!actor.isOwner) {
     throw new Error("Tylko właściciel organizacji może zapisywać konfigurację.");
@@ -327,33 +336,36 @@ async function updatePropertyAdminDataRequest(propertyId: string, adminData: Pro
     .maybeSingle();
 
   if (fetchErr) {
-    console.error("[updatePropertyAdminData] fetch:", fetchErr);
+    console.error("[updatePropertyGeneral] fetch:", fetchErr);
     throw fetchErr;
   }
   if (!row || row.is_admin_active !== true) {
     throw new Error("Nie znaleziono nieruchomości lub brak dostępu.");
   }
 
-  const nextConfig = mergeVisibilityConfigWithAdminData(row.visibility_config, adminData);
+  const nextConfig = mergeVisibilityConfigWithAdminData(row.visibility_config, payload.adminData);
 
   const { error: upErr } = await supabase
     .from("cleaning_locations")
-    .update({ visibility_config: nextConfig })
+    .update({
+      visibility_config: nextConfig,
+      c_kob_building_id: payload.cKobBuildingId,
+    })
     .eq("id", propertyId)
     .eq("org_id", actor.orgId);
 
   if (upErr) {
-    console.error("[updatePropertyAdminData] update:", upErr);
+    console.error("[updatePropertyGeneral] update:", upErr);
     throw upErr;
   }
 }
 
-export function useUpdatePropertyAdminData(propertyId: string | undefined) {
+export function useUpdatePropertyGeneral(propertyId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (adminData: PropertyAdminData) => {
+    mutationFn: (payload: PropertyGeneralSavePayload) => {
       if (!propertyId) throw new Error("Brak identyfikatora nieruchomości.");
-      return updatePropertyAdminDataRequest(propertyId, adminData);
+      return updatePropertyGeneralRequest(propertyId, payload);
     },
     onSuccess: async () => {
       if (propertyId) {
@@ -361,10 +373,11 @@ export function useUpdatePropertyAdminData(propertyId: string | undefined) {
       }
     },
     onError: (e: unknown) => {
-      console.error("[useUpdatePropertyAdminData]", e);
+      console.error("[useUpdatePropertyGeneral]", e);
     },
   });
 }
+
 
 export type AssignableOrgMemberOption = {
   membershipId: string;
