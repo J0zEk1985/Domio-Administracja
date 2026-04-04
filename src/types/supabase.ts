@@ -680,6 +680,7 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          org_id: string | null
           phone: string | null
           tax_id: string
           updated_at: string
@@ -691,6 +692,7 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
+          org_id?: string | null
           phone?: string | null
           tax_id: string
           updated_at?: string
@@ -702,11 +704,20 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          org_id?: string | null
           phone?: string | null
           tax_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "companies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       e_board_messages: {
         Row: {
@@ -4152,6 +4163,7 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          org_id: string | null
           phone: string | null
           tax_id: string
           updated_at: string

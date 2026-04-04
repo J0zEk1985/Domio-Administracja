@@ -25,7 +25,7 @@ function ckobSyncMockPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
@@ -40,4 +40,7 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
-});
+  /** Production builds only (`npm run build`); dev server keeps console/debugger for DX. */
+  esbuild:
+    mode === "production" ? { drop: ["console", "debugger"] as const } : undefined,
+}));
