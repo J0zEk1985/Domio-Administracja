@@ -223,6 +223,7 @@ export type Database = {
           cleaning_rate: number | null
           client_id: string | null
           client_notification_email: string | null
+          community_id: string | null
           coordinator_can_view_financials: boolean | null
           coordinator_notes: string | null
           created_at: string | null
@@ -273,6 +274,7 @@ export type Database = {
           cleaning_rate?: number | null
           client_id?: string | null
           client_notification_email?: string | null
+          community_id?: string | null
           coordinator_can_view_financials?: boolean | null
           coordinator_notes?: string | null
           created_at?: string | null
@@ -323,6 +325,7 @@ export type Database = {
           cleaning_rate?: number | null
           client_id?: string | null
           client_notification_email?: string | null
+          community_id?: string | null
           coordinator_can_view_financials?: boolean | null
           coordinator_notes?: string | null
           created_at?: string | null
@@ -366,6 +369,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "cleaning_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_locations_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
             referencedColumns: ["id"]
           },
           {
@@ -526,6 +536,44 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "property_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communities: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          nip: string | null
+          org_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          nip?: string | null
+          org_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          nip?: string | null
+          org_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -697,10 +745,12 @@ export type Database = {
           created_at: string
           e_board_message_id: string | null
           end_date: string
+          end_time: string | null
           id: string
           location_id: string
           org_id: string
           start_date: string
+          start_time: string | null
           title: string
           vendor_id: string | null
         }
@@ -709,10 +759,12 @@ export type Database = {
           created_at?: string
           e_board_message_id?: string | null
           end_date: string
+          end_time?: string | null
           id?: string
           location_id: string
           org_id: string
           start_date: string
+          start_time?: string | null
           title: string
           vendor_id?: string | null
         }
@@ -721,10 +773,12 @@ export type Database = {
           created_at?: string
           e_board_message_id?: string | null
           end_date?: string
+          end_time?: string | null
           id?: string
           location_id?: string
           org_id?: string
           start_date?: string
+          start_time?: string | null
           title?: string
           vendor_id?: string | null
         }

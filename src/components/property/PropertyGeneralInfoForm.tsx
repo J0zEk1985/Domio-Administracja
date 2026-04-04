@@ -16,6 +16,7 @@ import {
 } from "@/types/propertyAdminData";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { CommunityCombobox } from "@/components/communities/CommunityCombobox";
 
 type Props = {
   property: PropertyDetail;
@@ -44,6 +45,7 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
   const ckobInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<PropertyAdminData>(property.adminData);
   const [ckobDraft, setCkobDraft] = useState(() => property.cKobBuildingId ?? "");
+  const [communityId, setCommunityId] = useState<string | null>(property.communityId ?? null);
 
   useEffect(() => {
     setDraft(property.adminData);
@@ -53,14 +55,24 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
     setCkobDraft(property.cKobBuildingId ?? "");
   }, [property.id, property.cKobBuildingId]);
 
+  useEffect(() => {
+    setCommunityId(property.communityId ?? null);
+  }, [property.id, property.communityId]);
+
   const ckobDirty = useMemo(
     () => normalizeCkobBuildingId(ckobDraft) !== normalizeCkobBuildingId(property.cKobBuildingId),
     [ckobDraft, property.cKobBuildingId],
   );
 
+  const communityDirty = useMemo(
+    () => communityId !== (property.communityId ?? null),
+    [communityId, property.communityId],
+  );
+
   const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(property.adminData) || ckobDirty,
-    [draft, property.adminData, ckobDirty],
+    () =>
+      JSON.stringify(draft) !== JSON.stringify(property.adminData) || ckobDirty || communityDirty,
+    [draft, property.adminData, ckobDirty, communityDirty],
   );
 
   const netPln = useMemo(() => computeContractNetPln(draft.finance), [draft.finance]);
@@ -153,7 +165,11 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
       return;
     }
     save.mutate(
-      { adminData: draft, cKobBuildingId: ckobParsed.data.cKobBuildingId },
+      {
+        adminData: draft,
+        cKobBuildingId: ckobParsed.data.cKobBuildingId,
+        communityId,
+      },
       {
         onSuccess: () => {
           toast.success("Zapisano informacje o nieruchomości.");
@@ -187,6 +203,18 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="prop-addr-ro">Pełny adres</Label>
             <Input id="prop-addr-ro" value={property.address} readOnly disabled className="bg-muted/40" />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Wspólnota (opcjonalnie)</Label>
+            <CommunityCombobox
+              orgId={property.orgId}
+              value={communityId}
+              onValueChange={setCommunityId}
+              disabled={disabled}
+            />
+            <p className="text-xs text-muted-foreground">
+              Powiązanie z rekordem wspólnoty — zapis razem z przyciskiem „Zapisz zmiany” na dole formularza.
+            </p>
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="prop-ckob-summary">ID Książki Obiektu (c-KOB)</Label>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import { getOrgAndActor, hasLocationAdministrationAccess } from "@/lib/orgAccess";
+import { communityQueryKeys } from "@/hooks/useCommunities";
 import {
   mergeVisibilityConfigWithAdminData,
   parsePropertyAdminData,
@@ -125,8 +126,11 @@ export function useProperties(enabled: boolean = true) {
 
 export type PropertyDetail = {
   id: string;
+  orgId: string;
   name: string;
   address: string;
+  /** `cleaning_locations.community_id` — optional link to `communities`. */
+  communityId: string | null;
   adminData: PropertyAdminData;
   /** `cleaning_locations.c_kob_building_id` — identifier in państwowym systemie c-KOB (pull sync). */
   cKobBuildingId: string | null;
@@ -146,7 +150,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const { data: row, error } = await supabase
     .from("cleaning_locations")
     .select(
-      "id, name, address, org_id, is_admin_active, square_meters, visibility_config, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
+      "id, name, address, org_id, community_id, is_admin_active, square_meters, visibility_config, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
     )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
@@ -175,8 +179,10 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const ckob = row.c_kob_building_id?.trim();
   return {
     id: row.id,
+    orgId: row.org_id,
     name: row.name?.trim() || "—",
     address: row.address?.trim() || "—",
+    communityId: row.community_id ?? null,
     adminData,
     cKobBuildingId: ckob && ckob.length > 0 ? ckob : null,
     boardPortalToken: row.board_portal_token ?? "",
@@ -317,6 +323,8 @@ export type PropertyGeneralSavePayload = {
   adminData: PropertyAdminData;
   /** Normalized: trim; empty → persisted as `null`. */
   cKobBuildingId: string | null;
+  /** `cleaning_locations.community_id`. */
+  communityId: string | null;
 };
 
 async function updatePropertyGeneralRequest(
@@ -350,6 +358,7 @@ async function updatePropertyGeneralRequest(
     .update({
       visibility_config: nextConfig,
       c_kob_building_id: payload.cKobBuildingId,
+      community_id: payload.communityId,
     })
     .eq("id", propertyId)
     .eq("org_id", actor.orgId);
@@ -371,6 +380,7 @@ export function useUpdatePropertyGeneral(propertyId: string | undefined) {
       if (propertyId) {
         await qc.invalidateQueries({ queryKey: propertyQueryKey(propertyId) });
       }
+      await qc.invalidateQueries({ queryKey: communityQueryKeys.all });
     },
     onError: (e: unknown) => {
       console.error("[useUpdatePropertyGeneral]", e);

@@ -13,6 +13,7 @@ import Login from "./pages/Login.tsx";
 import Team from "./pages/Team.tsx";
 import MemberDetails from "./pages/MemberDetails.tsx";
 import Properties from "./pages/Properties.tsx";
+import Communities from "./pages/Communities.tsx";
 import PropertyDetails from "./pages/PropertyDetails.tsx";
 import CampaignDetails from "./pages/CampaignDetails.tsx";
 import TaskDetails from "./pages/TaskDetails.tsx";
@@ -53,6 +54,7 @@ const App = () => (
                 <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/inspections" element={<InspectionsPage />} />
                 <Route path="/companies/:id" element={<CompanyDetailsPage />} />
+                <Route path="/communities" element={<Communities />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id/tasks/:taskId" element={<TaskDetails />} />
                 <Route path="/properties/:id/inspection-campaigns/:campaignId" element={<CampaignDetails />} />

@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
-  Building2,
+  Landmark,
+  MapPin,
   MessageSquareWarning,
   ShieldCheck,
   FileText,
@@ -39,7 +40,8 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { title: "Pulpit", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Budynki", url: "/properties", icon: Building2 },
+  { title: "Wspólnoty", url: "/communities", icon: Landmark },
+  { title: "Budynki", url: "/properties", icon: MapPin },
   { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ShieldCheck },
