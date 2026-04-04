@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Copy, Printer, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { PropertyDetail } from "@/hooks/useProperties";
-import { useRotateLocationToken, type PortalTokenKind } from "@/hooks/usePropertyTokens";
+import { useRotateLocationToken } from "@/hooks/usePropertyTokens";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -42,26 +42,18 @@ async function copyText(label: string, text: string) {
 
 export function PropertyExternalAccessCard({ property, canManage, accessPending }: Props) {
   const rotate = useRotateLocationToken(property.id);
-  const [qrKind, setQrKind] = useState<PortalTokenKind | null>(null);
-  const [confirmRotate, setConfirmRotate] = useState<PortalTokenKind | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [confirmRotateOpen, setConfirmRotateOpen] = useState(false);
 
   const boardUrl = useMemo(
     () => `${portalBaseUrl()}/portal/board/${property.boardPortalToken}`,
     [property.boardPortalToken],
   );
-  const reportUrl = useMemo(
-    () => `${portalBaseUrl()}/portal/report/${property.publicReportToken}`,
-    [property.publicReportToken],
-  );
-
-  const activeQrUrl = qrKind === "board" ? boardUrl : qrKind === "report" ? reportUrl : "";
-  const activeQrTitle = qrKind === "board" ? "Portal Zarządu" : qrKind === "report" ? "Zgłoszenia dla mieszkańców" : "";
 
   async function confirmRotateAction() {
-    if (!confirmRotate) return;
     try {
-      await rotate.mutateAsync(confirmRotate);
-      setConfirmRotate(null);
+      await rotate.mutateAsync();
+      setConfirmRotateOpen(false);
     } catch {
       /* toast w hooku */
     }
@@ -75,7 +67,7 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
         <CardHeader>
           <CardTitle className="text-base">Dostęp zewnętrzny</CardTitle>
           <CardDescription>
-            Bezpieczne linki z tokenem dla gości (Zarząd i zgłoszenia). Udostępniaj tylko zaufanym osobom.
+            Bezpieczny link z tokenem dla gości (Zarząd). Udostępniaj tylko zaufanym osobom.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -110,7 +102,7 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
                 <Copy className="h-3.5 w-3.5" aria-hidden />
                 Kopiuj link
               </Button>
-              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setQrKind("board")}>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setQrOpen(true)}>
                 <QrCode className="h-3.5 w-3.5" aria-hidden />
                 Pokaż kod QR
               </Button>
@@ -119,48 +111,7 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
                 variant="destructive"
                 size="sm"
                 disabled={!canManage || busy || accessPending}
-                onClick={() => setConfirmRotate("board")}
-              >
-                Zresetuj link
-              </Button>
-            </div>
-          </section>
-
-          <section className="space-y-3" aria-labelledby="portal-report-heading">
-            <h3 id="portal-report-heading" className="text-sm font-medium text-foreground">
-              Zgłoszenia dla mieszkańców
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Formularz zgłaszania awarii dla mieszkańców — bez konta w systemie (wdrożenie formularza w kolejnym kroku).
-            </p>
-            <div
-              className={cn(
-                "rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-foreground",
-              )}
-            >
-              {reportUrl}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => void copyText("Link", reportUrl)}
-              >
-                <Copy className="h-3.5 w-3.5" aria-hidden />
-                Kopiuj link
-              </Button>
-              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setQrKind("report")}>
-                <QrCode className="h-3.5 w-3.5" aria-hidden />
-                Pokaż kod QR
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={!canManage || busy || accessPending}
-                onClick={() => setConfirmRotate("report")}
+                onClick={() => setConfirmRotateOpen(true)}
               >
                 Zresetuj link
               </Button>
@@ -175,16 +126,16 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
         </CardContent>
       </Card>
 
-      <Dialog open={qrKind != null} onOpenChange={(o) => !o && setQrKind(null)}>
+      <Dialog open={qrOpen} onOpenChange={(o) => !o && setQrOpen(false)}>
         <DialogContent className="sm:max-w-md print:border-0 print:shadow-none">
           <DialogHeader>
-            <DialogTitle>Kod QR — {activeQrTitle}</DialogTitle>
-            <DialogDescription className="font-mono text-xs break-all">{activeQrUrl}</DialogDescription>
+            <DialogTitle>Kod QR — Portal Zarządu</DialogTitle>
+            <DialogDescription className="font-mono text-xs break-all">{boardUrl}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-2 print:py-4">
-            {activeQrUrl ? (
+            {boardUrl ? (
               <div className="rounded-lg border border-border bg-white p-4 print:border-0">
-                <QRCodeSVG value={activeQrUrl} size={220} level="M" includeMargin />
+                <QRCodeSVG value={boardUrl} size={220} level="M" includeMargin />
               </div>
             ) : null}
           </div>
@@ -200,19 +151,17 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
               <Printer className="h-4 w-4" aria-hidden />
               Drukuj / zapisz jako PDF
             </Button>
-            <Button type="button" variant="secondary" className="print:hidden" onClick={() => setQrKind(null)}>
+            <Button type="button" variant="secondary" className="print:hidden" onClick={() => setQrOpen(false)}>
               Zamknij
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmRotate != null} onOpenChange={(o) => !o && setConfirmRotate(null)}>
+      <AlertDialog open={confirmRotateOpen} onOpenChange={(o) => !o && setConfirmRotateOpen(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Zresetować link {confirmRotate === "board" ? "portalu Zarządu" : "zgłoszeń"}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Zresetować link portalu Zarządu?</AlertDialogTitle>
             <AlertDialogDescription>
               Poprzedni link przestanie działać natychmiast. Udostępnij nowy adres osobom uprawnionym.
             </AlertDialogDescription>
