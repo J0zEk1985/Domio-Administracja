@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Search } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
 
 import { CompanyDialog } from "@/components/companies/CompanyDialog";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function CompaniesDataTable() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     if (!companiesQuery.isError || !companiesQuery.error) return;
@@ -54,7 +55,10 @@ export function CompaniesDataTable() {
   if (companiesQuery.isPending) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-10 w-full max-w-sm" />
+        <div className="flex w-full items-center justify-between gap-4">
+          <Skeleton className="h-10 max-w-sm flex-1" />
+          <Skeleton className="h-10 w-[140px] shrink-0" />
+        </div>
         <div className="rounded-md border border-border/60">
           <Table>
             <TableHeader>
@@ -93,18 +97,24 @@ export function CompaniesDataTable() {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm flex-1">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <Input
-          placeholder="Szukaj po nazwie lub NIP…"
-          value={inputQuery}
-          onChange={(e) => setInputQuery(e.target.value)}
-          className="pl-9"
-          aria-label="Szukaj firm"
-        />
+      <div className="flex w-full items-center justify-between gap-4">
+        <div className="relative min-w-0 max-w-sm flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            placeholder="Szukaj po nazwie lub NIP…"
+            value={inputQuery}
+            onChange={(e) => setInputQuery(e.target.value)}
+            className="pl-9"
+            aria-label="Szukaj firm"
+          />
+        </div>
+        <Button type="button" className="shrink-0" onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" aria-hidden />
+          Dodaj firmę
+        </Button>
       </div>
 
       {rows.length === 0 ? (
@@ -143,6 +153,14 @@ export function CompaniesDataTable() {
         </div>
       )}
 
+      <CompanyDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        mode="create"
+        onSuccess={() => {
+          void companiesQuery.refetch();
+        }}
+      />
       <CompanyDialog
         open={editOpen}
         onOpenChange={(open) => {
