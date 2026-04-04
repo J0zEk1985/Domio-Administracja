@@ -10,9 +10,11 @@ import {
   Settings,
   Zap,
   Megaphone,
+  User,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import domioLogo from "@/assets/domio-logo.jpg";
 import {
   Sidebar,
@@ -29,8 +31,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { usePendingIssuesCount } from "@/hooks/usePendingIssuesCount";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 type NavItem = {
   title: string;
@@ -54,6 +66,7 @@ const navItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+  const navigate = useNavigate();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { data: ownerAccess, isLoading: ownerLoading } = useIsOrgOwner();
@@ -61,6 +74,28 @@ export function AppSidebar() {
   const showTeam = !ownerLoading && ownerAccess?.isOwner === true;
 
   const visibleItems = navItems.filter((item) => !item.ownerOnly || showTeam);
+
+  // TODO: Replace with dynamic user session data (e.g. Supabase useUser / profile)
+  const userDisplayName = "Jan Kowalski";
+  // TODO: Replace with dynamic user session data
+  const userEmail = "jan.kowalski@example.com";
+  // TODO: Replace with dynamic user session data (derived from name or image)
+  const userInitials = "JK";
+  // TODO: Replace with dynamic user session data (role / org title)
+  const userSubtitle = "Administrator";
+
+  async function handleSignOut() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("[AppSidebar] signOut:", error);
+      }
+    } catch (e) {
+      console.error("[AppSidebar] signOut unexpected:", e);
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -117,24 +152,79 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3">
         <Separator className="mb-3" />
-        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3 px-1"}`}>
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
-              JK
-            </AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">Jan Kowalski</p>
-              <p className="text-[11px] text-muted-foreground truncate">Administrator</p>
-            </div>
-          )}
-          {!collapsed && (
-            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
-              <Settings className="h-3.5 w-3.5" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center rounded-lg text-left outline-none ring-sidebar-ring transition-colors",
+                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2",
+                collapsed ? "justify-center p-1" : "gap-3 px-2 py-2",
+              )}
+              aria-label="Menu konta użytkownika"
+            >
+              <Avatar className="h-7 w-7 shrink-0">
+                <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              {!collapsed && (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-foreground">{userDisplayName}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{userSubtitle}</p>
+                  </div>
+                  <Settings
+                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
+                </>
+              )}
             </button>
-          )}
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-56"
+            align="end"
+            side={collapsed ? "right" : "top"}
+            sideOffset={8}
+          >
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold leading-tight">{userDisplayName}</span>
+                <span className="text-xs text-muted-foreground">{userEmail}</span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="gap-2"
+              onSelect={() => {
+                // TODO: Replace with dynamic user session data — navigate to profile route when available
+              }}
+            >
+              <User className="h-4 w-4" aria-hidden />
+              Mój profil
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2"
+              onSelect={() => {
+                // TODO: Replace with navigation to account settings when route exists
+              }}
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+              Ustawienia konta
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+              onSelect={() => {
+                void handleSignOut();
+              }}
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              Wyloguj się
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   );
