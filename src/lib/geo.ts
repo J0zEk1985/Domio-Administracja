@@ -1,5 +1,8 @@
 const EARTH_RADIUS_KM = 6371;
 
+/** Panel terenowy: auto-wybór budynku tylko, gdy najbliższy jest w tym promieniu (metry). */
+export const FIELD_SERVICE_AUTO_SELECT_MAX_M = 2000;
+
 function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
@@ -20,6 +23,18 @@ export function haversineDistanceKm(
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return EARTH_RADIUS_KM * c;
+}
+
+/**
+ * Haversine distance in meters (same formula as {@link haversineDistanceKm}).
+ */
+export function haversineDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  return haversineDistanceKm(lat1, lon1, lat2, lon2) * 1000;
 }
 
 export function hasValidCoordinates(lat: number | null | undefined, lon: number | null | undefined): boolean {
@@ -58,4 +73,26 @@ export function sortLocationsByDistanceKm<T extends GeoSortableLocation>(
   );
 
   return [...sorted, ...tail];
+}
+
+/**
+ * Nearest building for field-service auto-fill: only if it has coordinates and lies within `maxDistanceM`.
+ * Otherwise returns `null` (manual pick; graceful degradation).
+ */
+export function getFieldServiceAutoSelectLocation<T extends GeoSortableLocation>(
+  sortedNearestFirst: T[],
+  userLat: number,
+  userLon: number,
+  maxDistanceM: number,
+): { row: T; distanceM: number } | null {
+  const first = sortedNearestFirst[0];
+  if (!first) return null;
+  if (!hasValidCoordinates(first.latitude, first.longitude)) {
+    return null;
+  }
+  const distanceM = haversineDistanceMeters(userLat, userLon, first.latitude!, first.longitude!);
+  if (distanceM > maxDistanceM) {
+    return null;
+  }
+  return { row: first, distanceM };
 }

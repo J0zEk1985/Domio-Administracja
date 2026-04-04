@@ -12,11 +12,13 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 
 type TriageIssueResponse = {
   categoryId: string;
   locationId: string;
+  communityId: string;
   priority: CreateIssueFormValues["priority"];
   shortDescription: string;
   locationUnrecognized: boolean;
@@ -28,6 +30,34 @@ function errMessage(err: unknown): string {
     return String((err as { message: unknown }).message);
   }
   return "Nie udało się przetworzyć tekstu.";
+}
+
+function AiTriagePreviewSkeleton() {
+  return (
+    <div
+      className="space-y-4"
+      aria-busy
+      aria-label="Ładowanie podglądu analizy"
+    >
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-10 w-full rounded-md" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-10 w-full rounded-md" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-10 w-full rounded-md" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="min-h-[120px] w-full rounded-md" />
+      </div>
+      <Skeleton className="h-10 w-full rounded-md" />
+    </div>
+  );
 }
 
 export default function QuickActions() {
@@ -60,9 +90,13 @@ export default function QuickActions() {
     setAiBusy(true);
     setLocationNeedsManual(false);
     try {
-      const buildings = properties.map((p) => ({ id: p.id, name: p.name }));
+      const locations = properties.map((p) => ({
+        id: p.id,
+        name: p.name,
+        community_id: p.communityId ?? "",
+      }));
       const { data, error } = await supabase.functions.invoke<TriageIssueResponse>("triage-issue", {
-        body: { text: aiText.trim(), buildings },
+        body: { text: aiText.trim(), locations },
       });
 
       if (error) {
@@ -91,11 +125,13 @@ export default function QuickActions() {
 
       setLocationNeedsManual(unrecognized);
 
+      const communityResolved = match?.communityId ?? triage.communityId ?? "";
+
       setAiPrefill({
         version: Date.now(),
         values: {
           location_id: unrecognized ? "" : locId,
-          community_id: match?.communityId ?? "",
+          community_id: unrecognized ? "" : communityResolved,
           category: triage.categoryId,
           priority: triage.priority,
           description: triage.shortDescription,
@@ -104,6 +140,8 @@ export default function QuickActions() {
 
       if (unrecognized) {
         toast.info("Wybierz budynek ręcznie — model nie dopasował lokalizacji do listy.");
+      } else {
+        toast.success("Analiza gotowa — sprawdź i ewentualnie popraw pola poniżej.");
       }
     } catch (e) {
       console.error("[QuickActions] handleProcessAi:", e);
@@ -201,24 +239,35 @@ export default function QuickActions() {
             </Alert>
           ) : null}
 
-          <Card className="border-border/80 shadow-sm">
+          <Card className="relative border-border/80 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Zgłoszenie (podgląd i edycja)</CardTitle>
               <CardDescription>
                 Pola wypełnia asystent — możesz je poprawić przed utworzeniem zgłoszenia.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <CreateIssueForm
-                enabled={tab === "ai"}
-                fieldServiceMode
-                aiPrefill={aiPrefill}
-                onSuccess={() => {
-                  setAiText("");
-                  setAiPrefill(undefined);
-                  setLocationNeedsManual(false);
-                }}
-              />
+            <CardContent className="relative min-h-[280px]">
+              {aiBusy ? (
+                <div
+                  className="absolute inset-0 z-10 flex flex-col rounded-lg border border-border/60 bg-background/95 p-4 shadow-sm backdrop-blur-[2px]"
+                  role="status"
+                >
+                  <p className="mb-3 text-xs font-medium text-muted-foreground">Analiza AI…</p>
+                  <AiTriagePreviewSkeleton />
+                </div>
+              ) : null}
+              <div className={cn(aiBusy && "pointer-events-none opacity-30")}>
+                <CreateIssueForm
+                  enabled={tab === "ai"}
+                  fieldServiceMode
+                  aiPrefill={aiPrefill}
+                  onSuccess={() => {
+                    setAiText("");
+                    setAiPrefill(undefined);
+                    setLocationNeedsManual(false);
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

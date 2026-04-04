@@ -270,6 +270,8 @@ async function bulkInsertUnitRecords({ campaignId, unitsArray }: GenerateUnitRec
     campaign_id: campaignId,
     unit_number,
     status: "pending",
+    building_identifier: null,
+    unit_id: null,
   }));
 
   try {

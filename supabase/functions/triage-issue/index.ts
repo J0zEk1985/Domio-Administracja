@@ -1,6 +1,6 @@
 /**
- * Edge Function: triage-issue — AI proxy for field-service quick issue triage (OpenAI JSON mode).
- * Secrets: OPENAI_API_KEY (required), SUPABASE_URL + SUPABASE_ANON_KEY (JWT verification).
+ * Edge Function: triage-issue — AI proxy (Gemini 1.5 Flash, JSON schema).
+ * Secrets: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY (JWT verification).
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -12,6 +12,8 @@ const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const GEMINI_MODEL = "gemini-1.5-flash";
+
 /** Must match `src/lib/issueCategoryOptions.ts` (DB values). */
 const ALLOWED_CATEGORIES = [
   "Elektryczna",
@@ -22,37 +24,40 @@ const ALLOWED_CATEGORIES = [
   "Prace porządkowe",
 ] as const;
 
-const ALLOWED_PRIORITIES = ["low", "medium", "high", "critical"] as const;
+const ALLOWED_PRIORITIES_EN = ["low", "medium", "high", "critical"] as const;
 
 type AllowedCategory = (typeof ALLOWED_CATEGORIES)[number];
-type AllowedPriority = (typeof ALLOWED_PRIORITIES)[number];
+type AllowedPriority = (typeof ALLOWED_PRIORITIES_EN)[number];
 
-type BuildingInput = {
+type LocationInput = {
   id: string;
   name: string;
+  community_id: string;
 };
 
 type TriageRequestBody = {
   text?: string;
-  buildings?: BuildingInput[];
+  locations?: LocationInput[];
 };
 
 type TriageLLMResult = {
   categoryId: string;
   locationId: string;
+  communityId: string;
   priority: string;
   shortDescription: string;
 };
 
-type TriageSuccessBody = TriageLLMResult & {
-  /** True when locationId is not in the provided buildings list (client should ask user to pick). */
+type TriageSuccessBody = {
+  categoryId: AllowedCategory;
+  locationId: string;
+  communityId: string;
+  priority: AllowedPriority;
+  shortDescription: string;
   locationUnrecognized: boolean;
 };
 
-function jsonResponse(
-  body: unknown,
-  status: number,
-): Response {
+function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -76,27 +81,53 @@ function normalizeCategory(raw: string): AllowedCategory {
   return "Ogólnobudowlana";
 }
 
-function normalizePriority(raw: string): AllowedPriority {
-  const t = raw.trim().toLowerCase();
-  const ok = ALLOWED_PRIORITIES.find((p) => p === t);
-  if (ok) return ok;
+/** Model may return Polish labels (schema); map to RHF / DB values. */
+function normalizePriorityToEnglish(raw: string): AllowedPriority {
+  const t = raw
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+
+  const pl: Record<string, AllowedPriority> = {
+    niski: "low",
+    sredni: "medium",
+    wysoki: "high",
+    krytyczny: "critical",
+  };
+  if (pl[t]) return pl[t];
+
+  const en = ALLOWED_PRIORITIES_EN.find((p) => p === t);
+  if (en) return en;
+
   console.warn("[triage-issue] Unrecognized priority, defaulting to medium:", raw);
   return "medium";
 }
 
-function parseOpenAIContent(content: string): TriageLLMResult {
-  const parsed: unknown = JSON.parse(content);
+function parseTriageJson(text: string): TriageLLMResult {
+  const parsed: unknown = JSON.parse(text);
   if (typeof parsed !== "object" || parsed === null) {
     throw new Error("Model returned non-object JSON");
   }
   const o = parsed as Record<string, unknown>;
-  const categoryId = typeof o.categoryId === "string" ? o.categoryId : "";
-  const locationId = typeof o.locationId === "string" ? o.locationId : "";
-  const priority = typeof o.priority === "string" ? o.priority : "medium";
-  const shortDescription = typeof o.shortDescription === "string"
-    ? o.shortDescription
-    : "";
-  return { categoryId, locationId, priority, shortDescription };
+  return {
+    categoryId: typeof o.categoryId === "string" ? o.categoryId : "",
+    locationId: typeof o.locationId === "string" ? o.locationId : "",
+    communityId: typeof o.communityId === "string" ? o.communityId : "",
+    priority: typeof o.priority === "string" ? o.priority : "sredni",
+    shortDescription: typeof o.shortDescription === "string" ? o.shortDescription : "",
+  };
+}
+
+function extractGeminiText(data: unknown): string | null {
+  const root = data as {
+    candidates?: {
+      content?: { parts?: { text?: string }[] };
+      finishReason?: string;
+    }[];
+  };
+  const text = root?.candidates?.[0]?.content?.parts?.[0]?.text;
+  return typeof text === "string" ? text : null;
 }
 
 Deno.serve(async (req) => {
@@ -133,9 +164,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiKey) {
-      console.error("[triage-issue] OPENAI_API_KEY is not set");
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) {
+      console.error("[triage-issue] GEMINI_API_KEY is not set");
       return jsonResponse({ error: "AI service unavailable" }, 503);
     }
 
@@ -148,100 +179,124 @@ Deno.serve(async (req) => {
     }
 
     const text = typeof body.text === "string" ? body.text.trim() : "";
-    const buildings = Array.isArray(body.buildings) ? body.buildings : [];
+    const locations = Array.isArray(body.locations) ? body.locations : [];
 
     if (!text) {
-      return jsonResponse({ error: "Field \"text\" is required" }, 400);
+      return jsonResponse({ error: 'Field "text" is required' }, 400);
     }
-    if (buildings.length === 0) {
-      return jsonResponse({ error: "Field \"buildings\" must be a non-empty array" }, 400);
+    if (locations.length === 0) {
+      return jsonResponse({ error: 'Field "locations" must be a non-empty array' }, 400);
     }
 
-    const validBuildings = buildings.filter((b): b is BuildingInput =>
-      typeof b?.id === "string" && isUuid(b.id) && typeof b?.name === "string" && b.name.trim().length > 0
+    const validLocs = locations.filter((l): l is LocationInput =>
+      typeof l?.id === "string" &&
+      isUuid(l.id) &&
+      typeof l?.name === "string" &&
+      l.name.trim().length > 0 &&
+      typeof l?.community_id === "string"
     );
-    if (validBuildings.length === 0) {
-      return jsonResponse({ error: "No valid buildings (need id UUID + name)" }, 400);
+    if (validLocs.length === 0) {
+      return jsonResponse(
+        { error: "No valid locations (need id UUID, name, community_id string)" },
+        400,
+      );
     }
 
-    const buildingIdSet = new Set(validBuildings.map((b) => b.id));
+    const locationById = new Map(validLocs.map((l) => [l.id, l]));
 
-    const systemPrompt =
-      `Jesteś asystentem triage zgłoszeń serwisowych dla administratora nieruchomości w Polsce.
-Na podstawie dyktowanego lub wklejonego tekstu użytkownika wybierz:
-- categoryId: dokładnie jedną z wartości (string po polsku): ${
-        ALLOWED_CATEGORIES.join(", ")
-      }
-- locationId: UUID budynku z podanej listy — musi być identyczny z jednym z id na liście.
-- priority: jedna z: low, medium, high, critical
-- shortDescription: zwięzły opis problemu po polsku, minimum 10 znaków, bez zmieniania faktów.
+    const systemText =
+      `Jesteś asystentem zarządcy nieruchomości. Użytkownik dyktuje usterkę. Masz listę dostępnych budynków. Zwróć WYŁĄCZNIE poprawny JSON w formacie: { 'categoryId': '...', 'locationId': '...', 'communityId': '...', 'priority': 'niski|sredni|wysoki|krytyczny', 'shortDescription': '...' }. Dopasuj budynek z listy do dyktowanego tekstu.
 
-Lista budynków (id + nazwa):
-${validBuildings.map((b) => `- ${b.id} — ${b.name.trim()}`).join("\n")}
+Dozwolone categoryId (dokładnie jedna wartość): ${ALLOWED_CATEGORIES.join(", ")}.
 
-Zwróć WYŁĄCZNIE jeden obiekt JSON z polami: categoryId, locationId, priority, shortDescription.`;
+Lista budynków (id, nazwa, community_id):
+${validLocs.map((l) => `- ${l.id} | ${l.name.trim()} | community_id=${l.community_id || "(puste)"}`).join("\n")}
 
-    const userPrompt = `Tekst zgłoszenia:\n"""${text}"""`;
+Priorytet w polu priority musi być dokładnie jednym z: niski, sredni, wysoki, krytyczny.
+shortDescription: po polsku, minimum 10 znaków, bez zmieniania faktów.`;
 
-    const model = Deno.env.get("OPENAI_TRIAGE_MODEL") ?? "gpt-4o-mini";
+    const userText = `Treść zgłoszenia:\n"""${text}"""`;
 
-    let openaiRes: Response;
-    try {
-      openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openaiKey}`,
+    const geminiUrl =
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${
+        encodeURIComponent(geminiKey)
+      }`;
+
+    const responseJsonSchema = {
+      type: "object",
+      properties: {
+        categoryId: { type: "string" },
+        locationId: { type: "string" },
+        communityId: { type: "string" },
+        priority: {
+          type: "string",
+          enum: ["niski", "sredni", "wysoki", "krytyczny"],
         },
+        shortDescription: { type: "string" },
+      },
+      required: ["categoryId", "locationId", "communityId", "priority", "shortDescription"],
+    };
+
+    let geminiRes: Response;
+    try {
+      geminiRes = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model,
-          temperature: 0.2,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
+          systemInstruction: {
+            parts: [{ text: systemText }],
+          },
+          contents: [
+            {
+              parts: [{ text: userText }],
+            },
           ],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+            responseJsonSchema,
+          },
         }),
       });
     } catch (e) {
-      console.error("[triage-issue] OpenAI fetch failed:", e);
+      console.error("[triage-issue] Gemini fetch failed:", e);
       return jsonResponse({ error: "Upstream AI request failed" }, 502);
     }
 
-    if (!openaiRes.ok) {
-      const errText = await openaiRes.text();
-      console.error("[triage-issue] OpenAI error status:", openaiRes.status, errText);
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error("[triage-issue] Gemini error status:", geminiRes.status, errText);
       return jsonResponse(
         { error: "AI provider error", details: errText.slice(0, 500) },
         502,
       );
     }
 
-    let openaiJson: unknown;
+    let geminiJson: unknown;
     try {
-      openaiJson = await openaiRes.json();
+      geminiJson = await geminiRes.json();
     } catch (e) {
-      console.error("[triage-issue] OpenAI response JSON parse failed:", e);
+      console.error("[triage-issue] Gemini response JSON parse failed:", e);
       return jsonResponse({ error: "Invalid AI response" }, 502);
     }
 
-    const content = (openaiJson as { choices?: { message?: { content?: string } }[] })
-      ?.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.trim()) {
-      console.error("[triage-issue] Empty OpenAI content:", openaiJson);
+    const rawText = extractGeminiText(geminiJson);
+    if (!rawText?.trim()) {
+      console.error("[triage-issue] Empty Gemini text:", geminiJson);
       return jsonResponse({ error: "Empty AI content" }, 502);
     }
 
     let raw: TriageLLMResult;
     try {
-      raw = parseOpenAIContent(content);
+      raw = parseTriageJson(rawText.trim());
     } catch (e) {
-      console.error("[triage-issue] Failed to parse model JSON:", e, content);
+      console.error("[triage-issue] Failed to parse model JSON:", e, rawText);
       return jsonResponse({ error: "Invalid AI JSON payload" }, 502);
     }
 
     const categoryId = normalizeCategory(raw.categoryId);
-    const priority = normalizePriority(raw.priority);
+    const priority = normalizePriorityToEnglish(raw.priority);
+
     let shortDescription = raw.shortDescription.trim();
     if (shortDescription.length < 10) {
       shortDescription = `${shortDescription} (uzupełnij opis — min. 10 znaków.)`.slice(0, 2000);
@@ -251,12 +306,18 @@ Zwróć WYŁĄCZNIE jeden obiekt JSON z polami: categoryId, locationId, priority
     }
 
     const locationIdTrim = raw.locationId.trim();
-    const locationUnrecognized = !isUuid(locationIdTrim) || !buildingIdSet.has(locationIdTrim);
+    const locationUnrecognized = !isUuid(locationIdTrim) || !locationById.has(locationIdTrim);
     const locationId = locationUnrecognized ? "" : locationIdTrim;
+
+    const resolvedLoc = locationId ? locationById.get(locationId) : undefined;
+    const communityId = resolvedLoc
+      ? (resolvedLoc.community_id?.trim() ?? "")
+      : "";
 
     const out: TriageSuccessBody = {
       categoryId,
       locationId,
+      communityId,
       priority,
       shortDescription,
       locationUnrecognized,

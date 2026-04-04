@@ -5,7 +5,11 @@ import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
 import { ISSUE_CATEGORY_OPTIONS } from "@/lib/issueCategoryOptions";
-import { sortLocationsByDistanceKm } from "@/lib/geo";
+import {
+  FIELD_SERVICE_AUTO_SELECT_MAX_M,
+  getFieldServiceAutoSelectLocation,
+  sortLocationsByDistanceKm,
+} from "@/lib/geo";
 import { useCreateIssue, createIssueSchema, type CreateIssueFormValues } from "@/hooks/useCreateIssue";
 import { useProperties, type PropertyListRow } from "@/hooks/useProperties";
 import { Button } from "@/components/ui/button";
@@ -225,11 +229,22 @@ export function CreateIssueForm({
     if (defaultLocationId) return;
     if (!userCoords || sortedProperties.length === 0) return;
     if (geoAppliedRef.current) return;
-    const first = sortedProperties[0];
-    if (!first?.id) return;
+
+    const pick = getFieldServiceAutoSelectLocation(
+      sortedProperties,
+      userCoords.lat,
+      userCoords.lon,
+      FIELD_SERVICE_AUTO_SELECT_MAX_M,
+    );
     geoAppliedRef.current = true;
-    form.setValue("location_id", first.id, { shouldValidate: true });
-    form.setValue("community_id", first.communityId ?? "", { shouldValidate: true });
+    if (!pick) {
+      toast.info(
+        "Najbliższy budynek jest dalej niż 2 km lub brak współrzędnych na liście — wybierz lokalizację ręcznie.",
+      );
+      return;
+    }
+    form.setValue("location_id", pick.row.id, { shouldValidate: true });
+    form.setValue("community_id", pick.row.communityId ?? "", { shouldValidate: true });
   }, [fieldServiceMode, enabled, defaultLocationId, userCoords, sortedProperties, form]);
 
   const watchedLocationId = useWatch({ control: form.control, name: "location_id" });
@@ -282,10 +297,17 @@ export function CreateIssueForm({
             form.setValue("community_id", row.communityId);
           }
         } else if (fieldServiceMode && userCoords && sortedProperties.length > 0) {
-          const first = sortedProperties[0];
-          form.setValue("location_id", first.id);
-          form.setValue("community_id", first.communityId ?? "");
-          geoAppliedRef.current = true;
+          const pick = getFieldServiceAutoSelectLocation(
+            sortedProperties,
+            userCoords.lat,
+            userCoords.lon,
+            FIELD_SERVICE_AUTO_SELECT_MAX_M,
+          );
+          if (pick) {
+            form.setValue("location_id", pick.row.id);
+            form.setValue("community_id", pick.row.communityId ?? "");
+            geoAppliedRef.current = true;
+          }
         }
         onSuccess?.();
       },
