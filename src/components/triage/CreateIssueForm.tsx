@@ -53,6 +53,10 @@ export type CreateIssueFormProps = {
    * wstaw domyślnie najbliższy budynek i `community_id`.
    */
   fieldServiceMode?: boolean;
+  /**
+   * Asystent AI (Edge triage): increment `version` to apply partial values via RHF `setValue`.
+   */
+  aiPrefill?: { version: number; values: Partial<CreateIssueFormValues> };
   className?: string;
 };
 
@@ -143,6 +147,7 @@ export function CreateIssueForm({
   onCancel,
   enabled = true,
   fieldServiceMode = false,
+  aiPrefill,
   className,
 }: CreateIssueFormProps) {
   const { data: properties = [], isLoading: propertiesLoading } = useProperties(enabled);
@@ -236,6 +241,29 @@ export function CreateIssueForm({
       form.setValue("community_id", row.communityId ?? "", { shouldValidate: true });
     }
   }, [watchedLocationId, properties, form]);
+
+  useEffect(() => {
+    if (!enabled || !aiPrefill) return;
+    const v = aiPrefill.values;
+    if (v.location_id !== undefined) {
+      form.setValue("location_id", v.location_id, { shouldValidate: true, shouldDirty: true });
+      if (v.location_id === "") {
+        form.setValue("community_id", "", { shouldValidate: true, shouldDirty: true });
+      }
+    }
+    if (v.community_id !== undefined) {
+      form.setValue("community_id", v.community_id ?? "", { shouldValidate: true, shouldDirty: true });
+    }
+    if (v.category !== undefined) {
+      form.setValue("category", v.category, { shouldValidate: true, shouldDirty: true });
+    }
+    if (v.priority !== undefined) {
+      form.setValue("priority", v.priority, { shouldValidate: true, shouldDirty: true });
+    }
+    if (v.description !== undefined) {
+      form.setValue("description", v.description, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [aiPrefill?.version, enabled, form, aiPrefill]);
 
   function onSubmit(values: CreateIssueFormValues) {
     createMut.mutate(values, {
