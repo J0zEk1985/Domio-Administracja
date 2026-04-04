@@ -1,11 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { CreateIssueDialog } from "@/components/triage/CreateIssueDialog";
 import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
@@ -302,16 +296,7 @@ export function TriageIssueListPanel({
         ) : null}
       </div>
 
-      <Dialog open={newIssueOpen} onOpenChange={setNewIssueOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nowe zgłoszenie</DialogTitle>
-            <DialogDescription>
-              Formularz tworzenia zgłoszenia zostanie podłączony w kolejnej iteracji.
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
+      <CreateIssueDialog open={newIssueOpen} onOpenChange={setNewIssueOpen} />
 
       <ScrollArea className="min-h-0 flex-1 pr-2">
         <div className="flex flex-col gap-2 pb-4">

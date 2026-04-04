@@ -9,7 +9,7 @@ import {
 } from "@/lib/propertyIssuesGrouping";
 import { IssueDetailsPanel } from "@/components/triage/IssueDetailsPanel";
 import { PropertyIssueRow } from "@/components/property/PropertyIssueRow";
-import { NewPropertyIssueDialog } from "@/components/property/NewPropertyIssueDialog";
+import { CreateIssueDialog } from "@/components/triage/CreateIssueDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -142,10 +142,10 @@ export function PropertyIssuesTab({ locationId }: PropertyIssuesTabProps) {
         </div>
       )}
 
-      <NewPropertyIssueDialog
+      <CreateIssueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        locationId={locationId}
+        defaultLocationId={locationId}
       />
 
       <Sheet

@@ -1,8 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { toast } from "@/components/ui/sonner";
-import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
-import { triageIssuesQueryKey } from "@/hooks/useTriageIssues";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import type { Database } from "@/types/supabase";
 
@@ -74,73 +71,5 @@ export function usePropertyIssues(locationId: string | undefined, enabled: boole
     staleTime: STALE_MS,
     gcTime: GC_MS,
     refetchOnMount: "always",
-  });
-}
-
-export type CreatePropertyIssueInput = {
-  locationId: string;
-  description: string;
-  category: string;
-  priority: Database["public"]["Enums"]["issue_priority_enum"];
-};
-
-export function useCreatePropertyIssue() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (input: CreatePropertyIssueInput) => {
-      const desc = input.description.trim();
-      if (!desc) throw new Error("Opis zgłoszenia jest wymagany.");
-
-      const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
-      if (orgErr) {
-        console.error("[useCreatePropertyIssue] get_my_org_id_safe:", orgErr);
-        throw orgErr;
-      }
-      if (!orgId || String(orgId).trim() === "") {
-        throw new Error("Brak kontekstu organizacji.");
-      }
-
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
-      if (userErr) {
-        console.error("[useCreatePropertyIssue] getUser:", userErr);
-        throw userErr;
-      }
-
-      const { error } = await supabase.from("property_issues").insert({
-        org_id: String(orgId),
-        location_id: input.locationId,
-        description: desc,
-        category: input.category.trim() || null,
-        priority: input.priority,
-        status: "new",
-        reporter_id: user?.id ?? null,
-        source: "admin_property_tab",
-      });
-
-      if (error) {
-        console.error("[useCreatePropertyIssue] insert:", error);
-        throw error;
-      }
-    },
-    onSuccess: async (_data, variables) => {
-      toast.success("Zgłoszenie zostało zapisane.");
-      await qc.invalidateQueries({ queryKey: propertyIssuesQueryKey(variables.locationId) });
-      await qc.invalidateQueries({ queryKey: triageIssuesQueryKey() });
-      await qc.invalidateQueries({ queryKey: pendingIssuesCountQueryKey() });
-    },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : typeof err === "object" && err !== null && "message" in err
-            ? String((err as { message: unknown }).message)
-            : "Nie udało się utworzyć zgłoszenia.";
-      toast.error(msg);
-      console.error("[useCreatePropertyIssue]", err);
-    },
   });
 }
