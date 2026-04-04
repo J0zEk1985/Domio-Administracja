@@ -33,6 +33,7 @@ type LocationName = { name: string | null };
 
 export type DashboardOverdueIssue = {
   id: string;
+  locationId: string | null;
   /** SLA deadline (created_at + 48h) — display as due date */
   dueAtIso: string;
   buildingName: string;
@@ -41,6 +42,7 @@ export type DashboardOverdueIssue = {
 
 export type DashboardMissedCleaning = {
   id: string;
+  locationId: string | null;
   dueAtIso: string;
   buildingName: string;
   detail: string;
@@ -48,6 +50,7 @@ export type DashboardMissedCleaning = {
 
 export type DashboardExpiringInspection = {
   id: string;
+  locationId: string | null;
   dueAtIso: string;
   buildingName: string;
   detail: string;
@@ -55,6 +58,7 @@ export type DashboardExpiringInspection = {
 
 export type DashboardExpiringContract = {
   id: string;
+  locationId: string | null;
   dueAtIso: string;
   buildingName: string;
   detail: string;
@@ -77,7 +81,7 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
     const cutoff = addHours(new Date(), -OPEN_ISSUE_SLA_HOURS).toISOString();
     const { data, error } = await supabase
       .from("property_issues")
-      .select("id, created_at, category, location:cleaning_locations(name)")
+      .select("id, location_id, created_at, category, description, location:cleaning_locations(name)")
       .eq("org_id", orgId)
       .in("status", ACTIVE_ISSUE_STATUSES)
       .lt("created_at", cutoff)
@@ -91,8 +95,10 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
 
     const rows = (data ?? []) as {
       id: string;
+      location_id: string | null;
       created_at: string | null;
       category: string | null;
+      description: string | null;
       location: LocationName | null;
     }[];
 
@@ -100,9 +106,12 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
       const created = row.created_at ? parseISO(row.created_at) : new Date();
       const due = addHours(created, OPEN_ISSUE_SLA_HOURS);
       const buildingName = row.location?.name?.trim() || "—";
-      const detail = row.category?.trim() || "Usterka";
+      const cat = row.category?.trim();
+      const desc = row.description?.trim();
+      const detail = cat && desc ? `${cat} — ${desc}` : cat ?? desc ?? "Usterka";
       return {
         id: row.id,
+        locationId: row.location_id,
         dueAtIso: due.toISOString(),
         buildingName,
         detail,
@@ -119,7 +128,7 @@ async function fetchMissedCleaning(orgId: string): Promise<DashboardMissedCleani
     const nowIso = new Date().toISOString();
     const { data, error } = await supabase
       .from("cleaning_tasks")
-      .select("id, scheduled_at, task_type, location:cleaning_locations(name)")
+      .select("id, location_id, scheduled_at, task_type, location:cleaning_locations(name)")
       .eq("org_id", orgId)
       .in("status", INCOMPLETE_TASK_STATUSES)
       .lt("scheduled_at", nowIso)
@@ -133,6 +142,7 @@ async function fetchMissedCleaning(orgId: string): Promise<DashboardMissedCleani
 
     const rows = (data ?? []) as {
       id: string;
+      location_id: string | null;
       scheduled_at: string;
       task_type: Database["public"]["Enums"]["task_type"];
       location: LocationName | null;
@@ -140,6 +150,7 @@ async function fetchMissedCleaning(orgId: string): Promise<DashboardMissedCleani
 
     return rows.map((row) => ({
       id: row.id,
+      locationId: row.location_id,
       dueAtIso: row.scheduled_at,
       buildingName: row.location?.name?.trim() || "—",
       detail: formatTaskType(row.task_type),
@@ -168,7 +179,7 @@ async function fetchExpiringInspections(orgId: string): Promise<DashboardExpirin
     const horizon = addDays(new Date(), INSPECTION_HORIZON_DAYS).toISOString();
     const { data, error } = await supabase
       .from("inspections_hybrid")
-      .select("id, next_due_date, title, category, location:cleaning_locations(name)")
+      .select("id, location_id, next_due_date, title, category, location:cleaning_locations(name)")
       .eq("org_id", orgId)
       .lte("next_due_date", horizon)
       .order("next_due_date", { ascending: true })
@@ -181,6 +192,7 @@ async function fetchExpiringInspections(orgId: string): Promise<DashboardExpirin
 
     const rows = (data ?? []) as {
       id: string;
+      location_id: string | null;
       next_due_date: string;
       title: string;
       category: string;
@@ -189,6 +201,7 @@ async function fetchExpiringInspections(orgId: string): Promise<DashboardExpirin
 
     return rows.map((row) => ({
       id: row.id,
+      locationId: row.location_id,
       dueAtIso: row.next_due_date,
       buildingName: row.location?.name?.trim() || "—",
       detail: row.title?.trim() || row.category?.trim() || "Przegląd",
@@ -205,7 +218,7 @@ async function fetchExpiringContracts(orgId: string): Promise<DashboardExpiringC
     const { data, error } = await supabase
       .from("property_contracts")
       .select(
-        "id, end_date, type, custom_type_name, location:cleaning_locations!inner(name, org_id), company:companies(name)",
+        "id, location_id, end_date, type, custom_type_name, location:cleaning_locations!inner(name, org_id), company:companies(name)",
       )
       .eq("location.org_id", orgId)
       .not("end_date", "is", null)
@@ -220,6 +233,7 @@ async function fetchExpiringContracts(orgId: string): Promise<DashboardExpiringC
 
     const rows = (data ?? []) as {
       id: string;
+      location_id: string;
       end_date: string | null;
       type: Database["public"]["Enums"]["property_contract_type"];
       custom_type_name: string | null;
@@ -235,6 +249,7 @@ async function fetchExpiringContracts(orgId: string): Promise<DashboardExpiringC
           : contractTypeLabel(row.type);
       return {
         id: row.id,
+        locationId: row.location_id,
         dueAtIso: end.includes("T") ? end : `${end}T12:00:00.000Z`,
         buildingName: row.location?.name?.trim() || "—",
         detail: row.company?.name?.trim() ? `${row.company.name.trim()} · ${typeLabel}` : typeLabel,

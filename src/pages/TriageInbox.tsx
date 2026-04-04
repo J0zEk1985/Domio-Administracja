@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { GripVertical } from "lucide-react";
 
@@ -13,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function TriageInbox() {
+  const [searchParams] = useSearchParams();
   const { data: issues, isLoading } = useTriageIssues();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<TriageInboxFiltersState>(DEFAULT_TRIAGE_INBOX_FILTERS);
@@ -32,13 +34,18 @@ export default function TriageInbox() {
       setSelectedId(null);
       return;
     }
+    const idFromUrl = searchParams.get("id")?.trim();
+    if (idFromUrl && issues.some((i) => i.id === idFromUrl)) {
+      setSelectedId(idFromUrl);
+      return;
+    }
     if (filteredIssues.length === 0) {
       setSelectedId(null);
       return;
     }
     if (selectedId && filteredIssues.some((i) => i.id === selectedId)) return;
     setSelectedId(filteredIssues[0]!.id);
-  }, [issues, filteredIssues, selectedId]);
+  }, [issues, filteredIssues, selectedId, searchParams]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] min-h-[480px] flex-col gap-4 p-4 md:p-6">
