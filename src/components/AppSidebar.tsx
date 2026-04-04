@@ -8,6 +8,8 @@ import {
   ListTodo,
   Users,
   Settings,
+  Zap,
+  Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
@@ -43,6 +45,8 @@ const navItems: NavItem[] = [
   { title: "Wspólnoty", url: "/communities", icon: Landmark },
   { title: "Budynki", url: "/properties", icon: MapPin },
   { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning },
+  { title: "Panel terenowy", url: "/quick-actions", icon: Zap },
+  { title: "Tablica ogłoszeń", url: "/e-board", icon: Megaphone },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ShieldCheck },
   { title: "Zadania", url: "/tasks", icon: ListTodo },

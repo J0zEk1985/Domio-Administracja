@@ -24,6 +24,8 @@ import InspectionsPage from "./pages/InspectionsPage.tsx";
 import CompanyDetailsPage from "./pages/CompanyDetailsPage.tsx";
 import BoardPortal from "./pages/BoardPortal.tsx";
 import TriageInbox from "./pages/TriageInbox.tsx";
+import QuickActions from "./pages/QuickActions.tsx";
+import EBoard from "./pages/EBoard.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +53,8 @@ const App = () => (
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/:id" element={<MemberDetails />} />
                 <Route path="/issues" element={<TriageInbox />} />
+                <Route path="/quick-actions" element={<QuickActions />} />
+                <Route path="/e-board" element={<EBoard />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/inspections" element={<InspectionsPage />} />

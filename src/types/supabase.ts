@@ -711,6 +711,8 @@ export type Database = {
       e_board_messages: {
         Row: {
           audience: string | null
+          author_id: string | null
+          community_id: string | null
           content: string
           created_at: string | null
           created_by: string | null
@@ -719,11 +721,16 @@ export type Database = {
           id: string
           is_active: boolean | null
           location_id: string | null
+          msg_type: Database["public"]["Enums"]["eboard_msg_type"]
           org_id: string
+          status: Database["public"]["Enums"]["eboard_msg_status"]
           title: string
+          valid_until: string | null
         }
         Insert: {
           audience?: string | null
+          author_id?: string | null
+          community_id?: string | null
           content: string
           created_at?: string | null
           created_by?: string | null
@@ -732,11 +739,16 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           location_id?: string | null
+          msg_type?: Database["public"]["Enums"]["eboard_msg_type"]
           org_id: string
+          status?: Database["public"]["Enums"]["eboard_msg_status"]
           title: string
+          valid_until?: string | null
         }
         Update: {
           audience?: string | null
+          author_id?: string | null
+          community_id?: string | null
           content?: string
           created_at?: string | null
           created_by?: string | null
@@ -745,10 +757,27 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           location_id?: string | null
+          msg_type?: Database["public"]["Enums"]["eboard_msg_type"]
           org_id?: string
+          status?: Database["public"]["Enums"]["eboard_msg_status"]
           title?: string
+          valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "e_board_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "e_board_messages_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "e_board_messages_created_by_fkey"
             columns: ["created_by"]
@@ -4103,6 +4132,8 @@ export type Database = {
       community_post_status: "active" | "completed" | "cancelled" | "deleted"
       community_post_type: "offer" | "request" | "event" | "general"
       company_category: "contractor" | "insurer" | "utility" | "other"
+      eboard_msg_status: "published" | "pending_moderation" | "archived"
+      eboard_msg_type: "official" | "advertisement" | "resident"
       fleet_role: "admin" | "driver"
       inspection_status: "positive" | "positive_with_defects" | "negative"
       inspection_type:
@@ -4298,6 +4329,8 @@ export const Constants = {
       community_post_status: ["active", "completed", "cancelled", "deleted"],
       community_post_type: ["offer", "request", "event", "general"],
       company_category: ["contractor", "insurer", "utility", "other"],
+      eboard_msg_status: ["published", "pending_moderation", "archived"],
+      eboard_msg_type: ["official", "advertisement", "resident"],
       fleet_role: ["admin", "driver"],
       inspection_status: ["positive", "positive_with_defects", "negative"],
       inspection_type: [
