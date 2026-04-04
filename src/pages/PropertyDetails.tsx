@@ -25,6 +25,7 @@ import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralIn
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
 import { PropertyAutomationsTab } from "@/components/property/PropertyAutomationsTab";
+import { PropertyLocalInspectionsTab } from "@/components/property/PropertyLocalInspectionsTab";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
 import { PropertyIssuesTab } from "@/components/property/PropertyIssuesTab";
 import { PropertyTeamTab } from "@/components/property/PropertyTeamTab";
@@ -165,7 +166,7 @@ export default function PropertyDetails() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+        <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
           <TabsTrigger value="general" className="text-xs sm:text-sm">
             Informacje ogólne
           </TabsTrigger>
@@ -192,6 +193,9 @@ export default function PropertyDetails() {
               <Zap className="h-3.5 w-3.5 shrink-0 text-amber-600/90" aria-hidden />
               Automatyzacje
             </span>
+          </TabsTrigger>
+          <TabsTrigger value="local-inspections" className="text-xs sm:text-sm leading-tight">
+            Przeglądy lokalowe
           </TabsTrigger>
         </TabsList>
 
@@ -320,6 +324,10 @@ export default function PropertyDetails() {
 
         <TabsContent value="automations" className="mt-6">
           <PropertyAutomationsTab locationId={property.id} />
+        </TabsContent>
+
+        <TabsContent value="local-inspections" className="mt-6">
+          <PropertyLocalInspectionsTab locationId={property.id} />
         </TabsContent>
       </Tabs>
     </div>

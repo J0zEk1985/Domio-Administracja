@@ -14,6 +14,7 @@ import Team from "./pages/Team.tsx";
 import MemberDetails from "./pages/MemberDetails.tsx";
 import Properties from "./pages/Properties.tsx";
 import PropertyDetails from "./pages/PropertyDetails.tsx";
+import CampaignDetails from "./pages/CampaignDetails.tsx";
 import TaskDetails from "./pages/TaskDetails.tsx";
 import Tasks from "./pages/Tasks.tsx";
 import ContractsPage from "./pages/ContractsPage.tsx";
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/companies/:id" element={<CompanyDetailsPage />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id/tasks/:taskId" element={<TaskDetails />} />
+                <Route path="/properties/:id/inspection-campaigns/:campaignId" element={<CampaignDetails />} />
                 <Route path="/properties/:id" element={<PropertyDetails />} />
                 <Route path="/property/:id" element={<Index />} />
               </Route>
