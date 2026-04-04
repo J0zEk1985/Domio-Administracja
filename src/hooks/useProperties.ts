@@ -3,16 +3,9 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import { getOrgAndActor, hasLocationAdministrationAccess } from "@/lib/orgAccess";
 import { communityQueryKeys } from "@/hooks/useCommunities";
-import {
-  mergeVisibilityConfigWithAdminData,
-  parsePropertyAdminData,
-  type PropertyAdminData,
-} from "@/types/propertyAdminData";
 
 const STALE_MS = 0;
 const GC_MS = 30_000;
-
-export type { PropertyAdminData };
 
 export const PROPERTIES_QUERY_KEY = "properties" as const;
 
@@ -127,11 +120,13 @@ export function useProperties(enabled: boolean = true) {
 export type PropertyDetail = {
   id: string;
   orgId: string;
+  /** Nazwa fizyczna budynku (`cleaning_locations.name`). */
   name: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   /** `cleaning_locations.community_id` — optional link to `communities`. */
   communityId: string | null;
-  adminData: PropertyAdminData;
   /** `cleaning_locations.c_kob_building_id` — identifier in państwowym systemie c-KOB (pull sync). */
   cKobBuildingId: string | null;
   /** `cleaning_locations.board_portal_token` — public board portal URL. */
@@ -150,7 +145,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const { data: row, error } = await supabase
     .from("cleaning_locations")
     .select(
-      "id, name, address, org_id, community_id, is_admin_active, square_meters, visibility_config, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
+      "id, name, address, org_id, community_id, is_admin_active, latitude, longitude, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
     )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
@@ -174,16 +169,15 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
     }
   }
 
-  const adminData = parsePropertyAdminData(row.visibility_config, row.square_meters);
-
   const ckob = row.c_kob_building_id?.trim();
   return {
     id: row.id,
     orgId: row.org_id,
     name: row.name?.trim() || "—",
     address: row.address?.trim() || "—",
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
     communityId: row.community_id ?? null,
-    adminData,
     cKobBuildingId: ckob && ckob.length > 0 ? ckob : null,
     boardPortalToken: row.board_portal_token ?? "",
     publicReportToken: row.public_report_token ?? "",
@@ -320,7 +314,10 @@ export function usePropertyAdministrators(propertyId: string | undefined, enable
 }
 
 export type PropertyGeneralSavePayload = {
-  adminData: PropertyAdminData;
+  /** `cleaning_locations.name` — nazwa wyświetlana budynku. */
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
   /** Normalized: trim; empty → persisted as `null`. */
   cKobBuildingId: string | null;
   /** `cleaning_locations.community_id`. */
@@ -338,7 +335,7 @@ async function updatePropertyGeneralRequest(
 
   const { data: row, error: fetchErr } = await supabase
     .from("cleaning_locations")
-    .select("visibility_config, org_id, is_admin_active")
+    .select("org_id, is_admin_active")
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
     .maybeSingle();
@@ -351,12 +348,17 @@ async function updatePropertyGeneralRequest(
     throw new Error("Nie znaleziono nieruchomości lub brak dostępu.");
   }
 
-  const nextConfig = mergeVisibilityConfigWithAdminData(row.visibility_config, payload.adminData);
+  const nameTrimmed = payload.name.trim();
+  if (nameTrimmed.length === 0) {
+    throw new Error("Nazwa budynku nie może być pusta.");
+  }
 
   const { error: upErr } = await supabase
     .from("cleaning_locations")
     .update({
-      visibility_config: nextConfig,
+      name: nameTrimmed,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
       c_kob_building_id: payload.cKobBuildingId,
       community_id: payload.communityId,
     })
@@ -383,6 +385,8 @@ export function useUpdatePropertyGeneral(propertyId: string | undefined) {
       await qc.invalidateQueries({ queryKey: communityQueryKeys.all });
     },
     onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się zapisać konfiguracji budynku.";
+      toast.error(msg);
       console.error("[useUpdatePropertyGeneral]", e);
     },
   });

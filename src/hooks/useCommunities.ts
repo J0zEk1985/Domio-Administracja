@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/sonner";
 import type { Database } from "@/types/supabase";
 
 type CommunityRow = Database["public"]["Tables"]["communities"]["Row"];
@@ -95,8 +96,12 @@ export function useUpdateCommunity() {
       orgId: string;
       updates: CommunityUpdate;
     }) => {
-      const { id, updates } = args;
-      const { error } = await supabase.from("communities").update(updates).eq("id", id);
+      const { id, orgId, updates } = args;
+      const { error } = await supabase
+        .from("communities")
+        .update(updates)
+        .eq("id", id)
+        .eq("org_id", orgId);
 
       if (error) {
         console.error("[useUpdateCommunity]", error);
@@ -110,6 +115,12 @@ export function useUpdateCommunity() {
       await queryClient.invalidateQueries({
         queryKey: communityQueryKeys.detail(variables.id),
       });
+      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się zapisać danych wspólnoty.";
+      toast.error(msg);
+      console.error("[useUpdateCommunity]", e);
     },
   });
 }

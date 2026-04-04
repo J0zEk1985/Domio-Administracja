@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CommunityDomainEditor } from "@/components/communities/CommunityDomainEditor";
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -152,6 +153,8 @@ export default function CommunityDetails() {
             NIP: <span className="text-foreground/90 tabular-nums">{community.nip?.trim() || "—"}</span>
           </p>
         </div>
+
+        <CommunityDomainEditor community={community} orgId={orgId} />
       </div>
 
       <section className="space-y-4">

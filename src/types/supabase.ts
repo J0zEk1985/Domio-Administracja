@@ -542,29 +542,50 @@ export type Database = {
       }
       communities: {
         Row: {
+          access_codes: Json
+          board_email: string | null
+          board_members: Json
           created_at: string
+          financial_details: Json
           id: string
+          legal_name: string | null
           name: string
           nip: string | null
+          operational_notes: Json
           org_id: string
+          regon: string | null
           status: string | null
           updated_at: string
         }
         Insert: {
+          access_codes?: Json
+          board_email?: string | null
+          board_members?: Json
           created_at?: string
+          financial_details?: Json
           id?: string
+          legal_name?: string | null
           name: string
           nip?: string | null
+          operational_notes?: Json
           org_id: string
+          regon?: string | null
           status?: string | null
           updated_at?: string
         }
         Update: {
+          access_codes?: Json
+          board_email?: string | null
+          board_members?: Json
           created_at?: string
+          financial_details?: Json
           id?: string
+          legal_name?: string | null
           name?: string
           nip?: string | null
+          operational_notes?: Json
           org_id?: string
+          regon?: string | null
           status?: string | null
           updated_at?: string
         }
