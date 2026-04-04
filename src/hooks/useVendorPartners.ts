@@ -15,6 +15,11 @@ export type FetchOrgVendorPartnersOptions = {
    * Does not join contracts or filter by location — org scope only.
    */
   activeOnly?: boolean;
+  /**
+   * When set, restricts to these company categories (column `category` on `vendor_partners`).
+   * Omit to load all org partners (no category filter). Use full enum list to mirror “all B2B” explicitly.
+   */
+  categoriesIn?: Database["public"]["Enums"]["company_category"][];
 };
 
 export async function fetchOrgVendorPartners(
@@ -37,6 +42,10 @@ export async function fetchOrgVendorPartners(
 
   if (options.activeOnly) {
     query = query.or("status.eq.active,status.is.null");
+  }
+
+  if (options.categoriesIn && options.categoriesIn.length > 0) {
+    query = query.in("category", options.categoriesIn);
   }
 
   const { data, error } = await query;

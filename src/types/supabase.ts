@@ -578,6 +578,79 @@ export type Database = {
           },
         ]
       }
+      community_board: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          event_date: string | null
+          expires_at: string | null
+          id: string
+          is_free: boolean
+          location_id: string
+          org_id: string
+          post_type: Database["public"]["Enums"]["community_post_type"]
+          price: number | null
+          status: Database["public"]["Enums"]["community_post_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          event_date?: string | null
+          expires_at?: string | null
+          id?: string
+          is_free?: boolean
+          location_id: string
+          org_id: string
+          post_type: Database["public"]["Enums"]["community_post_type"]
+          price?: number | null
+          status?: Database["public"]["Enums"]["community_post_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          event_date?: string | null
+          expires_at?: string | null
+          id?: string
+          is_free?: boolean
+          location_id?: string
+          org_id?: string
+          post_type?: Database["public"]["Enums"]["community_post_type"]
+          price?: number | null
+          status?: Database["public"]["Enums"]["community_post_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_board_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_board_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_board_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -1467,6 +1540,73 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_offers: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          location_id: string | null
+          org_id: string
+          promo_code: string | null
+          redirect_url: string | null
+          title: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          location_id?: string | null
+          org_id: string
+          promo_code?: string | null
+          redirect_url?: string | null
+          title: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          location_id?: string | null
+          org_id?: string
+          promo_code?: string | null
+          redirect_url?: string | null
+          title?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_offers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_offers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_offers_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pricing_plans: {
         Row: {
           app_id: string
@@ -2223,6 +2363,57 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resident_configs: {
+        Row: {
+          created_at: string
+          enable_community_board: boolean
+          enable_partner_offers: boolean
+          id: string
+          location_id: string
+          org_id: string
+          show_cleaning_status: boolean
+          show_service_tracker: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enable_community_board?: boolean
+          enable_partner_offers?: boolean
+          id?: string
+          location_id: string
+          org_id: string
+          show_cleaning_status?: boolean
+          show_service_tracker?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enable_community_board?: boolean
+          enable_partner_offers?: boolean
+          id?: string
+          location_id?: string
+          org_id?: string
+          show_cleaning_status?: boolean
+          show_service_tracker?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_configs_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resident_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3888,6 +4079,8 @@ export type Database = {
       }
     }
     Enums: {
+      community_post_status: "active" | "completed" | "cancelled" | "deleted"
+      community_post_type: "offer" | "request" | "event" | "general"
       company_category: "contractor" | "insurer" | "utility" | "other"
       fleet_role: "admin" | "driver"
       inspection_status: "positive" | "positive_with_defects" | "negative"
@@ -4081,6 +4274,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      community_post_status: ["active", "completed", "cancelled", "deleted"],
+      community_post_type: ["offer", "request", "event", "general"],
       company_category: ["contractor", "insurer", "utility", "other"],
       fleet_role: ["admin", "driver"],
       inspection_status: ["positive", "positive_with_defects", "negative"],

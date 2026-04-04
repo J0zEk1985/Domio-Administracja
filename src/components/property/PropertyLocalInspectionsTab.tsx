@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { format, isValid, parseISO } from "date-fns";
-import { pl } from "date-fns/locale";
+import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { ClipboardList, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -14,8 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -32,17 +39,13 @@ import {
   useCreateInspectionCampaign,
   type InspectionCampaignWithVendorAndRecords,
 } from "@/hooks/useInspectionCampaigns";
-import { useVendorPartners } from "@/hooks/useVendorPartners";
+import { useGlobalActiveVendorPartnersForRouting } from "@/hooks/useGlobalActiveVendorPartnersForRouting";
+import { formatInspectionCampaignSchedule } from "@/lib/formatInspectionCampaignSchedule";
 import { cn } from "@/lib/utils";
-
-function formatCampaignDates(startIso: string, endIso: string): string {
-  const a = parseISO(startIso);
-  const b = parseISO(endIso);
-  if (!isValid(a) || !isValid(b)) {
-    return "—";
-  }
-  return `${format(a, "d MMM yyyy", { locale: pl })} — ${format(b, "d MMM yyyy", { locale: pl })}`;
-}
+import {
+  createInspectionCampaignSchema,
+  type CreateInspectionCampaignFormValues,
+} from "@/schemas/inspectionCampaignSchema";
 
 function CampaignCard({
   campaign,
@@ -67,7 +70,14 @@ function CampaignCard({
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="min-w-0 space-y-1">
           <p className="font-medium leading-snug text-foreground">{campaign.title}</p>
-          <p className="text-sm text-muted-foreground">{formatCampaignDates(campaign.start_date, campaign.end_date)}</p>
+          <p className="text-sm text-muted-foreground">
+            {formatInspectionCampaignSchedule(
+              campaign.start_date,
+              campaign.end_date,
+              campaign.start_time,
+              campaign.end_time,
+            )}
+          </p>
           <p className="text-xs text-muted-foreground">
             Wykonawca: <span className="text-foreground/90">{vendorName}</span>
           </p>
@@ -86,6 +96,16 @@ function CampaignCard({
   );
 }
 
+const defaultCampaignForm: CreateInspectionCampaignFormValues = {
+  title: "",
+  category: "local_inspection",
+  startDate: "",
+  endDate: "",
+  startTime: "",
+  endTime: "",
+  vendorId: "__none__",
+};
+
 function CreateCampaignDialog({
   locationId,
   open,
@@ -95,47 +115,40 @@ function CreateCampaignDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const vendorsQuery = useVendorPartners(open);
+  const vendorsQuery = useGlobalActiveVendorPartnersForRouting(open);
   const createMutation = useCreateInspectionCampaign();
 
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("local_inspection");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [vendorId, setVendorId] = useState<string>("__none__");
+  const form = useForm<CreateInspectionCampaignFormValues>({
+    resolver: zodResolver(createInspectionCampaignSchema),
+    defaultValues: defaultCampaignForm,
+  });
 
-  const reset = () => {
-    setTitle("");
-    setCategory("local_inspection");
-    setStartDate("");
-    setEndDate("");
-    setVendorId("__none__");
-  };
+  const defaultValues = useMemo(() => defaultCampaignForm, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const t = title.trim();
-    if (!t) {
-      toast.error("Podaj tytuł kampanii.");
-      return;
+  useEffect(() => {
+    if (open) {
+      form.reset(defaultValues);
     }
-    if (!startDate || !endDate) {
-      toast.error("Wybierz daty rozpoczęcia i zakończenia.");
-      return;
-    }
+  }, [open, defaultValues, form]);
+
+  function onSubmit(values: CreateInspectionCampaignFormValues) {
+    const st = values.startTime?.trim() ?? "";
+    const et = values.endTime?.trim() ?? "";
     createMutation.mutate(
       {
         locationId,
-        title: t,
-        category: category.trim() || "local_inspection",
-        startDate,
-        endDate,
-        vendorId: vendorId === "__none__" ? null : vendorId,
+        title: values.title.trim(),
+        category: values.category.trim() || "local_inspection",
+        startDate: values.startDate,
+        endDate: values.endDate,
+        startTime: st && et ? st : null,
+        endTime: st && et ? et : null,
+        vendorId: values.vendorId === "__none__" ? null : values.vendorId,
       },
       {
         onSuccess: () => {
           toast.success("Kampania została utworzona.");
-          reset();
+          form.reset(defaultCampaignForm);
           onOpenChange(false);
         },
         onError: (err) => {
@@ -144,86 +157,153 @@ function CreateCampaignDialog({
         },
       },
     );
-  };
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) reset();
+        if (!v) {
+          form.reset(defaultCampaignForm);
+        }
         onOpenChange(v);
       }}
     >
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Nowa kampania przeglądu</DialogTitle>
-            <DialogDescription>
-              Utwórz kampanię przeglądów lokalowych dla tego budynku. Listę mieszkań dodasz w szczegółach kampanii.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-title">Tytuł</Label>
-              <Input
-                id="campaign-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="np. Przegląd gazowy"
-                autoComplete="off"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogHeader>
+              <DialogTitle>Nowa kampania przeglądu</DialogTitle>
+              <DialogDescription>
+                Utwórz kampanię przeglądów lokalowych dla tego budynku. Listę mieszkań dodasz w szczegółach
+                kampanii.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tytuł</FormLabel>
+                    <FormControl>
+                      <Input placeholder="np. Przegląd gazowy" autoComplete="off" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-category">Kategoria (wewnętrzna)</Label>
-              <Input
-                id="campaign-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="local_inspection"
-                autoComplete="off"
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategoria (wewnętrzna)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="local_inspection" autoComplete="off" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-start">Data od</Label>
-                <Input
-                  id="campaign-start"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data od</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data do</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-end">Data do</Label>
-                <Input id="campaign-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Godzina rozpoczęcia</FormLabel>
+                      <FormControl>
+                        <Input type="time" step={60} {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Godzina zakończenia</FormLabel>
+                      <FormControl>
+                        <Input type="time" step={60} {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
+              <FormField
+                control={form.control}
+                name="vendorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Wykonawca</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={vendorsQuery.isLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={vendorsQuery.isLoading ? "Ładowanie…" : "Opcjonalnie"}
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">— brak —</SelectItem>
+                        {(vendorsQuery.data ?? []).map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <div className="grid gap-2">
-              <Label>Wykonawca</Label>
-              <Select value={vendorId} onValueChange={setVendorId} disabled={vendorsQuery.isLoading}>
-                <SelectTrigger>
-                  <SelectValue placeholder={vendorsQuery.isLoading ? "Ładowanie…" : "Opcjonalnie"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— brak —</SelectItem>
-                  {(vendorsQuery.data ?? []).map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Anuluj
-            </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Zapisywanie…" : "Utwórz"}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Anuluj
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Zapisywanie…" : "Utwórz"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

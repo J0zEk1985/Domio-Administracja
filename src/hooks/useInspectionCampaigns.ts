@@ -175,8 +175,17 @@ export type CreateInspectionCampaignInput = {
   category: string;
   startDate: string;
   endDate: string;
+  /** Daily window start, HH:mm (mapped to Postgres TIME) or null when omitted */
+  startTime: string | null;
+  /** Daily window end, HH:mm or null */
+  endTime: string | null;
   vendorId: string | null;
 };
+
+function toPostgresTime(hhmm: string): string {
+  const [h, m] = hhmm.trim().split(":");
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}:00`;
+}
 
 async function insertInspectionCampaign(input: CreateInspectionCampaignInput): Promise<string> {
   const actor = await getOrgAndActor();
@@ -217,6 +226,8 @@ async function insertInspectionCampaign(input: CreateInspectionCampaignInput): P
     category: input.category.trim(),
     start_date: input.startDate,
     end_date: input.endDate,
+    start_time: input.startTime ? toPostgresTime(input.startTime) : null,
+    end_time: input.endTime ? toPostgresTime(input.endTime) : null,
     vendor_id: input.vendorId,
   };
 

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { format, isValid, parseISO } from "date-fns";
-import { pl } from "date-fns/locale";
 import { ArrowLeft, ListPlus } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
@@ -33,21 +31,13 @@ import {
   useGenerateUnitRecords,
   useInspectionCampaign,
 } from "@/hooks/useInspectionCampaigns";
+import { formatInspectionCampaignSchedule } from "@/lib/formatInspectionCampaignSchedule";
 import { parseUnitRangeInput } from "@/lib/parseUnitRange";
 import { unitInspectionStatusBadgeClass, unitInspectionStatusLabel } from "@/lib/unitInspectionUi";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/types/supabase";
 
 type UnitInspectionStatus = Database["public"]["Enums"]["unit_inspection_status"];
-
-function formatCampaignDates(startIso: string, endIso: string): string {
-  const a = parseISO(startIso);
-  const b = parseISO(endIso);
-  if (!isValid(a) || !isValid(b)) {
-    return "—";
-  }
-  return `${format(a, "d MMM yyyy", { locale: pl })} — ${format(b, "d MMM yyyy", { locale: pl })}`;
-}
 
 function GenerateUnitsDialog({
   open,
@@ -180,7 +170,14 @@ export default function CampaignDetails() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">
               <h1 className="text-xl font-semibold tracking-tight text-foreground">{campaign.title}</h1>
-              <p className="text-sm text-muted-foreground">{formatCampaignDates(campaign.start_date, campaign.end_date)}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatInspectionCampaignSchedule(
+                  campaign.start_date,
+                  campaign.end_date,
+                  campaign.start_time,
+                  campaign.end_time,
+                )}
+              </p>
               <p className="text-sm text-muted-foreground">
                 Wykonawca: <span className="text-foreground">{vendorName}</span>
               </p>
