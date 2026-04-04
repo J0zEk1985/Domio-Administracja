@@ -85,8 +85,10 @@ export default function QuickActions() {
 
   function handleConfirmAi() {
     if (!preview) return;
+    const match = properties.find((p) => p.id === preview.locationId);
     const values: CreateIssueFormValues = {
       location_id: preview.locationId,
+      community_id: match?.communityId ?? "",
       category: preview.category,
       priority: "medium",
       description: preview.description,
@@ -221,7 +223,7 @@ export default function QuickActions() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <CreateIssueForm enabled={tab === "standard"} />
+              <CreateIssueForm enabled={tab === "standard"} fieldServiceMode />
             </CardContent>
           </Card>
         </TabsContent>

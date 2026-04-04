@@ -10,6 +10,8 @@ const issuePriorityEnum = z.enum(["low", "medium", "high", "critical"]);
 
 export const createIssueSchema = z.object({
   location_id: z.string().uuid({ message: "Wybierz budynek." }),
+  /** Odczyt z `cleaning_locations.community_id` — brak kolumny w `property_issues`, używane w UI. */
+  community_id: z.union([z.string().uuid(), z.literal("")]).optional(),
   category: z.string().min(1, "Wybierz kategorię."),
   priority: issuePriorityEnum,
   description: z.string().min(10, "Opis musi mieć co najmniej 10 znaków."),
@@ -30,6 +32,8 @@ export function useCreateIssue() {
 
   return useMutation({
     mutationFn: async (input: CreateIssueFormValues) => {
+      const { community_id: _communityId, ...insertPayload } = input;
+      void _communityId;
       const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
       if (orgErr) {
         console.error("[useCreateIssue] get_my_org_id_safe:", orgErr);
@@ -53,10 +57,10 @@ export function useCreateIssue() {
 
       const { error } = await supabase.from("property_issues").insert({
         org_id: String(orgId),
-        location_id: input.location_id,
-        category: input.category.trim(),
-        priority: input.priority,
-        description: input.description.trim(),
+        location_id: insertPayload.location_id,
+        category: insertPayload.category.trim(),
+        priority: insertPayload.priority,
+        description: insertPayload.description.trim(),
         status: "new",
         reporter_type: "admin",
         reporter_id: user.id,

@@ -19,18 +19,35 @@ export type PropertyListRow = {
   name: string;
   address: string;
   adminCount: number;
+  communityId: string | null;
+  communityName: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 async function fetchProperties(): Promise<PropertyListRow[]> {
   const actor = await getOrgAndActor();
   const { orgId, isOwner, userId } = actor;
 
-  let locs: { id: string; name: string | null; address: string }[] | null = null;
+  let locs:
+    | {
+        id: string;
+        name: string | null;
+        address: string | null;
+        community_id: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        communities: { name: string | null } | null;
+      }[]
+    | null = null;
+
+  const locationSelect =
+    "id, name, address, community_id, latitude, longitude, communities ( name )" as const;
 
   if (isOwner) {
     const { data, error } = await supabase
       .from("cleaning_locations")
-      .select("id, name, address")
+      .select(locationSelect)
       .eq("org_id", orgId)
       .eq("is_admin_active", true)
       .order("name", { ascending: true });
@@ -58,7 +75,7 @@ async function fetchProperties(): Promise<PropertyListRow[]> {
 
     const { data, error } = await supabase
       .from("cleaning_locations")
-      .select("id, name, address")
+      .select(locationSelect)
       .eq("org_id", orgId)
       .eq("is_admin_active", true)
       .in("id", locationIds)
@@ -103,6 +120,10 @@ async function fetchProperties(): Promise<PropertyListRow[]> {
     name: l.name?.trim() || "—",
     address: l.address?.trim() || "—",
     adminCount: distinctUsersByLoc.get(l.id)?.size ?? 0,
+    communityId: l.community_id ?? null,
+    communityName: l.communities?.name?.trim() ? l.communities.name.trim() : null,
+    latitude: l.latitude ?? null,
+    longitude: l.longitude ?? null,
   }));
 }
 

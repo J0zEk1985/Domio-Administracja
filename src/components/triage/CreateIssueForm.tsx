@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
 import { ISSUE_CATEGORY_OPTIONS } from "@/lib/issueCategoryOptions";
+import { sortLocationsByDistanceKm } from "@/lib/geo";
 import { useCreateIssue, createIssueSchema, type CreateIssueFormValues } from "@/hooks/useCreateIssue";
 import { useProperties, type PropertyListRow } from "@/hooks/useProperties";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/sonner";
 
 export type { CreateIssueFormValues };
 
@@ -46,6 +48,11 @@ export type CreateIssueFormProps = {
   onCancel?: () => void;
   /** When false, property list query is disabled (saves requests if parent never shows the form). */
   enabled?: boolean;
+  /**
+   * Panel terenowy: pobierz GPS przy montowaniu, posortuj budynki wg odległości,
+   * wstaw domyślnie najbliższy budynek i `community_id`.
+   */
+  fieldServiceMode?: boolean;
   className?: string;
 };
 
@@ -135,14 +142,19 @@ export function CreateIssueForm({
   onSuccess,
   onCancel,
   enabled = true,
+  fieldServiceMode = false,
   className,
 }: CreateIssueFormProps) {
   const { data: properties = [], isLoading: propertiesLoading } = useProperties(enabled);
   const createMut = useCreateIssue();
 
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const geoAppliedRef = useRef(false);
+
   const defaultFormValues = useMemo<CreateIssueFormValues>(
     () => ({
       location_id: defaultLocationId ?? "",
+      community_id: "",
       category: "",
       priority: "medium",
       description: "",
@@ -155,21 +167,98 @@ export function CreateIssueForm({
     defaultValues: defaultFormValues,
   });
 
+  const sortedProperties = useMemo(() => {
+    if (!fieldServiceMode || !userCoords) {
+      return properties;
+    }
+    return sortLocationsByDistanceKm(properties, userCoords.lat, userCoords.lon);
+  }, [properties, fieldServiceMode, userCoords]);
+
+  useEffect(() => {
+    if (!enabled || !fieldServiceMode) return;
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        });
+      },
+      (err) => {
+        console.error("[CreateIssueForm] geolocation:", err);
+        const code = (err as GeolocationPositionError).code;
+        if (code === 1) {
+          toast.info("Brak zgody na lokalizację — lista budynków bez sortowania GPS.");
+        } else if (code === 2 || code === 3) {
+          toast.info("Nie udało się ustalić pozycji — lista budynków bez sortowania GPS.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+    );
+  }, [enabled, fieldServiceMode]);
+
   useEffect(() => {
     if (enabled) {
+      geoAppliedRef.current = false;
       form.reset(defaultFormValues);
     }
   }, [enabled, defaultFormValues, form]);
 
+  useEffect(() => {
+    if (!defaultLocationId || properties.length === 0) return;
+    const row = properties.find((p) => p.id === defaultLocationId);
+    if (row?.communityId) {
+      form.setValue("community_id", row.communityId);
+    }
+  }, [defaultLocationId, properties, form]);
+
+  useEffect(() => {
+    if (!fieldServiceMode || !enabled) return;
+    if (defaultLocationId) return;
+    if (!userCoords || sortedProperties.length === 0) return;
+    if (geoAppliedRef.current) return;
+    const first = sortedProperties[0];
+    if (!first?.id) return;
+    geoAppliedRef.current = true;
+    form.setValue("location_id", first.id, { shouldValidate: true });
+    form.setValue("community_id", first.communityId ?? "", { shouldValidate: true });
+  }, [fieldServiceMode, enabled, defaultLocationId, userCoords, sortedProperties, form]);
+
+  const watchedLocationId = useWatch({ control: form.control, name: "location_id" });
+
+  useEffect(() => {
+    if (!watchedLocationId) return;
+    const row = properties.find((p) => p.id === watchedLocationId);
+    if (row) {
+      form.setValue("community_id", row.communityId ?? "", { shouldValidate: true });
+    }
+  }, [watchedLocationId, properties, form]);
+
   function onSubmit(values: CreateIssueFormValues) {
     createMut.mutate(values, {
       onSuccess: () => {
+        geoAppliedRef.current = false;
         form.reset({
           location_id: defaultLocationId ?? "",
+          community_id: "",
           category: "",
           priority: "medium",
           description: "",
         });
+        if (defaultLocationId) {
+          const row = properties.find((p) => p.id === defaultLocationId);
+          if (row?.communityId) {
+            form.setValue("community_id", row.communityId);
+          }
+        } else if (fieldServiceMode && userCoords && sortedProperties.length > 0) {
+          const first = sortedProperties[0];
+          form.setValue("location_id", first.id);
+          form.setValue("community_id", first.communityId ?? "");
+          geoAppliedRef.current = true;
+        }
         onSuccess?.();
       },
     });
@@ -177,9 +266,21 @@ export function CreateIssueForm({
 
   const pending = createMut.isPending;
 
+  const selectedForContext = properties.find((p) => p.id === watchedLocationId);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-4", className)}>
+        {fieldServiceMode && userCoords ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            Budynki posortowano od najbliższego (GPS).
+          </p>
+        ) : fieldServiceMode && enabled && !userCoords && !propertiesLoading ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            Lista alfabetyczna — włącz lokalizację w przeglądarce, aby sortować według odległości.
+          </p>
+        ) : null}
+
         <FormField
           control={form.control}
           name="location_id"
@@ -188,7 +289,7 @@ export function CreateIssueForm({
               <FormLabel>Budynek</FormLabel>
               <FormControl>
                 <LocationCombobox
-                  properties={properties}
+                  properties={sortedProperties}
                   isLoading={propertiesLoading}
                   value={field.value}
                   onChange={field.onChange}
@@ -196,8 +297,24 @@ export function CreateIssueForm({
                 />
               </FormControl>
               <FormMessage />
+              {selectedForContext?.communityId ? (
+                <p className="text-xs text-muted-foreground">
+                  Wspólnota:{" "}
+                  <span className="text-foreground/90">
+                    {selectedForContext.communityName?.trim() || selectedForContext.communityId}
+                  </span>
+                </p>
+              ) : selectedForContext ? (
+                <p className="text-xs text-muted-foreground">Budynek bez przypisanej wspólnoty.</p>
+              ) : null}
             </FormItem>
           )}
+        />
+
+        <FormField
+          control={form.control}
+          name="community_id"
+          render={({ field }) => <input type="hidden" {...field} />}
         />
 
         <FormField
