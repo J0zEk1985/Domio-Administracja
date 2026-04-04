@@ -39,7 +39,7 @@ import {
   useCreateInspectionCampaign,
   type InspectionCampaignWithVendorAndRecords,
 } from "@/hooks/useInspectionCampaigns";
-import { useGlobalActiveVendorPartnersForRouting } from "@/hooks/useGlobalActiveVendorPartnersForRouting";
+import { useVendorPartners } from "@/hooks/useVendorPartners";
 import { formatInspectionCampaignSchedule } from "@/lib/formatInspectionCampaignSchedule";
 import { cn } from "@/lib/utils";
 import {
@@ -98,7 +98,6 @@ function CampaignCard({
 
 const defaultCampaignForm: CreateInspectionCampaignFormValues = {
   title: "",
-  category: "local_inspection",
   startDate: "",
   endDate: "",
   startTime: "",
@@ -115,7 +114,7 @@ function CreateCampaignDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const vendorsQuery = useGlobalActiveVendorPartnersForRouting(open);
+  const vendorsQuery = useVendorPartners(open);
   const createMutation = useCreateInspectionCampaign();
 
   const form = useForm<CreateInspectionCampaignFormValues>({
@@ -138,7 +137,7 @@ function CreateCampaignDialog({
       {
         locationId,
         title: values.title.trim(),
-        category: values.category.trim() || "local_inspection",
+        category: "local_inspection",
         startDate: values.startDate,
         endDate: values.endDate,
         startTime: st && et ? st : null,
@@ -188,19 +187,6 @@ function CreateCampaignDialog({
                     <FormLabel>Tytuł</FormLabel>
                     <FormControl>
                       <Input placeholder="np. Przegląd gazowy" autoComplete="off" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kategoria (wewnętrzna)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="local_inspection" autoComplete="off" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

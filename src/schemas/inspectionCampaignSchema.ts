@@ -5,7 +5,6 @@ const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const createInspectionCampaignSchema = z
   .object({
     title: z.string().min(1, "Podaj tytuł kampanii."),
-    category: z.string().min(1, "Podaj kategorię wewnętrzną."),
     startDate: z.string().min(1, "Wybierz datę rozpoczęcia."),
     endDate: z.string().min(1, "Wybierz datę zakończenia."),
     /** Native time input value: "HH:mm" or empty string */

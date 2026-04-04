@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Pencil } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -207,7 +208,11 @@ export default function Communities() {
               ) : (
                 communities?.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/communities/${c.id}`} className="text-primary hover:underline">
+                        {c.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>{c.nip ?? "—"}</TableCell>
                     <TableCell>{formatStatus(c.status)}</TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">

@@ -2,14 +2,37 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 
-export const communityQueryKeys = {
-  all: ["communities"] as const,
-  list: (orgId: string) => [...communityQueryKeys.all, "list", orgId] as const,
-};
-
 type CommunityRow = Database["public"]["Tables"]["communities"]["Row"];
 type CommunityInsert = Database["public"]["Tables"]["communities"]["Insert"];
 type CommunityUpdate = Database["public"]["Tables"]["communities"]["Update"];
+
+export const communityQueryKeys = {
+  all: ["communities"] as const,
+  list: (orgId: string) => [...communityQueryKeys.all, "list", orgId] as const,
+  detail: (communityId: string) => [...communityQueryKeys.all, "detail", communityId] as const,
+};
+
+export function useCommunity(communityId: string | undefined, orgId: string | null) {
+  return useQuery({
+    queryKey: communityQueryKeys.detail(communityId ?? ""),
+    queryFn: async (): Promise<CommunityRow | null> => {
+      if (!communityId || !orgId) return null;
+      const { data, error } = await supabase
+        .from("communities")
+        .select("*")
+        .eq("id", communityId)
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[useCommunity]", error);
+        throw error;
+      }
+      return data;
+    },
+    enabled: Boolean(communityId && orgId),
+  });
+}
 
 export function useCommunities(orgId: string | null) {
   return useQuery({
@@ -83,6 +106,9 @@ export function useUpdateCommunity() {
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({
         queryKey: communityQueryKeys.list(variables.orgId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: communityQueryKeys.detail(variables.id),
       });
     },
   });

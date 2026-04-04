@@ -1,16 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchOrgVendorPartners } from "@/hooks/useVendorPartners";
+import { fetchOrgVendorPartners, VENDOR_PARTNERS_QUERY_KEY } from "@/hooks/useVendorPartners";
 
 /**
- * Partners for location routing rules: org-wide active vendors only.
- * Intentionally not scoped by location or property/admin contracts.
+ * Same dataset as `useVendorPartners` — org-wide partners (shared React Query cache).
  */
-export const GLOBAL_ROUTING_VENDOR_PARTNERS_QUERY_KEY = "global-routing-vendor-partners" as const;
-
 export function useGlobalActiveVendorPartnersForRouting(enabled: boolean = true) {
   return useQuery({
-    queryKey: [GLOBAL_ROUTING_VENDOR_PARTNERS_QUERY_KEY],
-    queryFn: () => fetchOrgVendorPartners({ activeOnly: true }),
+    queryKey: [VENDOR_PARTNERS_QUERY_KEY],
+    queryFn: fetchOrgVendorPartners,
     enabled,
     staleTime: 60_000,
   });

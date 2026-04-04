@@ -388,6 +388,149 @@ export function useUpdatePropertyGeneral(propertyId: string | undefined) {
   });
 }
 
+export const communityLocationsQueryKey = (communityId: string) =>
+  ["community-locations", communityId] as const;
+
+export const unassignedOrgLocationsQueryKey = ["cleaning-locations", "unassigned-community-pick"] as const;
+
+export type CommunityLocationRow = {
+  id: string;
+  name: string;
+  address: string;
+};
+
+async function fetchLocationsForCommunity(communityId: string): Promise<CommunityLocationRow[]> {
+  const actor = await getOrgAndActor();
+  const { data, error } = await supabase
+    .from("cleaning_locations")
+    .select("id, name, address")
+    .eq("org_id", actor.orgId)
+    .eq("community_id", communityId)
+    .eq("is_admin_active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[fetchLocationsForCommunity]", error);
+    throw error;
+  }
+  const rows = data ?? [];
+  return rows.map((l) => ({
+    id: l.id,
+    name: l.name?.trim() || "—",
+    address: l.address?.trim() || "—",
+  }));
+}
+
+export function useLocationsByCommunity(communityId: string | undefined, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: communityId ? communityLocationsQueryKey(communityId) : ["community-locations", "none"],
+    queryFn: () => fetchLocationsForCommunity(communityId!),
+    enabled: (options?.enabled ?? true) && Boolean(communityId),
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+  });
+}
+
+async function fetchUnassignedOrgLocations(): Promise<CommunityLocationRow[]> {
+  const actor = await getOrgAndActor();
+  const { data, error } = await supabase
+    .from("cleaning_locations")
+    .select("id, name, address")
+    .eq("org_id", actor.orgId)
+    .eq("is_admin_active", true)
+    .is("community_id", null)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[fetchUnassignedOrgLocations]", error);
+    throw error;
+  }
+  const rows = data ?? [];
+  return rows.map((l) => ({
+    id: l.id,
+    name: l.name?.trim() || "—",
+    address: l.address?.trim() || "—",
+  }));
+}
+
+export function useUnassignedOrgLocationsForCommunityDialog(enabled: boolean) {
+  return useQuery({
+    queryKey: unassignedOrgLocationsQueryKey,
+    queryFn: fetchUnassignedOrgLocations,
+    enabled,
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+  });
+}
+
+export function useAssignLocationsToCommunity(communityId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (locationIds: string[]) => {
+      if (!communityId || locationIds.length === 0) return;
+      const actor = await getOrgAndActor();
+
+      const { data: comm, error: cErr } = await supabase
+        .from("communities")
+        .select("id")
+        .eq("id", communityId)
+        .eq("org_id", actor.orgId)
+        .maybeSingle();
+
+      if (cErr) {
+        console.error("[useAssignLocationsToCommunity] communities:", cErr);
+        throw cErr;
+      }
+      if (!comm) {
+        throw new Error("Nie znaleziono wspólnoty.");
+      }
+
+      const { error: bulkErr } = await supabase
+        .from("cleaning_locations")
+        .update({ community_id: communityId })
+        .in("id", locationIds)
+        .eq("org_id", actor.orgId)
+        .is("community_id", null);
+
+      if (bulkErr) {
+        console.error("[useAssignLocationsToCommunity] bulk update failed, retrying per id:", bulkErr);
+        let failed = 0;
+        await Promise.all(
+          locationIds.map(async (id) => {
+            const { error: rowErr } = await supabase
+              .from("cleaning_locations")
+              .update({ community_id: communityId })
+              .eq("id", id)
+              .eq("org_id", actor.orgId)
+              .is("community_id", null);
+            if (rowErr) {
+              console.error("[useAssignLocationsToCommunity] row", id, rowErr);
+              failed += 1;
+            }
+          }),
+        );
+        if (failed > 0) {
+          throw new Error("Nie udało się przypisać części budynków.");
+        }
+      }
+    },
+    onSuccess: async () => {
+      toast.success("Przypisano budynki do wspólnoty.");
+      await qc.invalidateQueries({ queryKey: communityQueryKeys.all });
+      await qc.invalidateQueries({ queryKey: [PROPERTIES_QUERY_KEY] });
+      if (communityId) {
+        await qc.invalidateQueries({ queryKey: communityLocationsQueryKey(communityId) });
+        await qc.invalidateQueries({ queryKey: communityQueryKeys.detail(communityId) });
+      }
+      await qc.invalidateQueries({ queryKey: unassignedOrgLocationsQueryKey });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się przypisać budynków.";
+      toast.error(msg);
+      console.error("[useAssignLocationsToCommunity]", e);
+    },
+  });
+}
 
 export type AssignableOrgMemberOption = {
   membershipId: string;
