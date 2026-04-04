@@ -672,6 +672,61 @@ export type Database = {
           },
         ]
       }
+      community_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          is_deleted: boolean
+          org_id: string
+          post_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_deleted?: boolean
+          org_id: string
+          post_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_deleted?: boolean
+          org_id?: string
+          post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_comments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_board"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -1683,8 +1738,12 @@ export type Database = {
           app_id: string
           created_at: string
           features: Json
+          has_ai_features: boolean | null
           id: string
           is_active: boolean
+          max_locations: number | null
+          max_storage_gb: number | null
+          max_users: number | null
           name: string
           price_monthly: number
           price_yearly: number
@@ -1694,8 +1753,12 @@ export type Database = {
           app_id: string
           created_at?: string
           features?: Json
+          has_ai_features?: boolean | null
           id?: string
           is_active?: boolean
+          max_locations?: number | null
+          max_storage_gb?: number | null
+          max_users?: number | null
           name: string
           price_monthly?: number
           price_yearly?: number
@@ -1705,8 +1768,12 @@ export type Database = {
           app_id?: string
           created_at?: string
           features?: Json
+          has_ai_features?: boolean | null
           id?: string
           is_active?: boolean
+          max_locations?: number | null
+          max_storage_gb?: number | null
+          max_users?: number | null
           name?: string
           price_monthly?: number
           price_yearly?: number
