@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronsUpDown, Loader2, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
+import { useGlobalActiveVendorPartnersForRouting } from "@/hooks/useGlobalActiveVendorPartnersForRouting";
 import { useVendorPartners, type VendorPartnerRow } from "@/hooks/useVendorPartners";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,11 @@ export interface VendorPartnerComboboxProps {
   onPick: (vendor: VendorPartnerRow) => void;
   disabled?: boolean;
   placeholder?: string;
+  /**
+   * `triage`: all org partners (legacy triage inbox).
+   * `routing`: org-wide active partners only — no contract/location coupling (property automations).
+   */
+  mode?: "triage" | "routing";
 }
 
 function filterLocal(rows: VendorPartnerRow[], q: string): VendorPartnerRow[] {
@@ -38,6 +44,7 @@ export function VendorPartnerCombobox({
   onPick,
   disabled = false,
   placeholder = "Wybierz firmę B2B…",
+  mode = "triage",
 }: VendorPartnerComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputQuery, setInputQuery] = useState("");
@@ -48,7 +55,11 @@ export function VendorPartnerCombobox({
     return () => window.clearTimeout(t);
   }, [inputQuery]);
 
-  const { data: vendors = [], isPending, isFetching } = useVendorPartners(open);
+  const triageQuery = useVendorPartners(mode === "triage" && open);
+  const routingQuery = useGlobalActiveVendorPartnersForRouting(mode === "routing" && open);
+
+  const { data: vendors = [], isPending, isFetching } =
+    mode === "routing" ? routingQuery : triageQuery;
 
   const filtered = filterLocal(vendors, debouncedQuery);
   const selected = vendors.find((v) => v.id === value);
@@ -137,7 +148,11 @@ export function VendorPartnerCombobox({
               </CommandGroup>
             ) : (
               <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                Brak partnerów — dodaj ich w module umów.
+                {mode === "routing" && vendors.length > 0
+                  ? "Brak wyników dla podanej frazy."
+                  : mode === "routing"
+                    ? "Brak globalnych partnerów. Dodaj firmę w zakładce Umowy & Firmy."
+                    : "Brak partnerów — dodaj ich w module umów."}
               </CommandEmpty>
             )}
           </CommandList>

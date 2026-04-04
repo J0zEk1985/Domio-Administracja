@@ -138,6 +138,7 @@ export function PropertyAutomationsTab({ locationId }: PropertyAutomationsTabPro
           <div className="space-y-1.5 min-w-[12rem] flex-1">
             <span className="text-xs text-muted-foreground block">Podwykonawca</span>
             <VendorPartnerCombobox
+              mode="routing"
               value={vendorId}
               disabled={pending}
               placeholder="Wybierz firmę…"
