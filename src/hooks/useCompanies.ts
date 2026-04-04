@@ -19,7 +19,8 @@ export const POLICY_INSURER_CATEGORIES: readonly CompanyCategory[] = ["insurer",
 export const policyInsurerCompaniesQueryKey = (searchQuery?: string) =>
   ["companies", "policyInsurers", searchQuery] as const;
 
-export type UpsertCompanyPayload = {
+/** Fields for create (RPC) and update (direct patch). */
+export type CompanyUpsertFields = {
   name: string;
   tax_id: string;
   category: CompanyCategory;
@@ -27,6 +28,11 @@ export type UpsertCompanyPayload = {
   phone?: string | null;
   address?: string | null;
 };
+
+/** Create via upsert_company_by_tax_id — requires tenant scope. */
+export type UpsertCompanyPayload = CompanyUpsertFields & { org_id: string };
+
+export type UpdateCompanyPayload = CompanyUpsertFields & { id: string };
 
 async function fetchCompanies(searchQuery?: string): Promise<Company[]> {
   try {
@@ -169,8 +175,6 @@ export function useUpsertCompany(): UseMutationResult<Company, Error, UpsertComp
     },
   });
 }
-
-export type UpdateCompanyPayload = UpsertCompanyPayload & { id: string };
 
 async function updateCompanyById(payload: UpdateCompanyPayload): Promise<Company> {
   try {

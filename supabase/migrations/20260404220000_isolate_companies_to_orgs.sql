@@ -71,6 +71,3 @@ DROP FUNCTION IF EXISTS public.user_can_see_company_via_membership(uuid);
 
 -- 5) Allow DELETE for authenticated when policy passes (e.g. admin tooling).
 GRANT DELETE ON public.companies TO authenticated;
-
--- NOTE: public.upsert_company_by_tax_id still omits org_id — update that RPC in a
--- follow-up migration so inserts set org_id; until then prefer client inserts with org_id.

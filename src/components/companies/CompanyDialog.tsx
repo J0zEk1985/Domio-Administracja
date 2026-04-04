@@ -39,6 +39,7 @@ import {
   parseCompanySearchSeed,
 } from "@/schemas/companySchema";
 import { toast } from "@/components/ui/sonner";
+import { getOrgAndActor } from "@/lib/orgAccess";
 
 function apiErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -108,7 +109,9 @@ export function CompanyDialog({
         reset(companyFormDefaultValues);
         return;
       }
+      const { orgId } = await getOrgAndActor();
       const created = await upsert.mutateAsync({
+        org_id: orgId,
         name: values.name.trim(),
         tax_id: values.tax_id,
         category: values.category,
