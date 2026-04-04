@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { ContractDialog } from "@/components/contracts/ContractDialog";
+import { InsurancePolicyForm } from "@/components/property/InsurancePolicyForm";
 import { contractTypeDisplayLabel } from "@/components/contracts/columns";
 import { AddInspectionDialog } from "@/components/inspections/AddInspectionDialog";
 import { CKobSyncButton } from "@/components/inspections/CKobSyncButton";
@@ -45,6 +46,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePropertyPolicies } from "@/hooks/usePropertyPolicies";
 import { useDeleteContract, usePropertyContracts } from "@/hooks/usePropertyContracts";
 import type { PropertyContractWithCompany } from "@/hooks/usePropertyContracts";
 import { usePropertyInspections } from "@/hooks/usePropertyInspections";
@@ -57,6 +59,7 @@ import {
   type InspectionStatus,
   type InspectionType,
 } from "@/schemas/inspectionSchema";
+import { policyScopeDisplayLabel } from "@/schemas/policySchema";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -230,6 +233,49 @@ function ContractsTableSkeleton() {
   );
 }
 
+function PoliciesTableSkeleton() {
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="min-w-[7rem]">Zakres</TableHead>
+            <TableHead className="min-w-[8rem]">Numer</TableHead>
+            <TableHead className="min-w-[10rem]">Ubezpieczyciel</TableHead>
+            <TableHead className="min-w-[8rem] whitespace-nowrap">Składka</TableHead>
+            <TableHead className="min-w-[9rem]">Obowiązuje</TableHead>
+            <TableHead className="w-[72px] text-right">PDF</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[1, 2, 3].map((i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-28" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-36" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-40" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function InspectionsTableSkeleton() {
   return (
     <div className="overflow-x-auto rounded-md border">
@@ -285,6 +331,7 @@ export function PropertyContractsTab({
   cKobBuildingId: string | null;
 }) {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<PropertyContractWithCompany | null>(null);
   const [inspectionTypeFilter, setInspectionTypeFilter] = useState<"all" | InspectionType>("all");
@@ -292,6 +339,7 @@ export function PropertyContractsTab({
   const [hideHistoricalInspections, setHideHistoricalInspections] = useState(false);
 
   const contractsQuery = usePropertyContracts(locationId, { enabled: Boolean(locationId) });
+  const policiesQuery = usePropertyPolicies(locationId, { enabled: Boolean(locationId) });
   const inspectionsQuery = usePropertyInspections(locationId, { enabled: Boolean(locationId) });
   const deleteContract = useDeleteContract();
 
@@ -315,7 +363,18 @@ export function PropertyContractsTab({
     console.error("[PropertyContractsTab] inspections error:", inspectionsQuery.error);
   }, [inspectionsQuery.isError, inspectionsQuery.error]);
 
+  useEffect(() => {
+    if (!policiesQuery.isError || !policiesQuery.error) return;
+    const msg =
+      policiesQuery.error instanceof Error
+        ? policiesQuery.error.message
+        : "Nie udało się wczytać polis.";
+    toast.error(msg);
+    console.error("[PropertyContractsTab] policies error:", policiesQuery.error);
+  }, [policiesQuery.isError, policiesQuery.error]);
+
   const contractRows = contractsQuery.data ?? [];
+  const policyRows = policiesQuery.data ?? [];
   const inspectionRows = inspectionsQuery.data ?? [];
 
   useEffect(() => {
@@ -539,6 +598,100 @@ export function PropertyContractsTab({
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            <CardTitle className="text-base">Ubezpieczenia</CardTitle>
+            <CardDescription>Polisy przypisane do tej nieruchomości.</CardDescription>
+          </div>
+          <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => setPolicyDialogOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Dodaj polisę
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <InsurancePolicyForm
+            locationId={locationId}
+            open={policyDialogOpen}
+            onOpenChange={setPolicyDialogOpen}
+          />
+
+          {policiesQuery.isLoading ? (
+            <PoliciesTableSkeleton />
+          ) : (
+            <div className="overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[7rem]">Zakres</TableHead>
+                    <TableHead className="min-w-[8rem]">Numer</TableHead>
+                    <TableHead className="min-w-[10rem]">Ubezpieczyciel</TableHead>
+                    <TableHead className="min-w-[8rem] whitespace-nowrap">Składka</TableHead>
+                    <TableHead className="min-w-[9rem]">Obowiązuje</TableHead>
+                    <TableHead className="w-[72px] text-right">PDF</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {policyRows.length === 0 ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={6} className="h-36 text-center align-middle">
+                        <p className="text-sm text-muted-foreground">Brak zapisanych polis dla tego budynku.</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    policyRows.map((row) => {
+                      const companyName = row.company?.name?.trim() ?? "";
+                      const scopeLabel = policyScopeDisplayLabel(row.policy_scope ?? "majatkowe");
+                      const docUrl = row.document_url?.trim();
+
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell>
+                            <Badge variant="secondary" className="font-normal">
+                              {scopeLabel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium tabular-nums text-foreground">
+                            {row.policy_number?.trim() || "—"}
+                          </TableCell>
+                          <TableCell>
+                            <CompanyNameLink companyId={row.company_id} name={companyName} />
+                          </TableCell>
+                          <TableCell className="tabular-nums text-foreground">
+                            {formatGrossDisplay(row.premium_amount)}
+                          </TableCell>
+                          <TableCell className="text-sm tabular-nums text-foreground">
+                            <span className="whitespace-nowrap">{formatIsoDateLabel(row.start_date)}</span>
+                            <span className="mx-1 text-muted-foreground">→</span>
+                            <span className="whitespace-nowrap">{formatIsoDateLabel(row.end_date)}</span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {docUrl ? (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                <a
+                                  href={docUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label="Otwórz PDF polisy"
+                                >
+                                  <ExternalLink className="h-4 w-4" aria-hidden />
+                                </a>
+                              </Button>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

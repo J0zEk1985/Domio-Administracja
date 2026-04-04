@@ -691,6 +691,74 @@ export type Database = {
           },
         ]
       }
+      inspection_campaigns: {
+        Row: {
+          category: string
+          created_at: string
+          e_board_message_id: string | null
+          end_date: string
+          id: string
+          location_id: string
+          org_id: string
+          start_date: string
+          title: string
+          vendor_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          e_board_message_id?: string | null
+          end_date: string
+          id?: string
+          location_id: string
+          org_id: string
+          start_date: string
+          title: string
+          vendor_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          e_board_message_id?: string | null
+          end_date?: string
+          id?: string
+          location_id?: string
+          org_id?: string
+          start_date?: string
+          title?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_campaigns_e_board_message_id_fkey"
+            columns: ["e_board_message_id"]
+            isOneToOne: false
+            referencedRelation: "e_board_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_campaigns_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_campaigns_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_campaigns_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspections: {
         Row: {
           attachments: Json | null
@@ -1906,8 +1974,10 @@ export type Database = {
           document_url: string
           end_date: string
           id: string
+          insurer_name: string | null
           location_id: string
           policy_number: string
+          policy_scope: Database["public"]["Enums"]["policy_scope_enum"] | null
           premium_amount: number
           start_date: string
           updated_at: string
@@ -1919,8 +1989,10 @@ export type Database = {
           document_url?: string
           end_date: string
           id?: string
+          insurer_name?: string | null
           location_id: string
           policy_number: string
+          policy_scope?: Database["public"]["Enums"]["policy_scope_enum"] | null
           premium_amount?: number
           start_date: string
           updated_at?: string
@@ -1932,8 +2004,10 @@ export type Database = {
           document_url?: string
           end_date?: string
           id?: string
+          insurer_name?: string | null
           location_id?: string
           policy_number?: string
+          policy_scope?: Database["public"]["Enums"]["policy_scope_enum"] | null
           premium_amount?: number
           start_date?: string
           updated_at?: string
@@ -2413,6 +2487,50 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "cleaning_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unit_inspection_records: {
+        Row: {
+          campaign_id: string
+          id: string
+          inspection_date: string | null
+          notes: string | null
+          photo_url: string | null
+          signature_url: string | null
+          status: Database["public"]["Enums"]["unit_inspection_status"]
+          unit_number: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          id?: string
+          inspection_date?: string | null
+          notes?: string | null
+          photo_url?: string | null
+          signature_url?: string | null
+          status?: Database["public"]["Enums"]["unit_inspection_status"]
+          unit_number: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          id?: string
+          inspection_date?: string | null
+          notes?: string | null
+          photo_url?: string | null
+          signature_url?: string | null
+          status?: Database["public"]["Enums"]["unit_inspection_status"]
+          unit_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_inspection_records_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -3750,6 +3868,7 @@ export type Database = {
         | "delegated"
         | "resolved"
         | "rejected"
+      policy_scope_enum: "maj─ůtkowe" | "oc_ogolne" | "oc_zarzadu"
       priority_level: "low" | "medium" | "high" | "emergency"
       property_contract_type:
         | "cleaning"
@@ -3767,6 +3886,12 @@ export type Database = {
         | "coordinator_single"
         | "long_term"
         | "employee_extra"
+      unit_inspection_status:
+        | "pending"
+        | "completed"
+        | "failed_no_access"
+        | "failed_defects"
+        | "rescheduled"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3938,6 +4063,7 @@ export const Constants = {
         "resolved",
         "rejected",
       ],
+      policy_scope_enum: ["maj─ůtkowe", "oc_ogolne", "oc_zarzadu"],
       priority_level: ["low", "medium", "high", "emergency"],
       property_contract_type: [
         "cleaning",
@@ -3956,6 +4082,13 @@ export const Constants = {
         "coordinator_single",
         "long_term",
         "employee_extra",
+      ],
+      unit_inspection_status: [
+        "pending",
+        "completed",
+        "failed_no_access",
+        "failed_defects",
+        "rescheduled",
       ],
     },
   },

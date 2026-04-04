@@ -13,6 +13,12 @@ export const COMPANIES_STALE_MS = 5 * 60 * 1000;
 
 export const companiesQueryKey = (searchQuery?: string) => ["companies", searchQuery] as const;
 
+/** Insurers and contractors (B2B partners) — matches labels „Ubezpieczyciel” / „Wykonawca” in UI. */
+export const POLICY_INSURER_CATEGORIES: readonly CompanyCategory[] = ["insurer", "contractor"];
+
+export const policyInsurerCompaniesQueryKey = (searchQuery?: string) =>
+  ["companies", "policyInsurers", searchQuery] as const;
+
 export type UpsertCompanyPayload = {
   name: string;
   tax_id: string;
@@ -47,6 +53,32 @@ async function fetchCompanies(searchQuery?: string): Promise<Company[]> {
   }
 }
 
+async function fetchPolicyInsurerCompanies(searchQuery?: string): Promise<Company[]> {
+  try {
+    let query = supabase
+      .from("companies")
+      .select("*")
+      .in("category", [...POLICY_INSURER_CATEGORIES])
+      .order("name", { ascending: true })
+      .limit(50);
+
+    const term = searchQuery?.trim();
+    if (term) {
+      query = query.or(`name.ilike.%${term}%,tax_id.ilike.%${term}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("[useCompanies] fetchPolicyInsurerCompanies:", error);
+      throw error;
+    }
+    return (data ?? []) as Company[];
+  } catch (err) {
+    console.error("[useCompanies] fetchPolicyInsurerCompanies:", err);
+    throw err;
+  }
+}
+
 export function useCompanies(
   searchQuery?: string,
   options?: { enabled?: boolean },
@@ -54,6 +86,19 @@ export function useCompanies(
   return useQuery({
     queryKey: companiesQueryKey(searchQuery),
     queryFn: () => fetchCompanies(searchQuery),
+    staleTime: COMPANIES_STALE_MS,
+    enabled: options?.enabled ?? true,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function usePolicyInsurerCompanies(
+  searchQuery?: string,
+  options?: { enabled?: boolean },
+): UseQueryResult<Company[], Error> {
+  return useQuery({
+    queryKey: policyInsurerCompaniesQueryKey(searchQuery),
+    queryFn: () => fetchPolicyInsurerCompanies(searchQuery),
     staleTime: COMPANIES_STALE_MS,
     enabled: options?.enabled ?? true,
     placeholderData: (previousData) => previousData,

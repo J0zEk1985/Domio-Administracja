@@ -37,6 +37,7 @@ export interface PropertyContract extends Tables<"property_contracts"> {
  *
  * **Financial & date fields (AI / n8n automation):**
  * - `coverage_amount` — sum insured / coverage limit.
+ * - `policy_scope` — majatkowe | oc_ogolne | oc_zarzadu (CHECK in DB).
  * - `premium_amount` — premium (składka); DB default 0 until filled.
  * - `start_date` / `end_date` — policy validity (both required in DB).
  * - `document_url` — policy PDF / Storage URL (empty until uploaded).
