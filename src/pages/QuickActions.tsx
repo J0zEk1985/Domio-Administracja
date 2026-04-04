@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Loader2, Mic, Sparkles } from "lucide-react";
 
 import { CreateIssueForm } from "@/components/triage/CreateIssueForm";
 import { useCreateIssue, type CreateIssueFormValues } from "@/hooks/useCreateIssue";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { cn } from "@/lib/utils";
 
 type AiPreview = {
   category: string;
@@ -52,6 +54,14 @@ export default function QuickActions() {
   const { data: properties = [], isLoading: propertiesLoading } = useProperties(tab === "ai");
 
   const createIssue = useCreateIssue();
+
+  const onTranscript = useCallback((text: string) => {
+    setAiText(text);
+  }, []);
+
+  const { isRecording, start, stop, isSupported: speechSupported } = useSpeechRecognition({
+    onTranscript,
+  });
 
   const canRunAi = useMemo(() => aiText.trim().length > 0 && !propertiesLoading && properties.length > 0, [
     aiText,
@@ -117,14 +127,39 @@ export default function QuickActions() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Textarea
-                value={aiText}
-                onChange={(e) => setAiText(e.target.value)}
-                placeholder="Np. przeciek przy windzie w piwnicy, potrzebny hydraulik…"
-                rows={8}
-                disabled={aiBusy || createIssue.isPending}
-                className="min-h-[180px] resize-none text-base"
-              />
+              <div className="relative">
+                <Textarea
+                  value={aiText}
+                  onChange={(e) => setAiText(e.target.value)}
+                  placeholder="Np. przeciek przy windzie w piwnicy, potrzebny hydraulik…"
+                  rows={8}
+                  disabled={aiBusy || createIssue.isPending}
+                  className="min-h-[180px] resize-none pb-12 pr-14 text-base"
+                />
+                {speechSupported ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant={isRecording ? "destructive" : "secondary"}
+                    className={cn(
+                      "absolute bottom-3 right-3 h-11 w-11 rounded-full shadow-md",
+                      isRecording && "animate-pulse",
+                    )}
+                    disabled={aiBusy || createIssue.isPending}
+                    aria-pressed={isRecording}
+                    aria-label={isRecording ? "Zatrzymaj dyktowanie" : "Dyktuj tekst mikrofonem"}
+                    onClick={() => {
+                      if (isRecording) {
+                        stop();
+                      } else {
+                        start(aiText);
+                      }
+                    }}
+                  >
+                    <Mic className="h-5 w-5" aria-hidden />
+                  </Button>
+                ) : null}
+              </div>
               {!propertiesLoading && properties.length === 0 ? (
                 <p className="text-sm text-destructive">
                   Brak budynków w organizacji — dodaj nieruchomość lub skontaktuj się z administratorem.

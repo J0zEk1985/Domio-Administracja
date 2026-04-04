@@ -16,17 +16,40 @@ export type PropertyInspectionWithCompany = Tables<"property_inspections"> & {
   company: Company | null;
 };
 
-export const propertyInspectionsQueryKey = (locationId: string) => ["inspections", locationId] as const;
+/** Przeglądy nie mają community_id — w widoku wspólnoty filtrujemy po budynkach. */
+export type PropertyInspectionsScopeOptions = {
+  /** Agregacja przeglądów wszystkich budynków wspólnoty. */
+  communityBuildingIds?: string[] | null;
+};
+
+function inspectionsScopeCacheKey(scope?: PropertyInspectionsScopeOptions | null): string {
+  const ids = scope?.communityBuildingIds;
+  if (!ids || ids.length === 0) return "default";
+  return `b:${[...ids].sort().join(",")}`;
+}
+
+export const propertyInspectionsQueryKey = (
+  locationId: string,
+  scope?: PropertyInspectionsScopeOptions | null,
+) => ["inspections", locationId, inspectionsScopeCacheKey(scope)] as const;
 
 type InspectionInsert = Database["public"]["Tables"]["property_inspections"]["Insert"];
 
-async function fetchPropertyInspections(locationId: string): Promise<PropertyInspectionWithCompany[]> {
+async function fetchPropertyInspections(
+  locationId: string,
+  scope?: PropertyInspectionsScopeOptions | null,
+): Promise<PropertyInspectionWithCompany[]> {
   try {
-    const { data, error } = await supabase
-      .from("property_inspections")
-      .select("*, company:companies(*)")
-      .eq("location_id", locationId)
-      .order("valid_until", { ascending: false });
+    const ids = scope?.communityBuildingIds;
+    let q = supabase.from("property_inspections").select("*, company:companies(*)");
+
+    if (ids && ids.length > 0) {
+      q = q.in("location_id", ids);
+    } else {
+      q = q.eq("location_id", locationId);
+    }
+
+    const { data, error } = await q.order("valid_until", { ascending: false });
 
     if (error) {
       console.error("[usePropertyInspections] fetchPropertyInspections:", error);
@@ -41,11 +64,12 @@ async function fetchPropertyInspections(locationId: string): Promise<PropertyIns
 
 export function usePropertyInspections(
   locationId: string,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; scope?: PropertyInspectionsScopeOptions | null },
 ): UseQueryResult<PropertyInspectionWithCompany[], Error> {
+  const scope = options?.scope ?? null;
   return useQuery({
-    queryKey: propertyInspectionsQueryKey(locationId),
-    queryFn: () => fetchPropertyInspections(locationId),
+    queryKey: propertyInspectionsQueryKey(locationId, scope ?? undefined),
+    queryFn: () => fetchPropertyInspections(locationId, scope ?? undefined),
     enabled: (options?.enabled ?? true) && Boolean(locationId),
     staleTime: 30_000,
   });

@@ -14,6 +14,43 @@ export type EBoardMessageListItem = EBoardRow & {
 
 export const eBoardMessagesQueryKey = (orgId: string) => ["e-board-messages", orgId] as const;
 
+export const eBoardDisplayQueryKey = (communityId: string) =>
+  ["e-board-display", communityId] as const;
+
+export type EBoardDisplayItem = Pick<
+  EBoardRow,
+  "id" | "title" | "content" | "msg_type" | "valid_until" | "display_from" | "display_until" | "created_at"
+>;
+
+/** Public kiosk: active published messages for a community (RLS must allow anon read). */
+async function fetchEBoardMessagesForDisplay(communityId: string): Promise<EBoardDisplayItem[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("e_board_messages")
+    .select("id, title, content, msg_type, valid_until, display_from, display_until, created_at")
+    .eq("community_id", communityId)
+    .eq("status", "published")
+    .eq("is_active", true)
+    .or(`valid_until.is.null,valid_until.gte.${today}`)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[fetchEBoardMessagesForDisplay]", error);
+    throw error;
+  }
+  return (data ?? []) as EBoardDisplayItem[];
+}
+
+export function useEBoardMessagesForDisplay(communityId: string | undefined) {
+  return useQuery({
+    queryKey: communityId ? eBoardDisplayQueryKey(communityId) : ["e-board-display", "none"],
+    queryFn: () => fetchEBoardMessagesForDisplay(communityId!),
+    enabled: Boolean(communityId && communityId.trim() !== ""),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
 function errMessage(err: unknown, fallback: string): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "object" && err !== null && "message" in err) {

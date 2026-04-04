@@ -4,7 +4,7 @@ import { pl } from "date-fns/locale";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Copy, Loader2 } from "lucide-react";
 import { z } from "zod";
 
 import { supabase } from "@/lib/supabase";
@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/sonner";
 
 type EboardMsgType = Database["public"]["Enums"]["eboard_msg_type"];
 type EboardMsgStatus = Database["public"]["Enums"]["eboard_msg_status"];
@@ -131,6 +132,7 @@ export default function EBoard() {
   const createMut = useCreateEBoardMessage();
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [displayLinkCommunityId, setDisplayLinkCommunityId] = useState("");
 
   const form = useForm<NewMessageFormValues>({
     resolver: zodResolver(newMessageSchema),
@@ -154,6 +156,12 @@ export default function EBoard() {
   useEffect(() => {
     form.setValue("location_id", "");
   }, [communityId, form]);
+
+  useEffect(() => {
+    if (communities.length > 0 && !displayLinkCommunityId) {
+      setDisplayLinkCommunityId(communities[0].id);
+    }
+  }, [communities, displayLinkCommunityId]);
 
   useEffect(() => {
     if (!sheetOpen) {
@@ -204,6 +212,24 @@ export default function EBoard() {
     );
   }
 
+  function copyDisplayUrlToClipboard() {
+    const id = displayLinkCommunityId || communities[0]?.id;
+    if (!id) {
+      toast.error("Wybierz wspólnotę lub dodaj ogłoszenie z przypisaną wspólnotą.");
+      return;
+    }
+    const url = `${window.location.origin}/display/${id}`;
+    void navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        toast.success("Skopiowano link do ekranu.");
+      })
+      .catch((e) => {
+        console.error("[EBoard] clipboard:", e);
+        toast.error("Nie udało się skopiować linku.");
+      });
+  }
+
   return (
     <div className="flex-1 space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -213,9 +239,40 @@ export default function EBoard() {
             Zarządzanie komunikatami widocznymi dla mieszkańców.
           </p>
         </div>
-        <Button type="button" onClick={() => setSheetOpen(true)}>
-          + Nowe ogłoszenie
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {communities.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={displayLinkCommunityId || communities[0]?.id}
+                onValueChange={setDisplayLinkCommunityId}
+              >
+                <SelectTrigger className="h-9 w-[min(100%,14rem)] text-xs" aria-label="Wspólnota dla linku ekranu">
+                  <SelectValue placeholder="Wspólnota" />
+                </SelectTrigger>
+                <SelectContent>
+                  {communities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => copyDisplayUrlToClipboard()}
+              >
+                <Copy className="h-3.5 w-3.5" aria-hidden />
+                Skopiuj link do ekranu
+              </Button>
+            </div>
+          ) : null}
+          <Button type="button" onClick={() => setSheetOpen(true)}>
+            + Nowe ogłoszenie
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">

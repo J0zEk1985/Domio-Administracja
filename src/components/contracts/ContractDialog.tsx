@@ -4,6 +4,8 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { CompanyComboBox } from "@/components/companies/CompanyComboBox";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -72,12 +74,21 @@ export interface ContractDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contract?: PropertyContract;
+  /** Gdy ustawione — checkbox „cała wspólnota” (zapisuje `community_id` przy `location_id` budynku). */
+  communityAssignOption?: { communityId: string } | null;
 }
 
-export function ContractDialog({ locationId, open, onOpenChange, contract }: ContractDialogProps) {
+export function ContractDialog({
+  locationId,
+  open,
+  onOpenChange,
+  contract,
+  communityAssignOption,
+}: ContractDialogProps) {
   const addContract = useAddContract();
   const updateContract = useUpdateContract();
   const [zeroVatVariant, setZeroVatVariant] = useState<"0" | "zw">("0");
+  const [assignWholeCommunity, setAssignWholeCommunity] = useState(true);
 
   const isEdit = Boolean(contract?.id);
 
@@ -100,8 +111,9 @@ export function ContractDialog({ locationId, open, onOpenChange, contract }: Con
     } else {
       reset(DEFAULT_VALUES);
       setZeroVatVariant("0");
+      setAssignWholeCommunity(Boolean(communityAssignOption));
     }
-  }, [open, contract?.id, reset, contract]);
+  }, [open, contract?.id, reset, contract, communityAssignOption]);
 
   useEffect(() => {
     const gross = computeGrossValue(Number(netValue), Number(vatRate));
@@ -129,7 +141,12 @@ export function ContractDialog({ locationId, open, onOpenChange, contract }: Con
     }
 
     addContract.mutate(
-      { locationId, values },
+      {
+        locationId,
+        values,
+        communityId:
+          assignWholeCommunity && communityAssignOption ? communityAssignOption.communityId : null,
+      },
       {
         onSuccess: () => {
           toast.success("Umowa została dodana.");
@@ -156,6 +173,25 @@ export function ContractDialog({ locationId, open, onOpenChange, contract }: Con
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {!isEdit && communityAssignOption ? (
+              <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                <Checkbox
+                  id="contract-community-scope"
+                  checked={assignWholeCommunity}
+                  onCheckedChange={(v) => setAssignWholeCommunity(v === true)}
+                  disabled={isPending}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="contract-community-scope" className="cursor-pointer font-medium leading-snug">
+                    Przypisz do całej Wspólnoty (zalecane)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Umowa pozostaje przypisana do tego budynku, ale będzie widoczna także w zakresie nadrzędnej
+                    wspólnoty.
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <FormField
               control={form.control}
               name="company_id"

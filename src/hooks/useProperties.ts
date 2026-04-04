@@ -313,6 +313,122 @@ export function usePropertyAdministrators(propertyId: string | undefined, enable
   });
 }
 
+export const communityTeamQueryKey = (communityId: string) => ["community-team", communityId] as const;
+
+export type CommunityTeamMemberRow = {
+  userId: string;
+  membershipId: string | null;
+  fullName: string;
+  email: string;
+  buildingNames: string[];
+};
+
+async function fetchCommunityTeamMembers(communityId: string): Promise<CommunityTeamMemberRow[]> {
+  const actor = await getOrgAndActor();
+
+  const { data: locs, error: lErr } = await supabase
+    .from("cleaning_locations")
+    .select("id, name")
+    .eq("org_id", actor.orgId)
+    .eq("community_id", communityId)
+    .eq("is_admin_active", true);
+
+  if (lErr) {
+    console.error("[fetchCommunityTeamMembers] locations:", lErr);
+    throw lErr;
+  }
+
+  const locations = locs ?? [];
+  if (locations.length === 0) {
+    return [];
+  }
+
+  const locIds = locations.map((l) => l.id);
+  const nameByLoc = new Map(locations.map((l) => [l.id, l.name?.trim() || "—"]));
+
+  const { data: access, error: aErr } = await supabase
+    .from("location_access")
+    .select("user_id, location_id")
+    .in("location_id", locIds)
+    .eq("access_type", "administration");
+
+  if (aErr) {
+    console.error("[fetchCommunityTeamMembers] location_access:", aErr);
+    throw aErr;
+  }
+
+  const userToBuildings = new Map<string, Set<string>>();
+  for (const a of access ?? []) {
+    if (!a.user_id || !a.location_id) continue;
+    if (!userToBuildings.has(a.user_id)) userToBuildings.set(a.user_id, new Set());
+    const nm = nameByLoc.get(a.location_id);
+    if (nm) userToBuildings.get(a.user_id).add(nm);
+  }
+
+  const userIds = [...userToBuildings.keys()];
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  const { data: profiles, error: pErr } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, contact_email")
+    .in("id", userIds);
+
+  if (pErr) {
+    console.error("[fetchCommunityTeamMembers] profiles:", pErr);
+    throw pErr;
+  }
+
+  const { data: mems, error: memErr } = await supabase
+    .from("memberships")
+    .select("id, user_id")
+    .eq("org_id", actor.orgId)
+    .in("user_id", userIds)
+    .eq("is_active", true);
+
+  if (memErr) {
+    console.error("[fetchCommunityTeamMembers] memberships:", memErr);
+    throw memErr;
+  }
+
+  const membershipByUser = new Map<string, string>();
+  for (const m of mems ?? []) {
+    if (m.user_id && !membershipByUser.has(m.user_id)) {
+      membershipByUser.set(m.user_id, m.id);
+    }
+  }
+
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  const out: CommunityTeamMemberRow[] = [];
+  for (const uid of userIds) {
+    const p = profileById.get(uid);
+    const bns = [...(userToBuildings.get(uid) ?? new Set())].sort((a, b) =>
+      a.localeCompare(b, "pl", { sensitivity: "base" }),
+    );
+    out.push({
+      userId: uid,
+      membershipId: membershipByUser.get(uid) ?? null,
+      fullName: p?.full_name?.trim() || "—",
+      email: p?.email?.trim() || p?.contact_email?.trim() || "—",
+      buildingNames: bns,
+    });
+  }
+
+  return out.sort((x, y) => x.fullName.localeCompare(y.fullName, "pl", { sensitivity: "base" }));
+}
+
+export function useCommunityTeamMembers(communityId: string | undefined, enabled: boolean = true) {
+  return useQuery({
+    queryKey: communityId ? communityTeamQueryKey(communityId) : ["community-team", "none"],
+    queryFn: () => fetchCommunityTeamMembers(communityId!),
+    enabled: Boolean(communityId && enabled),
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+  });
+}
+
 export type PropertyGeneralSavePayload = {
   /** `cleaning_locations.name` — nazwa wyświetlana budynku. */
   name: string;

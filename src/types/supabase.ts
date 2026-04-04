@@ -1049,6 +1049,7 @@ export type Database = {
       internal_tasks: {
         Row: {
           assigned_to: string | null
+          community_id: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -1063,6 +1064,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          community_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1077,6 +1079,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          community_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1095,6 +1098,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_tasks_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
             referencedColumns: ["id"]
           },
           {
@@ -1887,6 +1897,7 @@ export type Database = {
       }
       property_contracts: {
         Row: {
+          community_id: string | null
           company_id: string
           contract_number: string
           created_at: string
@@ -1905,6 +1916,7 @@ export type Database = {
           vat_rate: number | null
         }
         Insert: {
+          community_id?: string | null
           company_id: string
           contract_number: string
           created_at?: string
@@ -1923,6 +1935,7 @@ export type Database = {
           vat_rate?: number | null
         }
         Update: {
+          community_id?: string | null
           company_id?: string
           contract_number?: string
           created_at?: string
@@ -1941,6 +1954,13 @@ export type Database = {
           vat_rate?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "property_contracts_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_contracts_company_id_fkey"
             columns: ["company_id"]
@@ -2212,6 +2232,7 @@ export type Database = {
       }
       property_policies: {
         Row: {
+          community_id: string | null
           company_id: string
           coverage_amount: number
           created_at: string
@@ -2227,6 +2248,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          community_id?: string | null
           company_id: string
           coverage_amount: number
           created_at?: string
@@ -2242,6 +2264,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          community_id?: string | null
           company_id?: string
           coverage_amount?: number
           created_at?: string
@@ -2257,6 +2280,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_policies_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_policies_company_id_fkey"
             columns: ["company_id"]
@@ -2317,6 +2347,7 @@ export type Database = {
       property_tasks: {
         Row: {
           assignee_id: string | null
+          community_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -2328,6 +2359,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          community_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -2339,6 +2371,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          community_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -2354,6 +2387,13 @@ export type Database = {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_tasks_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
             referencedColumns: ["id"]
           },
           {

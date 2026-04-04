@@ -26,6 +26,8 @@ import BoardPortal from "./pages/BoardPortal.tsx";
 import TriageInbox from "./pages/TriageInbox.tsx";
 import QuickActions from "./pages/QuickActions.tsx";
 import EBoard from "./pages/EBoard.tsx";
+import EBoardDisplay from "./pages/EBoardDisplay.tsx";
+import KioskLayout from "./layouts/KioskLayout.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +47,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/portal/board/:token" element={<BoardPortal />} />
+            <Route path="/display/:communityId" element={<KioskLayout />}>
+              <Route index element={<EBoardDisplay />} />
+            </Route>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
               <Route element={<DashboardLayout />}>

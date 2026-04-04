@@ -13,21 +13,54 @@ import type { Database } from "@/types/supabase";
 
 export type PropertyContractWithCompany = PropertyContract;
 
-export const propertyContractsQueryKey = (locationId: string) => ["contracts", locationId] as const;
+/** Wspólne dla umów / polis / zadań: filtr hybrydowy budynek + wspólnota lub lista wspólnotowa. */
+export type PropertyResourceScopeOptions = {
+  /** Hybrid: rekordy przypisane do budynku LUB oznaczone community_id (wspólnota nadrzędna). */
+  parentCommunityId?: string | null;
+  /** Lista na poziomie wspólnoty: community_id lub dowolny budynek z listy. */
+  communityScope?: { communityId: string; buildingIds: string[] } | null;
+};
+
+function contractsScopeCacheKey(scope?: PropertyResourceScopeOptions | null): string {
+  if (!scope?.communityScope) {
+    return scope?.parentCommunityId ? `h:${scope.parentCommunityId}` : "default";
+  }
+  const { communityId, buildingIds } = scope.communityScope;
+  return `c:${communityId}:${[...buildingIds].sort().join(",")}`;
+}
+
+export const propertyContractsQueryKey = (locationId: string, scope?: PropertyResourceScopeOptions | null) =>
+  ["contracts", locationId, contractsScopeCacheKey(scope)] as const;
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function fetchPropertyContracts(locationId: string): Promise<PropertyContractWithCompany[]> {
+async function fetchPropertyContracts(
+  locationId: string,
+  scope?: PropertyResourceScopeOptions | null,
+): Promise<PropertyContractWithCompany[]> {
   try {
     const today = todayIsoDate();
-    const { data, error } = await supabase
+    let q = supabase
       .from("property_contracts")
       .select("*, company:companies(*)")
-      .eq("location_id", locationId)
-      .or(`end_date.is.null,end_date.gte.${today}`)
-      .order("start_date", { ascending: false });
+      .or(`end_date.is.null,end_date.gte.${today}`);
+
+    const cs = scope?.communityScope;
+    if (cs && cs.communityId) {
+      if (cs.buildingIds.length > 0) {
+        q = q.or(`community_id.eq.${cs.communityId},location_id.in.(${cs.buildingIds.join(",")})`);
+      } else {
+        q = q.eq("community_id", cs.communityId);
+      }
+    } else if (scope?.parentCommunityId) {
+      q = q.or(`location_id.eq.${locationId},community_id.eq.${scope.parentCommunityId}`);
+    } else {
+      q = q.eq("location_id", locationId);
+    }
+
+    const { data, error } = await q.order("start_date", { ascending: false });
 
     if (error) {
       console.error("[usePropertyContracts] fetchPropertyContracts:", error);
@@ -42,11 +75,12 @@ async function fetchPropertyContracts(locationId: string): Promise<PropertyContr
 
 export function usePropertyContracts(
   locationId: string,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; scope?: PropertyResourceScopeOptions | null },
 ): UseQueryResult<PropertyContractWithCompany[], Error> {
+  const scope = options?.scope ?? null;
   return useQuery({
-    queryKey: propertyContractsQueryKey(locationId),
-    queryFn: () => fetchPropertyContracts(locationId),
+    queryKey: propertyContractsQueryKey(locationId, scope ?? undefined),
+    queryFn: () => fetchPropertyContracts(locationId, scope ?? undefined),
     enabled: (options?.enabled ?? true) && Boolean(locationId),
     staleTime: 30_000,
   });
@@ -58,6 +92,8 @@ type ContractUpdate = Database["public"]["Tables"]["property_contracts"]["Update
 export type AddContractVariables = {
   locationId: string;
   values: AddContractFormValues;
+  /** Gdy ustawione — umowa widoczna także w kontekście całej wspólnoty. */
+  communityId?: string | null;
 };
 
 function buildContractPayload(values: AddContractFormValues): Omit<ContractInsert, "location_id" | "id"> {
@@ -80,11 +116,12 @@ function buildContractPayload(values: AddContractFormValues): Omit<ContractInser
   };
 }
 
-async function insertPropertyContract({ locationId, values }: AddContractVariables): Promise<void> {
+async function insertPropertyContract({ locationId, values, communityId }: AddContractVariables): Promise<void> {
   try {
     const row: ContractInsert = {
       ...buildContractPayload(values),
       location_id: locationId,
+      community_id: communityId ?? null,
     };
 
     const { error } = await supabase.from("property_contracts").insert(row);

@@ -10,11 +10,21 @@ import type {
   TaskStatus,
   TaskVisibility,
 } from "@/types/propertyTasks";
+import type { PropertyResourceScopeOptions } from "@/hooks/usePropertyContracts";
 
 const STALE_MS = 0;
 const GC_MS = 30_000;
 
-export const propertyTasksQueryKey = (locationId: string) => ["property-tasks", locationId] as const;
+function tasksScopeCacheKey(scope?: PropertyResourceScopeOptions | null): string {
+  if (!scope?.communityScope) {
+    return scope?.parentCommunityId ? `h:${scope.parentCommunityId}` : "default";
+  }
+  const { communityId, buildingIds } = scope.communityScope;
+  return `c:${communityId}:${[...buildingIds].sort().join(",")}`;
+}
+
+export const propertyTasksQueryKey = (locationId: string, scope?: PropertyResourceScopeOptions | null) =>
+  ["property-tasks", locationId, tasksScopeCacheKey(scope)] as const;
 
 type PropertyTaskRow = Database["public"]["Tables"]["property_tasks"]["Row"];
 
@@ -48,12 +58,26 @@ function mapRow(row: PropertyTaskRowWithCount): PropertyTaskWithCommentCount {
   };
 }
 
-async function fetchTasksForLocation(locationId: string): Promise<PropertyTaskWithCommentCount[]> {
-  const { data, error } = await supabase
-    .from("property_tasks")
-    .select("*, task_comments(count)")
-    .eq("location_id", locationId)
-    .order("created_at", { ascending: false });
+async function fetchTasksForLocation(
+  locationId: string,
+  scope?: PropertyResourceScopeOptions | null,
+): Promise<PropertyTaskWithCommentCount[]> {
+  let q = supabase.from("property_tasks").select("*, task_comments(count)");
+
+  const cs = scope?.communityScope;
+  if (cs && cs.communityId) {
+    if (cs.buildingIds.length > 0) {
+      q = q.or(`community_id.eq.${cs.communityId},location_id.in.(${cs.buildingIds.join(",")})`);
+    } else {
+      q = q.eq("community_id", cs.communityId);
+    }
+  } else if (scope?.parentCommunityId) {
+    q = q.or(`location_id.eq.${locationId},community_id.eq.${scope.parentCommunityId}`);
+  } else {
+    q = q.eq("location_id", locationId);
+  }
+
+  const { data, error } = await q.order("created_at", { ascending: false });
 
   if (error) {
     console.error("[useTasks] property_tasks:", error);
@@ -63,10 +87,14 @@ async function fetchTasksForLocation(locationId: string): Promise<PropertyTaskWi
   return (data as PropertyTaskRowWithCount[] | null)?.map(mapRow) ?? [];
 }
 
-export function useTasks(locationId: string | undefined, enabled: boolean = true) {
+export function useTasks(
+  locationId: string | undefined,
+  enabled: boolean = true,
+  scope?: PropertyResourceScopeOptions | null,
+) {
   return useQuery({
-    queryKey: locationId ? propertyTasksQueryKey(locationId) : ["property-tasks", "none"],
-    queryFn: () => fetchTasksForLocation(locationId!),
+    queryKey: locationId ? propertyTasksQueryKey(locationId, scope ?? undefined) : ["property-tasks", "none"],
+    queryFn: () => fetchTasksForLocation(locationId!, scope ?? undefined),
     enabled: Boolean(locationId && enabled),
     staleTime: STALE_MS,
     gcTime: GC_MS,
@@ -80,6 +108,8 @@ export type CreatePropertyTaskInput = {
   priority: TaskPriority;
   visibility: TaskVisibility;
   assignee_id: string | null;
+  /** Oznacza zadanie jako dotyczące całej wspólnoty (w kontekście budynku). */
+  communityId?: string | null;
 };
 
 export function useCreateTask() {
@@ -101,6 +131,7 @@ export function useCreateTask() {
 
       const { error } = await supabase.from("property_tasks").insert({
         location_id: input.locationId,
+        community_id: input.communityId ?? null,
         title: input.title.trim(),
         priority: input.priority,
         visibility: input.visibility,
@@ -115,7 +146,7 @@ export function useCreateTask() {
       }
     },
     onSuccess: async (_data, variables) => {
-      await qc.invalidateQueries({ queryKey: propertyTasksQueryKey(variables.locationId) });
+      await qc.invalidateQueries({ queryKey: ["property-tasks", variables.locationId] });
       await qc.invalidateQueries({ queryKey: [GLOBAL_TASKS_QUERY_ROOT] });
     },
     onError: (err: unknown) => {
@@ -141,6 +172,7 @@ export type UpdateTaskStatusVars = {
   taskId: string;
   nextStatus: TaskStatus;
   locationId: string;
+  scope?: PropertyResourceScopeOptions | null;
 };
 
 type StatusMutationContext = {
@@ -159,14 +191,15 @@ export function useUpdateTaskStatus() {
         throw error;
       }
     },
-    onMutate: async ({ taskId, nextStatus, locationId }): Promise<StatusMutationContext> => {
-      await qc.cancelQueries({ queryKey: propertyTasksQueryKey(locationId) });
+    onMutate: async ({ taskId, nextStatus, locationId, scope }): Promise<StatusMutationContext> => {
+      const taskKey = propertyTasksQueryKey(locationId, scope ?? undefined);
+      await qc.cancelQueries({ queryKey: taskKey });
       await qc.cancelQueries({ queryKey: [GLOBAL_TASKS_QUERY_ROOT] });
 
-      const previous = qc.getQueryData<PropertyTaskWithCommentCount[]>(propertyTasksQueryKey(locationId));
+      const previous = qc.getQueryData<PropertyTaskWithCommentCount[]>(taskKey);
       if (previous) {
         qc.setQueryData(
-          propertyTasksQueryKey(locationId),
+          taskKey,
           previous.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t)),
         );
       }
@@ -185,7 +218,7 @@ export function useUpdateTaskStatus() {
     },
     onError: (err: unknown, vars, context) => {
       if (vars?.locationId && context?.previous !== undefined) {
-        qc.setQueryData(propertyTasksQueryKey(vars.locationId), context.previous);
+        qc.setQueryData(propertyTasksQueryKey(vars.locationId, vars.scope ?? undefined), context.previous);
       }
       context?.previousGlobalEntries?.forEach(([key, data]) => {
         qc.setQueryData(key, data);
@@ -201,7 +234,7 @@ export function useUpdateTaskStatus() {
     },
     onSettled: async (_d, _e, vars) => {
       if (vars?.locationId) {
-        await qc.invalidateQueries({ queryKey: propertyTasksQueryKey(vars.locationId) });
+        await qc.invalidateQueries({ queryKey: ["property-tasks", vars.locationId] });
       }
       await qc.invalidateQueries({ queryKey: [GLOBAL_TASKS_QUERY_ROOT] });
     },

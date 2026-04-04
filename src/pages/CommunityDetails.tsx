@@ -32,6 +32,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CommunityDomainEditor } from "@/components/communities/CommunityDomainEditor";
+import { CommunityTeamTab } from "@/components/communities/CommunityTeamTab";
+import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
+import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -136,6 +140,8 @@ export default function CommunityDetails() {
 
   const unassigned = unassignedQuery.data ?? [];
   const assigned = locationsQuery.data ?? [];
+  const buildingIds = assigned.map((r) => r.id);
+  const primaryLocationId = assigned[0]?.id ?? "";
 
   return (
     <div className="flex-1 space-y-8 p-6">
@@ -200,6 +206,74 @@ export default function CommunityDetails() {
             </Table>
           </div>
         )}
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold text-foreground">Zarządzanie wspólnotą</h2>
+        <Tabs defaultValue="contracts-policies" className="w-full">
+          <TabsList className="grid h-auto w-full max-w-4xl grid-cols-2 gap-1 p-1 sm:grid-cols-4">
+            <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
+            <TabsTrigger value="tasks">Zadania</TabsTrigger>
+            <TabsTrigger value="inspections">Przeglądy</TabsTrigger>
+            <TabsTrigger value="team">Zespół</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="contracts-policies" className="mt-4">
+            {primaryLocationId ? (
+              <PropertyContractsTab
+                locationId={primaryLocationId}
+                cKobBuildingId={null}
+                resourceScope={{
+                  communityScope: { communityId: communityId!, buildingIds },
+                }}
+                sections={{ contracts: true, policies: true, inspections: false }}
+                communityAssignOption={{ communityId: communityId! }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Dodaj co najmniej jeden budynek do wspólnoty, aby zarządzać umowami i polisami.
+              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="tasks" className="mt-4">
+            {primaryLocationId ? (
+              <PropertyTasksTabWithAccess
+                locationId={primaryLocationId}
+                resourceScope={{
+                  communityScope: { communityId: communityId!, buildingIds },
+                }}
+                communityAssignOption={{ communityId: communityId! }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Dodaj co najmniej jeden budynek do wspólnoty, aby korzystać z zadań.
+              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="inspections" className="mt-4">
+            {primaryLocationId && buildingIds.length > 0 ? (
+              <PropertyContractsTab
+                locationId={primaryLocationId}
+                cKobBuildingId={null}
+                resourceScope={{
+                  communityScope: { communityId: communityId!, buildingIds },
+                }}
+                inspectionsScope={{ communityBuildingIds: buildingIds }}
+                sections={{ contracts: false, policies: false, inspections: true }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Dodaj co najmniej jeden budynek do wspólnoty, aby zobaczyć przeglądy techniczne.
+              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="team" className="mt-4">
+            <CommunityTeamTab communityId={communityId!} />
+          </TabsContent>
+        </Tabs>
       </section>
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

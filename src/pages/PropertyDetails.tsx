@@ -311,7 +311,15 @@ export default function PropertyDetails() {
         </TabsContent>
 
         <TabsContent value="issues" className="mt-6">
-          <PropertyTasksTabWithAccess locationId={property.id} />
+          <PropertyTasksTabWithAccess
+            locationId={property.id}
+            resourceScope={
+              property.communityId ? { parentCommunityId: property.communityId } : null
+            }
+            communityAssignOption={
+              property.communityId ? { communityId: property.communityId } : null
+            }
+          />
         </TabsContent>
 
         <TabsContent value="property-issues" className="mt-6">
@@ -319,7 +327,16 @@ export default function PropertyDetails() {
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-6">
-          <PropertyContractsTab locationId={property.id} cKobBuildingId={property.cKobBuildingId} />
+          <PropertyContractsTab
+            locationId={property.id}
+            cKobBuildingId={property.cKobBuildingId}
+            resourceScope={
+              property.communityId ? { parentCommunityId: property.communityId } : null
+            }
+            communityAssignOption={
+              property.communityId ? { communityId: property.communityId } : null
+            }
+          />
         </TabsContent>
 
         <TabsContent value="automations" className="mt-6">

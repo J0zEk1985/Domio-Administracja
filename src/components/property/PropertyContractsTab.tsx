@@ -47,9 +47,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePropertyPolicies } from "@/hooks/usePropertyPolicies";
-import { useDeleteContract, usePropertyContracts } from "@/hooks/usePropertyContracts";
+import {
+  useDeleteContract,
+  usePropertyContracts,
+  type PropertyResourceScopeOptions,
+} from "@/hooks/usePropertyContracts";
 import type { PropertyContractWithCompany } from "@/hooks/usePropertyContracts";
-import { usePropertyInspections } from "@/hooks/usePropertyInspections";
+import {
+  usePropertyInspections,
+  type PropertyInspectionsScopeOptions,
+} from "@/hooks/usePropertyInspections";
 import type { PropertyInspectionWithCompany } from "@/hooks/usePropertyInspections";
 import {
   INSPECTION_STATUSES,
@@ -323,12 +330,23 @@ function InspectionsTableSkeleton() {
   );
 }
 
+const DEFAULT_SECTIONS = { contracts: true, policies: true, inspections: true };
+
 export function PropertyContractsTab({
   locationId,
   cKobBuildingId,
+  resourceScope,
+  inspectionsScope,
+  sections = DEFAULT_SECTIONS,
+  communityAssignOption,
 }: {
   locationId: string;
   cKobBuildingId: string | null;
+  resourceScope?: PropertyResourceScopeOptions | null;
+  inspectionsScope?: PropertyInspectionsScopeOptions | null;
+  sections?: { contracts: boolean; policies: boolean; inspections: boolean };
+  /** Checkbox „cała wspólnota” w formularzach dodawania (wymaga `communityId`). */
+  communityAssignOption?: { communityId: string } | null;
 }) {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
@@ -338,9 +356,22 @@ export function PropertyContractsTab({
   const [inspectionStatusFilter, setInspectionStatusFilter] = useState<"all" | InspectionStatus>("all");
   const [hideHistoricalInspections, setHideHistoricalInspections] = useState(false);
 
-  const contractsQuery = usePropertyContracts(locationId, { enabled: Boolean(locationId) });
-  const policiesQuery = usePropertyPolicies(locationId, { enabled: Boolean(locationId) });
-  const inspectionsQuery = usePropertyInspections(locationId, { enabled: Boolean(locationId) });
+  const contractsQuery = usePropertyContracts(locationId, {
+    enabled: Boolean(locationId) && sections.contracts,
+    scope: resourceScope ?? undefined,
+  });
+  const policiesQuery = usePropertyPolicies(locationId, {
+    enabled: Boolean(locationId) && sections.policies,
+    scope: resourceScope ?? undefined,
+  });
+  const inspectionsListEnabled =
+    Boolean(locationId) &&
+    sections.inspections &&
+    (!inspectionsScope?.communityBuildingIds || inspectionsScope.communityBuildingIds.length > 0);
+  const inspectionsQuery = usePropertyInspections(locationId, {
+    enabled: inspectionsListEnabled,
+    scope: inspectionsScope ?? undefined,
+  });
   const deleteContract = useDeleteContract();
 
   useEffect(() => {
@@ -482,6 +513,7 @@ export function PropertyContractsTab({
 
   return (
     <div className="space-y-6">
+      {sections.contracts ? (
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
@@ -499,6 +531,7 @@ export function PropertyContractsTab({
             open={contractDialogOpen}
             onOpenChange={handleContractDialogOpenChange}
             contract={editingContract ?? undefined}
+            communityAssignOption={communityAssignOption ?? undefined}
           />
 
           {contractsQuery.isLoading ? (
@@ -609,7 +642,9 @@ export function PropertyContractsTab({
           )}
         </CardContent>
       </Card>
+      ) : null}
 
+      {sections.policies ? (
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
@@ -626,6 +661,7 @@ export function PropertyContractsTab({
             locationId={locationId}
             open={policyDialogOpen}
             onOpenChange={setPolicyDialogOpen}
+            communityAssignOption={communityAssignOption ?? undefined}
           />
 
           {policiesQuery.isLoading ? (
@@ -703,7 +739,9 @@ export function PropertyContractsTab({
           )}
         </CardContent>
       </Card>
+      ) : null}
 
+      {sections.inspections ? (
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="flex flex-col gap-3 space-y-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -768,7 +806,7 @@ export function PropertyContractsTab({
                   </div>
                 </>
               ) : null}
-              <CKobSyncButton locationId={locationId} cKobBuildingId={cKobBuildingId} />
+              {cKobBuildingId ? <CKobSyncButton locationId={locationId} cKobBuildingId={cKobBuildingId} /> : null}
               <Button
                 type="button"
                 size="sm"
@@ -905,6 +943,7 @@ export function PropertyContractsTab({
           </p>
         </CardContent>
       </Card>
+      ) : null}
     </div>
   );
 }

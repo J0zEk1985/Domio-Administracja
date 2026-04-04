@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { PolicyInsurerCombobox } from "@/components/property/PolicyInsurerCombobox";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -54,10 +56,17 @@ export interface InsurancePolicyFormProps {
   locationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  communityAssignOption?: { communityId: string } | null;
 }
 
-export function InsurancePolicyForm({ locationId, open, onOpenChange }: InsurancePolicyFormProps) {
+export function InsurancePolicyForm({
+  locationId,
+  open,
+  onOpenChange,
+  communityAssignOption,
+}: InsurancePolicyFormProps) {
   const addPolicy = useAddPropertyPolicy();
+  const [assignWholeCommunity, setAssignWholeCommunity] = useState(true);
 
   const form = useForm<InsurancePolicyFormValues>({
     resolver: zodResolver(insurancePolicyFormSchema),
@@ -69,13 +78,19 @@ export function InsurancePolicyForm({ locationId, open, onOpenChange }: Insuranc
   useEffect(() => {
     if (!open) return;
     reset(DEFAULT_VALUES);
-  }, [open, reset]);
+    setAssignWholeCommunity(Boolean(communityAssignOption));
+  }, [open, reset, communityAssignOption]);
 
   const isPending = addPolicy.isPending;
 
   function handleSubmit(values: InsurancePolicyFormValues) {
     addPolicy.mutate(
-      { locationId, values },
+      {
+        locationId,
+        values,
+        communityId:
+          assignWholeCommunity && communityAssignOption ? communityAssignOption.communityId : null,
+      },
       {
         onSuccess: () => {
           toast.success("Polisa została zapisana.");
@@ -101,6 +116,24 @@ export function InsurancePolicyForm({ locationId, open, onOpenChange }: Insuranc
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+            {communityAssignOption ? (
+              <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                <Checkbox
+                  id="policy-community-scope"
+                  checked={assignWholeCommunity}
+                  onCheckedChange={(v) => setAssignWholeCommunity(v === true)}
+                  disabled={isPending}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="policy-community-scope" className="cursor-pointer font-medium leading-snug">
+                    Przypisz do całej Wspólnoty (zalecane)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Polisa przypisana do budynku, widoczna także w kontekście wspólnoty.
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={control}

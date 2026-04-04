@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { CheckCircle2, Circle, Loader2, MessageSquare, Plus, Search } from "lucide-react";
+import type { PropertyResourceScopeOptions } from "@/hooks/usePropertyContracts";
 import {
   useCreateTask,
   usePropertyTasksCanEdit,
@@ -14,6 +15,7 @@ import {
 import { usePropertyAdministrators, type PropertyAdministratorRow } from "@/hooks/useProperties";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,6 +106,7 @@ type NewTaskDialogProps = {
   administrators: PropertyAdministratorRow[];
   createTask: ReturnType<typeof useCreateTask>;
   canEdit: boolean;
+  communityAssignOption?: { communityId: string } | null;
 };
 
 function NewPropertyTaskDialog({
@@ -113,11 +116,13 @@ function NewPropertyTaskDialog({
   administrators,
   createTask,
   canEdit,
+  communityAssignOption,
 }: NewTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [assigneeId, setAssigneeId] = useState<string>("__none__");
   const [boardVisible, setBoardVisible] = useState(false);
+  const [assignWholeCommunity, setAssignWholeCommunity] = useState(true);
 
   useEffect(() => {
     if (!open) {
@@ -125,8 +130,9 @@ function NewPropertyTaskDialog({
       setPriority("medium");
       setAssigneeId("__none__");
       setBoardVisible(false);
+      setAssignWholeCommunity(Boolean(communityAssignOption));
     }
-  }, [open]);
+  }, [open, communityAssignOption]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -143,6 +149,8 @@ function NewPropertyTaskDialog({
       priority,
       visibility: boardVisible ? "board_visible" : "internal_only",
       assignee_id: assigneeId === "__none__" ? null : assigneeId,
+      communityId:
+        assignWholeCommunity && communityAssignOption ? communityAssignOption.communityId : null,
     };
 
     try {
@@ -235,6 +243,25 @@ function NewPropertyTaskDialog({
             />
           </div>
 
+          {communityAssignOption ? (
+            <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <Checkbox
+                id="task-community-scope"
+                checked={assignWholeCommunity}
+                onCheckedChange={(v) => setAssignWholeCommunity(v === true)}
+                disabled={pending || !canEdit}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="task-community-scope" className="cursor-pointer font-medium leading-snug">
+                  Przypisz do całej Wspólnoty (zalecane)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Zadanie przypisane do budynku, widoczne także w agregacji wspólnoty.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
               Anuluj
@@ -255,16 +282,24 @@ export type PropertyTasksTabProps = {
   canEdit: boolean;
   /** Gdy true — uprawnienia do edycji są jeszcze weryfikowane; mutacje pozostają zablokowane. */
   editPermissionPending?: boolean;
+  resourceScope?: PropertyResourceScopeOptions | null;
+  communityAssignOption?: { communityId: string } | null;
 };
 
-export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = false }: PropertyTasksTabProps) {
+export function PropertyTasksTab({
+  locationId,
+  canEdit,
+  editPermissionPending = false,
+  resourceScope,
+  communityAssignOption,
+}: PropertyTasksTabProps) {
   const navigate = useNavigate();
   const allowMutations = canEdit && !editPermissionPending;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all");
   const [newOpen, setNewOpen] = useState(false);
 
-  const tasksQuery = useTasks(locationId, true);
+  const tasksQuery = useTasks(locationId, true, resourceScope ?? undefined);
   const adminsQuery = usePropertyAdministrators(locationId, Boolean(locationId));
   const createTask = useCreateTask();
   const updateStatus = useUpdateTaskStatus();
@@ -292,7 +327,12 @@ export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = 
   function handleStatusClick(task: PropertyTaskWithCommentCount) {
     if (!allowMutations) return;
     const next = nextCyclicTaskStatus(task.status);
-    updateStatus.mutate({ taskId: task.id, nextStatus: next, locationId });
+    updateStatus.mutate({
+      taskId: task.id,
+      nextStatus: next,
+      locationId,
+      scope: resourceScope ?? undefined,
+    });
   }
 
   return (
@@ -466,13 +506,22 @@ export function PropertyTasksTab({ locationId, canEdit, editPermissionPending = 
         administrators={adminsQuery.data ?? []}
         createTask={createTask}
         canEdit={allowMutations}
+        communityAssignOption={communityAssignOption ?? undefined}
       />
     </div>
   );
 }
 
 /** Wrapper ładujący uprawnienia do edycji zadań (Owner lub location_access administration). */
-export function PropertyTasksTabWithAccess({ locationId }: { locationId: string }) {
+export function PropertyTasksTabWithAccess({
+  locationId,
+  resourceScope,
+  communityAssignOption,
+}: {
+  locationId: string;
+  resourceScope?: PropertyResourceScopeOptions | null;
+  communityAssignOption?: { communityId: string } | null;
+}) {
   const canEditQuery = usePropertyTasksCanEdit(locationId);
 
   useEffect(() => {
@@ -501,6 +550,8 @@ export function PropertyTasksTabWithAccess({ locationId }: { locationId: string 
       locationId={locationId}
       canEdit={canEditQuery.data === true}
       editPermissionPending={canEditQuery.isLoading}
+      resourceScope={resourceScope}
+      communityAssignOption={communityAssignOption}
     />
   );
 }
