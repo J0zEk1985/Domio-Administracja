@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Mic, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
 import { ISSUE_CATEGORY_OPTIONS } from "@/lib/issueCategoryOptions";
@@ -11,6 +11,7 @@ import {
   sortLocationsByDistanceKm,
 } from "@/lib/geo";
 import { useCreateIssue, createIssueSchema, type CreateIssueFormValues } from "@/hooks/useCreateIssue";
+import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useProperties, type PropertyListRow } from "@/hooks/useProperties";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type { CreateIssueFormValues };
 
@@ -174,6 +176,12 @@ export function CreateIssueForm({
   const form = useForm<CreateIssueFormValues>({
     resolver: zodResolver(createIssueSchema),
     defaultValues: defaultFormValues,
+  });
+
+  const { isRecording, start, stop, isSupported: speechSupported } = useSpeechToText({
+    onTextUpdate: (fullText) => {
+      form.setValue("description", fullText, { shouldValidate: true, shouldDirty: true });
+    },
   });
 
   const sortedProperties = useMemo(() => {
@@ -427,13 +435,66 @@ export function CreateIssueForm({
             <FormItem>
               <FormLabel>Opis problemu / zlecenie</FormLabel>
               <FormControl>
-                <Textarea
-                  {...field}
-                  placeholder="Opisz miejsce, zakres i ewentualne zagrożenia (min. 10 znaków)…"
-                  rows={5}
-                  disabled={pending}
-                  className="resize-none min-h-[120px]"
-                />
+                <div className="relative">
+                  <Textarea
+                    {...field}
+                    placeholder="Opisz miejsce, zakres i ewentualne zagrożenia (min. 10 znaków)…"
+                    rows={5}
+                    disabled={pending}
+                    className={cn(
+                      "resize-none min-h-[120px]",
+                      fieldServiceMode && speechSupported && "pb-12 pr-14",
+                    )}
+                  />
+                  {fieldServiceMode && speechSupported ? (
+                    <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-2">
+                      {isRecording ? (
+                        <span
+                          className="pointer-events-none flex items-center gap-1.5"
+                          aria-hidden
+                        >
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                          </span>
+                        </span>
+                      ) : null}
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            disabled={pending}
+                            aria-pressed={isRecording}
+                            aria-label={
+                              isRecording ? "Zatrzymaj dyktowanie" : "Dyktuj — dopisz tekst na końcu pola"
+                            }
+                            className={cn(
+                              "pointer-events-auto h-9 w-9 rounded-full shadow-sm",
+                              isRecording &&
+                                "border-destructive/40 text-destructive animate-pulse hover:text-destructive",
+                            )}
+                            onClick={() => {
+                              if (isRecording) {
+                                stop();
+                              } else {
+                                start(field.value ?? "");
+                              }
+                            }}
+                          >
+                            <Mic className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-[220px]">
+                          {isRecording
+                            ? "Zatrzymaj nasłuchiwanie"
+                            : "Dyktuj po polsku — tekst dopisze się na końcu opisu"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  ) : null}
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
