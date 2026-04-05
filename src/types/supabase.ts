@@ -1229,6 +1229,7 @@ export type Database = {
           expires_at: string | null
           id: string
           location_id: string | null
+          unit_number: string | null
           user_id: string | null
         }
         Insert: {
@@ -1237,6 +1238,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           location_id?: string | null
+          unit_number?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1245,6 +1247,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           location_id?: string | null
+          unit_number?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1806,6 +1809,7 @@ export type Database = {
           internal_notes: string | null
           ip_address: string | null
           is_first_login: boolean | null
+          last_active_location_access_id: string | null
           last_login_at: string | null
           license_no: string | null
           marketing_consent: boolean | null
@@ -1833,6 +1837,7 @@ export type Database = {
           internal_notes?: string | null
           ip_address?: string | null
           is_first_login?: boolean | null
+          last_active_location_access_id?: string | null
           last_login_at?: string | null
           license_no?: string | null
           marketing_consent?: boolean | null
@@ -1860,6 +1865,7 @@ export type Database = {
           internal_notes?: string | null
           ip_address?: string | null
           is_first_login?: boolean | null
+          last_active_location_access_id?: string | null
           last_login_at?: string | null
           license_no?: string | null
           marketing_consent?: boolean | null
@@ -1871,7 +1877,15 @@ export type Database = {
           terms_version?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_last_active_location_access_id_fkey"
+            columns: ["last_active_location_access_id"]
+            isOneToOne: false
+            referencedRelation: "location_access"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       promo_codes: {
         Row: {
