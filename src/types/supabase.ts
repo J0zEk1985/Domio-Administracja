@@ -1546,6 +1546,68 @@ export type Database = {
         }
         Relationships: []
       }
+      offer_interactions: {
+        Row: {
+          captured_value: string | null
+          created_at: string | null
+          id: string
+          interaction_type: string
+          location_id: string | null
+          offer_id: string
+          org_id: string
+          user_id: string
+        }
+        Insert: {
+          captured_value?: string | null
+          created_at?: string | null
+          id?: string
+          interaction_type: string
+          location_id?: string | null
+          offer_id: string
+          org_id: string
+          user_id: string
+        }
+        Update: {
+          captured_value?: string | null
+          created_at?: string | null
+          id?: string
+          interaction_type?: string
+          location_id?: string | null
+          offer_id?: string
+          org_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_interactions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_interactions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "partner_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_interactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_interactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_subscriptions: {
         Row: {
           app_id: string
@@ -1671,43 +1733,64 @@ export type Database = {
       }
       partner_offers: {
         Row: {
+          action_type: string | null
+          action_value: string | null
+          bg_color: string | null
+          billing_model: string | null
           created_at: string
           description: string
+          icon_emoji: string | null
           id: string
           image_url: string | null
           is_active: boolean
           location_id: string | null
           org_id: string
           promo_code: string | null
+          promote_on_board: boolean | null
           redirect_url: string | null
+          target_locations: string[] | null
           title: string
           updated_at: string
           vendor_id: string
         }
         Insert: {
+          action_type?: string | null
+          action_value?: string | null
+          bg_color?: string | null
+          billing_model?: string | null
           created_at?: string
           description: string
+          icon_emoji?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           location_id?: string | null
           org_id: string
           promo_code?: string | null
+          promote_on_board?: boolean | null
           redirect_url?: string | null
+          target_locations?: string[] | null
           title: string
           updated_at?: string
           vendor_id: string
         }
         Update: {
+          action_type?: string | null
+          action_value?: string | null
+          bg_color?: string | null
+          billing_model?: string | null
           created_at?: string
           description?: string
+          icon_emoji?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           location_id?: string | null
           org_id?: string
           promo_code?: string | null
+          promote_on_board?: boolean | null
           redirect_url?: string | null
+          target_locations?: string[] | null
           title?: string
           updated_at?: string
           vendor_id?: string
