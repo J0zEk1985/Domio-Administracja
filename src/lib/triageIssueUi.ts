@@ -32,13 +32,8 @@ export function issueStatusLabelPl(status: IssueStatus | null | undefined): stri
 
 export function issuePriorityLabelPl(p: IssuePriority | null | undefined): string {
   if (!p) return "—";
-  const map: Record<IssuePriority, string> = {
-    low: "Niski",
-    medium: "Średni",
-    high: "Wysoki",
-    critical: "Krytyczny",
-  };
-  return map[p] ?? p;
+  if (p === "high" || p === "critical") return "Pilny";
+  return "Standardowy";
 }
 
 export function issueReporterTypeLabelPl(type: string | null | undefined): string {
@@ -81,8 +76,6 @@ export function issueStatusDotClass(status: IssueStatus | null | undefined): str
 export function issuePriorityBadgeVariant(
   p: IssuePriority | null | undefined,
 ): "default" | "secondary" | "destructive" | "outline" {
-  if (p === "critical") return "destructive";
-  if (p === "high") return "default";
-  if (p === "medium") return "secondary";
-  return "outline";
+  if (p === "critical" || p === "high") return "destructive";
+  return "secondary";
 }

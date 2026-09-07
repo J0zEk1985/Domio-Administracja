@@ -24,7 +24,7 @@ const ALLOWED_CATEGORIES = [
   "Prace porządkowe",
 ] as const;
 
-const ALLOWED_PRIORITIES_EN = ["low", "medium", "high", "critical"] as const;
+const ALLOWED_PRIORITIES_EN = ["medium", "critical"] as const;
 
 type AllowedCategory = (typeof ALLOWED_CATEGORIES)[number];
 type AllowedPriority = (typeof ALLOWED_PRIORITIES_EN)[number];
@@ -90,15 +90,18 @@ function normalizePriorityToEnglish(raw: string): AllowedPriority {
     .replace(/\p{M}/gu, "");
 
   const pl: Record<string, AllowedPriority> = {
-    niski: "low",
+    niski: "medium",
     sredni: "medium",
-    wysoki: "high",
+    standardowy: "medium",
+    standard: "medium",
+    wysoki: "critical",
     krytyczny: "critical",
+    pilny: "critical",
   };
   if (pl[t]) return pl[t];
 
-  const en = ALLOWED_PRIORITIES_EN.find((p) => p === t);
-  if (en) return en;
+  if (t === "low" || t === "medium") return "medium";
+  if (t === "high" || t === "critical") return "critical";
 
   console.warn("[triage-issue] Unrecognized priority, defaulting to medium:", raw);
   return "medium";
@@ -114,7 +117,7 @@ function parseTriageJson(text: string): TriageLLMResult {
     categoryId: typeof o.categoryId === "string" ? o.categoryId : "",
     locationId: typeof o.locationId === "string" ? o.locationId : "",
     communityId: typeof o.communityId === "string" ? o.communityId : "",
-    priority: typeof o.priority === "string" ? o.priority : "sredni",
+    priority: typeof o.priority === "string" ? o.priority : "standardowy",
     shortDescription: typeof o.shortDescription === "string" ? o.shortDescription : "",
   };
 }
@@ -205,14 +208,14 @@ Deno.serve(async (req) => {
     const locationById = new Map(validLocs.map((l) => [l.id, l]));
 
     const systemText =
-      `Jesteś asystentem zarządcy nieruchomości. Użytkownik dyktuje usterkę. Masz listę dostępnych budynków. Zwróć WYŁĄCZNIE poprawny JSON w formacie: { 'categoryId': '...', 'locationId': '...', 'communityId': '...', 'priority': 'niski|sredni|wysoki|krytyczny', 'shortDescription': '...' }. Dopasuj budynek z listy do dyktowanego tekstu.
+      `Jesteś asystentem zarządcy nieruchomości. Użytkownik dyktuje usterkę. Masz listę dostępnych budynków. Zwróć WYŁĄCZNIE poprawny JSON w formacie: { 'categoryId': '...', 'locationId': '...', 'communityId': '...', 'priority': 'standardowy|pilny', 'shortDescription': '...' }. Dopasuj budynek z listy do dyktowanego tekstu.
 
 Dozwolone categoryId (dokładnie jedna wartość): ${ALLOWED_CATEGORIES.join(", ")}.
 
 Lista budynków (id, nazwa, community_id):
 ${validLocs.map((l) => `- ${l.id} | ${l.name.trim()} | community_id=${l.community_id || "(puste)"}`).join("\n")}
 
-Priorytet w polu priority musi być dokładnie jednym z: niski, sredni, wysoki, krytyczny.
+Priorytet w polu priority musi być dokładnie jednym z: standardowy, pilny.
 shortDescription: po polsku, minimum 10 znaków, bez zmieniania faktów.`;
 
     const userText = `Treść zgłoszenia:\n"""${text}"""`;
@@ -230,7 +233,7 @@ shortDescription: po polsku, minimum 10 znaków, bez zmieniania faktów.`;
         communityId: { type: "string" },
         priority: {
           type: "string",
-          enum: ["niski", "sredni", "wysoki", "krytyczny"],
+          enum: ["standardowy", "pilny"],
         },
         shortDescription: { type: "string" },
       },

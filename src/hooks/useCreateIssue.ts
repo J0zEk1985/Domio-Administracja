@@ -6,7 +6,7 @@ import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { propertyIssuesQueryKey } from "@/hooks/usePropertyIssues";
 import { triageIssuesQueryKey } from "@/hooks/useTriageIssues";
 
-const issuePriorityEnum = z.enum(["low", "medium", "high", "critical"]);
+const issuePriorityEnum = z.enum(["medium", "critical"]);
 
 export const createIssueSchema = z.object({
   location_id: z.string().uuid({ message: "Wybierz budynek." }),

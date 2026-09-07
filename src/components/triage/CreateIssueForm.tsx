@@ -417,10 +417,8 @@ export function CreateIssueForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="low">Niski</SelectItem>
-                  <SelectItem value="medium">Średni</SelectItem>
-                  <SelectItem value="high">Wysoki</SelectItem>
-                  <SelectItem value="critical">Krytyczny</SelectItem>
+                  <SelectItem value="medium">Standardowy</SelectItem>
+                  <SelectItem value="critical">Pilny</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
