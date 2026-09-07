@@ -76,9 +76,36 @@ function tryParseInternalComments(json: Json | null, fallbackAt: string | null):
 export function buildIssueTimeline(issue: TriageIssue): TimelineEntry[] {
   const out: TimelineEntry[] = [];
   pushIf(out, "created", "Utworzono zgłoszenie", issue.created_at);
-  pushIf(out, "started", "Rozpoczęto", issue.started_at);
-  pushIf(out, "scheduled", "Zaplanowano", issue.scheduled_at);
-  pushIf(out, "resolved", "Rozwiązano", issue.resolved_at);
+
+  if (issue.status === "pending_admin_approval") {
+    pushIf(
+      out,
+      "awaiting-acceptance",
+      "Oczekuje na akceptację administratora",
+      issue.created_at,
+      "Zgłoszenie czeka w kolejce triage.",
+    );
+  }
+
+  pushIf(out, "started", "Rozpoczęto prace", issue.started_at);
+
+  if (issue.status === "rejected") {
+    pushIf(
+      out,
+      "ended",
+      "Odrzucono zgłoszenie",
+      issue.resolved_at,
+      issue.resolution_notes?.trim() || undefined,
+    );
+  } else {
+    pushIf(
+      out,
+      "ended",
+      "Zakończono prace",
+      issue.resolved_at,
+      issue.resolution_notes?.trim() || undefined,
+    );
+  }
 
   for (const extra of tryParseInternalComments(issue.internal_comments, issue.created_at ?? null)) {
     out.push(extra);

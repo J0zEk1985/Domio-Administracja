@@ -21,6 +21,7 @@ type PropertyIssueRow = Database["public"]["Tables"]["property_issues"]["Row"];
 export type TriageIssue = PropertyIssueRow & {
   location: { name: string | null; address: string | null } | null;
   reporter: { full_name: string | null } | null;
+  organization: { name: string | null } | null;
   delegated_vendor: { name: string | null } | null;
   assigned_staff: { full_name: string | null } | null;
 };
@@ -28,6 +29,7 @@ export type TriageIssue = PropertyIssueRow & {
 type RowWithEmbeds = PropertyIssueRow & {
   location: { name: string | null; address: string | null } | null;
   reporter: { full_name: string | null } | null;
+  organization: { name: string | null } | null;
   delegated_vendor: { name: string | null } | null;
   assigned_staff: { full_name: string | null } | null;
 };
@@ -51,6 +53,7 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
       *,
       location:cleaning_locations(name, address),
       reporter:profiles!property_issues_reporter_id_fkey(full_name),
+      organization:organizations!property_issues_org_id_fkey(name),
       delegated_vendor:vendor_partners(name),
       assigned_staff:profiles!property_issues_assigned_staff_id_fkey(full_name)
     `,
@@ -69,6 +72,7 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     ...row,
     location: row.location ?? null,
     reporter: row.reporter ?? null,
+    organization: row.organization ?? null,
     delegated_vendor: row.delegated_vendor ?? null,
     assigned_staff: row.assigned_staff ?? null,
   }));

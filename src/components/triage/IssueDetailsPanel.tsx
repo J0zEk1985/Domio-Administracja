@@ -5,7 +5,7 @@ import { Building2, User } from "lucide-react";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
-import { issuePriorityLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
+import { issuePriorityLabelPl, issueReporterTypeLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
 import { buildIssueTimeline } from "@/components/triage/issueTimeline";
 import { TriageIssueActionBar } from "@/components/triage/TriageIssueActionBar";
 import { IssuePhotoGallery } from "@/components/triage/IssuePhotoGallery";
@@ -61,11 +61,13 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
     );
   }
 
-  const reporter =
+  const reporterName =
     issue.reporter?.full_name?.trim() ||
     issue.reporter_name?.trim() ||
     issue.reporter_email?.trim() ||
     "—";
+  const reporterRole = issueReporterTypeLabelPl(issue.reporter_type);
+  const reporterOrg = issue.organization?.name?.trim() || null;
   const timeline = buildIssueTimeline(issue);
   const categoryEditable =
     showCoordinatorActions && issue.status !== "resolved" && issue.status !== "rejected";
@@ -177,7 +179,11 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
               <User className="h-3.5 w-3.5" />
               Zgłaszający
             </div>
-            <p className="mt-1.5 text-sm font-medium text-foreground">{reporter}</p>
+            <p className="mt-1.5 text-sm font-medium text-foreground">{reporterName}</p>
+            <p className="text-sm text-foreground/80">Rola: {reporterRole}</p>
+            <p className="text-sm text-foreground/80">
+              Organizacja: {reporterOrg ?? "—"}
+            </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
@@ -216,46 +222,22 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
         <Separator />
 
         <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground">Daty i historia</h2>
-          <ul className="space-y-3">
-            <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 font-medium text-foreground/70">Utworzono</span>
-              <span>{formatDt(issue.created_at)}</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 font-medium text-foreground/70">Start prac</span>
-              <span>{formatDt(issue.started_at)}</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 font-medium text-foreground/70">Harmonogram</span>
-              <span>{formatDt(issue.scheduled_at)}</span>
-            </li>
-            <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 font-medium text-foreground/70">Rozwiązanie</span>
-              <span>{formatDt(issue.resolved_at)}</span>
-            </li>
-          </ul>
-
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
-              Oś czasu
-            </h3>
-            {timeline.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Brak dodatkowych wpisów.</p>
-            ) : (
-              <ol className="relative space-y-3 border-l border-border/80 pl-4">
-                {timeline.map((e) => (
-                  <li key={e.id} className="text-sm">
-                    <p className="font-medium text-foreground">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">{formatDt(e.at)}</p>
-                    {e.detail ? (
-                      <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{e.detail}</p>
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
+          <h2 className="text-sm font-semibold text-foreground">Historia</h2>
+          {timeline.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Brak wpisów na osi czasu.</p>
+          ) : (
+            <ol className="relative space-y-4 border-l-2 border-border pl-4">
+              {timeline.map((e) => (
+                <li key={e.id} className="text-sm">
+                  <p className="font-medium text-foreground">{e.title}</p>
+                  <p className="text-xs text-muted-foreground">{formatDt(e.at)}</p>
+                  {e.detail ? (
+                    <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{e.detail}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
     </div>
   );

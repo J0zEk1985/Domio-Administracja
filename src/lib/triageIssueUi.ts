@@ -41,6 +41,18 @@ export function issuePriorityLabelPl(p: IssuePriority | null | undefined): strin
   return map[p] ?? p;
 }
 
+export function issueReporterTypeLabelPl(type: string | null | undefined): string {
+  if (!type?.trim()) return "—";
+  const key = type.trim().toLowerCase();
+  const map: Record<string, string> = {
+    administrator: "Dyspozytor",
+    admin: "Administrator",
+    tenant: "Mieszkaniec",
+    public_qr: "Zgłoszenie QR",
+  };
+  return map[key] ?? type;
+}
+
 /** Tailwind color class for status dot on list cards */
 export function issueStatusDotClass(status: IssueStatus | null | undefined): string {
   if (!status) return "bg-muted-foreground";
