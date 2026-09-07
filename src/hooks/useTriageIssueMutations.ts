@@ -3,16 +3,14 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { triageIssuesQueryKey, type TriageIssue } from "@/hooks/useTriageIssues";
+import { rejectPropertyIssue, broadcastPropertyIssue, delegatePropertyIssue } from "@/lib/issueLifecycleApi";
+import { issueLifecycleErrorMessagePl } from "@/types/issueLifecycle";
 import type { Database } from "@/types/supabase";
 
 type IssueStatus = Database["public"]["Enums"]["issue_status_enum"];
 
 function errMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null && "message" in err) {
-    return String((err as { message: unknown }).message);
-  }
-  return "Operacja nie powiodła się.";
+  return issueLifecycleErrorMessagePl(err);
 }
 
 type Ctx = { previous: TriageIssue[] | undefined };
@@ -40,19 +38,7 @@ export function useRejectIssue() {
     mutationFn: async ({ issueId, reason }: RejectIssueVars) => {
       const trimmed = reason.trim();
       if (!trimmed) throw new Error("Podaj powód odrzucenia.");
-
-      const { error } = await supabase
-        .from("property_issues")
-        .update({
-          status: "rejected" satisfies IssueStatus,
-          resolution_notes: trimmed,
-        })
-        .eq("id", issueId);
-
-      if (error) {
-        console.error("[useRejectIssue] update:", error);
-        throw error;
-      }
+      await rejectPropertyIssue(issueId, trimmed);
     },
     onMutate: async ({ issueId }): Promise<Ctx> => {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
@@ -85,18 +71,7 @@ export function useDelegateIssue() {
 
   return useMutation({
     mutationFn: async ({ issueId, vendorId }: DelegateIssueVars) => {
-      const { error } = await supabase
-        .from("property_issues")
-        .update({
-          status: "delegated" satisfies IssueStatus,
-          delegated_vendor_id: vendorId,
-        })
-        .eq("id", issueId);
-
-      if (error) {
-        console.error("[useDelegateIssue] update:", error);
-        throw error;
-      }
+      await delegatePropertyIssue(issueId, vendorId);
     },
     onMutate: async ({ issueId, vendorId, vendorName }): Promise<Ctx> => {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
@@ -133,15 +108,7 @@ export function useBroadcastIssue() {
 
   return useMutation({
     mutationFn: async ({ issueId }: BroadcastIssueVars) => {
-      const { error } = await supabase
-        .from("property_issues")
-        .update({ is_public_broadcast: true })
-        .eq("id", issueId);
-
-      if (error) {
-        console.error("[useBroadcastIssue] update:", error);
-        throw error;
-      }
+      await broadcastPropertyIssue(issueId);
     },
     onMutate: async ({ issueId }): Promise<Ctx> => {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });

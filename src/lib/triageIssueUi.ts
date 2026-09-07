@@ -1,6 +1,7 @@
 import type { Database } from "@/types/supabase";
 
-export type IssueStatus = Database["public"]["Enums"]["issue_status_enum"];
+type IssueStatusDb = Database["public"]["Enums"]["issue_status_enum"];
+export type IssueStatus = IssueStatusDb | "cancelled";
 export type IssuePriority = Database["public"]["Enums"]["issue_priority_enum"];
 
 export const TRIAGE_ACTIVE_STATUSES: readonly IssueStatus[] = [
@@ -13,7 +14,11 @@ export const TRIAGE_ACTIVE_STATUSES: readonly IssueStatus[] = [
 ] as const;
 
 /** Closed / archive statuses (Linear-style “done” column). */
-export const TERMINAL_ISSUE_STATUSES: readonly IssueStatus[] = ["resolved", "rejected"] as const;
+export const TERMINAL_ISSUE_STATUSES: readonly IssueStatus[] = [
+  "resolved",
+  "rejected",
+  "cancelled",
+] as const;
 
 export function issueStatusLabelPl(status: IssueStatus | null | undefined): string {
   if (!status) return "—";
@@ -26,6 +31,7 @@ export function issueStatusLabelPl(status: IssueStatus | null | undefined): stri
     delegated: "Delegowane (B2B)",
     resolved: "Rozwiązane",
     rejected: "Odrzucone",
+    cancelled: "Anulowane",
   };
   return map[status] ?? status;
 }
@@ -68,6 +74,8 @@ export function issueStatusDotClass(status: IssueStatus | null | undefined): str
       return "bg-muted-foreground";
     case "rejected":
       return "bg-destructive";
+    case "cancelled":
+      return "bg-muted-foreground";
     default:
       return "bg-muted-foreground";
   }

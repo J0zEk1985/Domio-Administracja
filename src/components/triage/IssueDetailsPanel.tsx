@@ -6,7 +6,8 @@ import { Building2, User } from "lucide-react";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
 import { issuePriorityLabelPl, issueReporterTypeLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
-import { buildIssueTimeline } from "@/components/triage/issueTimeline";
+import { mergeIssueTimeline } from "@/components/triage/issueTimeline";
+import { useIssueLifecycleEvents } from "@/hooks/useIssueLifecycleMutations";
 import { TriageIssueActionBar } from "@/components/triage/TriageIssueActionBar";
 import { IssuePhotoGallery } from "@/components/triage/IssuePhotoGallery";
 import { IssueAfterPhotosStrip } from "@/components/triage/IssueAfterPhotosStrip";
@@ -38,6 +39,7 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
   const [protocolOpen, setProtocolOpen] = useState(false);
   const showCoordinatorActions = variant === "triage";
   const embedded = variant === "property";
+  const { data: lifecycleEvents } = useIssueLifecycleEvents(issue?.id ?? null);
 
   useEffect(() => {
     setProtocolOpen(false);
@@ -68,9 +70,12 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
     "—";
   const reporterRole = issueReporterTypeLabelPl(issue.reporter_type);
   const reporterOrg = issue.organization?.name?.trim() || null;
-  const timeline = buildIssueTimeline(issue);
+  const timeline = mergeIssueTimeline(issue, lifecycleEvents);
   const categoryEditable =
-    showCoordinatorActions && issue.status !== "resolved" && issue.status !== "rejected";
+    showCoordinatorActions &&
+    issue.status !== "resolved" &&
+    issue.status !== "rejected" &&
+    issue.status !== "cancelled";
 
   const inner = (
     <div className="space-y-6 pb-8">
@@ -155,6 +160,33 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
           </section>
         ) : null}
 
+        {issue.status === "cancelled" ? (
+          <section className="space-y-2">
+            <h2 className="text-sm font-medium text-foreground">Anulowanie</h2>
+            <div className="rounded-lg border border-border/60 bg-muted/10 p-4 text-sm space-y-2">
+              <p>
+                <span className="text-muted-foreground">Data: </span>
+                {formatDt(issue.cancelled_at)}
+              </p>
+              {issue.cancel_reason?.trim() ? (
+                <p className="whitespace-pre-wrap pt-1 text-muted-foreground">
+                  <span className="font-medium text-foreground">Powód: </span>
+                  {issue.cancel_reason.trim()}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {issue.cancel_requested_at && issue.status !== "cancelled" ? (
+          <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+            <p className="font-medium text-foreground">Wniosek o anulowanie</p>
+            <p className="text-muted-foreground">{formatDt(issue.cancel_requested_at)}</p>
+            {issue.cancel_request_reason?.trim() ? (
+              <p className="mt-1 whitespace-pre-wrap">{issue.cancel_request_reason.trim()}</p>
+            ) : null}
+          </section>
+        ) : null}
         {issue.status === "rejected" ? (
           <section className="space-y-2">
             <h2 className="text-sm font-medium text-foreground">Odrzucenie</h2>

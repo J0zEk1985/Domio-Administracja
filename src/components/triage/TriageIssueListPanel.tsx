@@ -44,6 +44,7 @@ const STATUS_OPTIONS: { value: TriageInboxStatusFilter; label: string }[] = [
   { value: "delegated", label: "Delegowane" },
   { value: "resolved", label: "Zrealizowane" },
   { value: "rejected", label: "Odrzucone" },
+  { value: "cancelled", label: "Anulowane" },
 ];
 
 export type TriageIssueListPanelProps = {

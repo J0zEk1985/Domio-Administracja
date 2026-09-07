@@ -1,5 +1,9 @@
 import type { Json } from "@/types/supabase";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
+import type {
+  IssueLifecycleEvent,
+  IssueLifecycleEventType,
+} from "@/types/issueLifecycle";
 
 export type TimelineEntry = {
   id: string;
@@ -97,6 +101,14 @@ export function buildIssueTimeline(issue: TriageIssue): TimelineEntry[] {
       issue.resolved_at,
       issue.resolution_notes?.trim() || undefined,
     );
+  } else if (issue.status === "cancelled") {
+    pushIf(
+      out,
+      "cancelled-col",
+      "Anulowano zlecenie",
+      issue.cancelled_at,
+      issue.cancel_reason?.trim() || undefined,
+    );
   } else {
     pushIf(
       out,
@@ -107,10 +119,55 @@ export function buildIssueTimeline(issue: TriageIssue): TimelineEntry[] {
     );
   }
 
+  pushIf(out, "claimed-col", "Technik podjął zlecenie", issue.claimed_at);
+  pushIf(
+    out,
+    "cancel-req-col",
+    "Wniosek o anulowanie",
+    issue.cancel_requested_at,
+    issue.cancel_request_reason?.trim() || undefined,
+  );
+
   for (const extra of tryParseInternalComments(issue.internal_comments, issue.created_at ?? null)) {
     out.push(extra);
   }
 
   out.sort((a, b) => parseIso(a.at)! - parseIso(b.at)!);
   return out;
+}
+
+const LIFECYCLE_TITLE_PL: Record<IssueLifecycleEventType, string> = {
+  claimed: "Technik podjął zlecenie",
+  started: "Rozpoczęto prace",
+  cancel_requested: "Wniosek o anulowanie",
+  cancelled: "Anulowano zlecenie",
+  transfer_requested: "Wniosek o cesję do firmy B2B",
+  transfer_accepted: "Kontrahent zaakceptował cesję",
+  transfer_rejected: "Wniosek o cesję odrzucony",
+};
+
+export function mergeIssueTimeline(
+  issue: TriageIssue,
+  events: IssueLifecycleEvent[] | undefined,
+): TimelineEntry[] {
+  const base = buildIssueTimeline(issue);
+  if (!events?.length) return base;
+
+  const fromEvents: TimelineEntry[] = events.map((e) => ({
+    id: `evt-${e.id}`,
+    title: LIFECYCLE_TITLE_PL[e.event_type] ?? e.event_type,
+    at: e.created_at,
+    detail: e.payload.reason?.trim() || undefined,
+  }));
+
+  const merged = [...base, ...fromEvents];
+  const seen = new Set<string>();
+  const deduped: TimelineEntry[] = [];
+  for (const row of merged.sort((a, b) => parseIso(a.at)! - parseIso(b.at)!)) {
+    const key = `${row.title}|${row.at}|${row.detail ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(row);
+  }
+  return deduped;
 }

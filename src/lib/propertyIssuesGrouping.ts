@@ -11,7 +11,7 @@ export const IN_FLIGHT_STATUSES: readonly IssueStatus[] = [
   "waiting_for_parts",
   "delegated",
 ];
-export const ARCHIVE_STATUSES: readonly IssueStatus[] = ["resolved", "rejected"];
+export const ARCHIVE_STATUSES: readonly IssueStatus[] = ["resolved", "rejected", "cancelled"];
 
 export function issueGroupKey(status: IssueStatus | null | undefined): PropertyIssueGroupKey | null {
   if (!status) return null;

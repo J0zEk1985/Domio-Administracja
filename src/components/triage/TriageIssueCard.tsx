@@ -26,7 +26,10 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
 
   const building = formatIssueBuildingLabel(issue.location);
   const category = issue.category?.trim() || "Bez kategorii";
-  const isClosed = issue.status === "resolved" || issue.status === "rejected";
+  const isClosed =
+    issue.status === "resolved" ||
+    issue.status === "rejected" ||
+    issue.status === "cancelled";
 
   return (
     <button
