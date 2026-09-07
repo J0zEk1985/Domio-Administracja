@@ -117,7 +117,7 @@ export function InspectionsDataTable({
   const columns = useMemo(() => globalInspectionsColumns, []);
 
   const table = useReactTable({
-    data: isLoading ? [] : facetedRows,
+    data: facetedRows,
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,

@@ -3628,6 +3628,19 @@ export type Database = {
       get_my_orgs: { Args: never; Returns: string[] }
       get_my_orgs_safe: { Args: never; Returns: string[] }
       get_profile_by_email: { Args: { target_email: string }; Returns: Json }
+      get_published_eboard_messages: {
+        Args: { p_community_id: string }
+        Returns: {
+          content: string
+          created_at: string
+          display_from: string
+          display_until: string
+          id: string
+          msg_type: Database["public"]["Enums"]["eboard_msg_type"]
+          title: string
+          valid_until: string
+        }[]
+      }
       get_property_tasks_with_comment_counts: {
         Args: { p_location_id: string }
         Returns: {
@@ -3659,8 +3672,27 @@ export type Database = {
       is_manager_safe: { Args: never; Returns: boolean }
       is_org_manager: { Args: { target_org_id: string }; Returns: boolean }
       is_org_manager_safe: { Args: { target_org_id: string }; Returns: boolean }
+      is_org_management: { Args: { target_org_id: string }; Returns: boolean }
       is_org_member: { Args: { target_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      insert_public_qr_issue: {
+        Args: {
+          p_description: string
+          p_photos_before?: string[]
+          p_reporter_name: string
+          p_reporter_phone: string
+          p_token: string
+        }
+        Returns: string
+      }
+      lookup_location_by_public_qr_token: {
+        Args: { p_token: string }
+        Returns: {
+          address: string
+          id: string
+          org_id: string
+        }[]
+      }
       link_user_to_org: {
         Args: {
           target_email: string

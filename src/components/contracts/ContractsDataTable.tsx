@@ -56,7 +56,7 @@ export function ContractsDataTable({
   const columns = useMemo(() => contractsColumns, []);
 
   const table = useReactTable({
-    data: isLoading ? [] : filteredByType,
+    data: filteredByType,
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,

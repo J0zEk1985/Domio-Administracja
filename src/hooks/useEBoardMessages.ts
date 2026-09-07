@@ -22,17 +22,11 @@ export type EBoardDisplayItem = Pick<
   "id" | "title" | "content" | "msg_type" | "valid_until" | "display_from" | "display_until" | "created_at"
 >;
 
-/** Public kiosk: active published messages for a community (RLS must allow anon read). */
+/** Public kiosk: published messages for one community via token-scoped RPC. */
 async function fetchEBoardMessagesForDisplay(communityId: string): Promise<EBoardDisplayItem[]> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
-    .from("e_board_messages")
-    .select("id, title, content, msg_type, valid_until, display_from, display_until, created_at")
-    .eq("community_id", communityId)
-    .eq("status", "published")
-    .eq("is_active", true)
-    .or(`valid_until.is.null,valid_until.gte.${today}`)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_published_eboard_messages", {
+    p_community_id: communityId,
+  });
 
   if (error) {
     console.error("[fetchEBoardMessagesForDisplay]", error);
