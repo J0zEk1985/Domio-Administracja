@@ -50,6 +50,7 @@ const STATUS_OPTIONS: { value: TriageInboxStatusFilter; label: string }[] = [
 export type TriageIssueListPanelProps = {
   issues: TriageIssue[] | undefined;
   isLoading: boolean;
+  isError?: boolean;
   selectedId: string | null;
   onSelectId: (id: string) => void;
   filters: TriageInboxFiltersState;
@@ -223,6 +224,7 @@ function filtersDirty(filters: TriageInboxFiltersState): boolean {
 export function TriageIssueListPanel({
   issues,
   isLoading,
+  isError = false,
   selectedId,
   onSelectId,
   filters,
@@ -307,6 +309,10 @@ export function TriageIssueListPanel({
               <Skeleton className="h-24 w-full rounded-xl" />
               <Skeleton className="h-24 w-full rounded-xl" />
             </>
+          ) : isError ? (
+            <p className="py-8 text-center text-sm text-destructive">
+              Nie udało się wczytać zgłoszeń. Odśwież stronę i spróbuj ponownie.
+            </p>
           ) : list.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Brak zgłoszeń w wczytanym okresie (ostatnie 6 miesięcy, maks. 300 pozycji).

@@ -41,7 +41,7 @@ async function fetchPropertyIssues(locationId: string): Promise<PropertyIssue[]>
       *,
       location:cleaning_locations(name),
       reporter:profiles!property_issues_reporter_id_fkey(full_name),
-      delegated_vendor:vendor_partners(name),
+      delegated_vendor:vendor_partners!property_issues_delegated_vendor_id_fkey(name),
       assigned_staff:profiles!property_issues_assigned_staff_id_fkey(full_name)
     `,
     )

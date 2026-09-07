@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 export default function TriageInbox() {
   const [searchParams] = useSearchParams();
-  const { data: issues, isLoading } = useTriageIssues();
+  const { data: issues, isLoading, isError } = useTriageIssues();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<TriageInboxFiltersState>(DEFAULT_TRIAGE_INBOX_FILTERS);
 
@@ -62,6 +62,7 @@ export default function TriageInbox() {
           <TriageIssueListPanel
             issues={issues}
             isLoading={isLoading}
+            isError={isError}
             selectedId={selectedId}
             onSelectId={setSelectedId}
             filters={filters}
