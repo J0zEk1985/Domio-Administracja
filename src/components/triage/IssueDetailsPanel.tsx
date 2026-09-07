@@ -4,6 +4,7 @@ import { pl } from "date-fns/locale";
 import { Building2, User } from "lucide-react";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
+import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
 import { issuePriorityLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
 import { buildIssueTimeline } from "@/components/triage/issueTimeline";
 import { TriageIssueActionBar } from "@/components/triage/TriageIssueActionBar";
@@ -73,10 +74,10 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
     <div className="space-y-6 pb-8">
         {showCoordinatorActions ? <TriageIssueActionBar issue={issue} /> : null}
 
-        <div className="space-y-1">
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">
-              {issue.location?.name?.trim() || "Budynek bez nazwy"}
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              {issue.description?.trim() || "Zgłoszenie bez opisu"}
             </h1>
             <Badge variant="outline" className="font-normal">
               {issueStatusLabelPl(issue.status)}
@@ -88,25 +89,26 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
               <Badge className="bg-emerald-600/90 font-normal hover:bg-emerald-600">Na giełdzie</Badge>
             ) : null}
           </div>
-          <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">
+          <p className="text-sm font-medium text-foreground">
+            <span className="text-muted-foreground font-normal">Budynek: </span>
+            {formatIssueBuildingLabel(issue.location)}
+          </p>
+          <div className="flex flex-col gap-1.5 text-sm text-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
             <span>Utworzono: {formatDt(issue.created_at)}</span>
-            <span className="hidden sm:inline" aria-hidden>
-              ·
-            </span>
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground">Kategoria:</span>
               {categoryEditable ? (
                 <IssueCategorySelect issue={issue} />
               ) : (
-                <span className="text-foreground">{issue.category?.trim() || "—"}</span>
+                <span className="font-medium">{issue.category?.trim() || "—"}</span>
               )}
             </span>
           </div>
         </div>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-medium text-foreground">Opis</h2>
-          <p className="whitespace-pre-wrap rounded-lg border border-border/60 bg-background/80 p-4 text-sm leading-relaxed text-foreground">
+          <h2 className="text-sm font-semibold text-foreground">Opis</h2>
+          <p className="whitespace-pre-wrap rounded-lg border border-border bg-card p-4 text-sm leading-relaxed text-foreground shadow-sm">
             {issue.description?.trim() || "Brak opisu tekstowego."}
           </p>
         </section>
@@ -170,21 +172,21 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
         ) : null}
 
         <section className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-border/60 bg-muted/10 p-3">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground/70">
               <User className="h-3.5 w-3.5" />
               Zgłaszający
             </div>
-            <p className="mt-1 text-sm">{reporter}</p>
+            <p className="mt-1.5 text-sm font-medium text-foreground">{reporter}</p>
           </div>
-          <div className="rounded-lg border border-border/60 bg-muted/10 p-3">
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
               Delegacja / serwis
             </div>
-            <p className="mt-1 text-sm">
+            <p className="mt-1.5 text-sm font-medium text-foreground">
               Partner: {issue.delegated_vendor?.name?.trim() ?? "—"}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground/80">
               Przypisany: {issue.assigned_staff?.full_name?.trim() ?? "—"}
             </p>
           </div>
@@ -193,7 +195,7 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
         <Separator />
 
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-foreground">Zdjęcia (proof of work)</h2>
+          <h2 className="text-sm font-semibold text-foreground">Zdjęcia</h2>
           {issue.status === "resolved" ? (
             <>
               <IssuePhotoGallery issue={issue} excludeAfter />
@@ -213,29 +215,29 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
 
         <Separator />
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium text-foreground">Daty i historia</h2>
+        <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Daty i historia</h2>
           <ul className="space-y-3">
             <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 text-muted-foreground">Utworzono</span>
+              <span className="w-36 shrink-0 font-medium text-foreground/70">Utworzono</span>
               <span>{formatDt(issue.created_at)}</span>
             </li>
             <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 text-muted-foreground">Start prac</span>
+              <span className="w-36 shrink-0 font-medium text-foreground/70">Start prac</span>
               <span>{formatDt(issue.started_at)}</span>
             </li>
             <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 text-muted-foreground">Harmonogram</span>
+              <span className="w-36 shrink-0 font-medium text-foreground/70">Harmonogram</span>
               <span>{formatDt(issue.scheduled_at)}</span>
             </li>
             <li className="flex gap-3 text-sm">
-              <span className="w-36 shrink-0 text-muted-foreground">Rozwiązanie</span>
+              <span className="w-36 shrink-0 font-medium text-foreground/70">Rozwiązanie</span>
               <span>{formatDt(issue.resolved_at)}</span>
             </li>
           </ul>
 
           <div className="space-y-2">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
               Oś czasu
             </h3>
             {timeline.length === 0 ? (

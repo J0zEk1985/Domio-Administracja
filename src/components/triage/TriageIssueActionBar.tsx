@@ -68,7 +68,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="space-y-3 border-b border-border/60 bg-muted/10 px-1 pb-4 pt-1">
+      <div className="space-y-3 border-b border-border bg-card px-1 pb-4 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="font-normal">
             {issueStatusLabelPl(status)}

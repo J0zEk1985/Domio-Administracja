@@ -19,14 +19,14 @@ export function triageIssuesQueryKey(): readonly [typeof TRIAGE_ISSUES_QUERY_ROO
 type PropertyIssueRow = Database["public"]["Tables"]["property_issues"]["Row"];
 
 export type TriageIssue = PropertyIssueRow & {
-  location: { name: string | null } | null;
+  location: { name: string | null; address: string | null } | null;
   reporter: { full_name: string | null } | null;
   delegated_vendor: { name: string | null } | null;
   assigned_staff: { full_name: string | null } | null;
 };
 
 type RowWithEmbeds = PropertyIssueRow & {
-  location: { name: string | null } | null;
+  location: { name: string | null; address: string | null } | null;
   reporter: { full_name: string | null } | null;
   delegated_vendor: { name: string | null } | null;
   assigned_staff: { full_name: string | null } | null;
@@ -49,7 +49,7 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     .select(
       `
       *,
-      location:cleaning_locations(name),
+      location:cleaning_locations(name, address),
       reporter:profiles!property_issues_reporter_id_fkey(full_name),
       delegated_vendor:vendor_partners(name),
       assigned_staff:profiles!property_issues_assigned_staff_id_fkey(full_name)

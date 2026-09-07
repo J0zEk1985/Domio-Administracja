@@ -158,6 +158,8 @@ export type PropertyDetail = {
   issueQrToken: string | null;
   /** `cleaning_locations.qr_code_token` — legacy fallback if `issue_qr_token` is null. */
   qrCodeToken: string | null;
+  /** Public QR form: allow reports without login. */
+  allowAnonymousQrReports: boolean;
 };
 
 async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
@@ -166,7 +168,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const { data: row, error } = await supabase
     .from("cleaning_locations")
     .select(
-      "id, name, address, org_id, community_id, is_admin_active, latitude, longitude, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token",
+      "id, name, address, org_id, community_id, is_admin_active, latitude, longitude, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token, allow_anonymous_qr_reports",
     )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
@@ -204,6 +206,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
     publicReportToken: row.public_report_token ?? "",
     issueQrToken: row.issue_qr_token ?? null,
     qrCodeToken: row.qr_code_token ?? null,
+    allowAnonymousQrReports: row.allow_anonymous_qr_reports !== false,
   };
 }
 

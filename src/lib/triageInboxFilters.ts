@@ -1,4 +1,5 @@
 import type { TriageIssue } from "@/hooks/useTriageIssues";
+import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
 import type { IssueStatus } from "@/lib/triageIssueUi";
 import { TERMINAL_ISSUE_STATUSES } from "@/lib/triageIssueUi";
 import type { DateRange } from "react-day-picker";
@@ -93,7 +94,7 @@ export function uniqueBuildingOptions(issues: TriageIssue[]): BuildingOption[] {
     const lid = i.location_id;
     if (!lid) continue;
     if (map.has(lid)) continue;
-    const name = i.location?.name?.trim() || "Budynek";
+    const name = formatIssueBuildingLabel(i.location);
     map.set(lid, name);
   }
   return [...map.entries()]

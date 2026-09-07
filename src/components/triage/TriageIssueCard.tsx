@@ -2,6 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import { pl } from "date-fns/locale";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
+import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
 import {
   issuePriorityBadgeVariant,
   issuePriorityLabelPl,
@@ -23,7 +24,7 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
       ? formatDistanceToNow(created, { addSuffix: true, locale: pl })
       : "—";
 
-  const building = issue.location?.name?.trim() || "Budynek bez nazwy";
+  const building = formatIssueBuildingLabel(issue.location);
   const category = issue.category?.trim() || "Bez kategorii";
   const isClosed = issue.status === "resolved" || issue.status === "rejected";
 
@@ -59,6 +60,9 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
               {issuePriorityLabelPl(issue.priority)}
             </Badge>
           </div>
+          <p className="line-clamp-2 text-xs text-foreground/80">
+            {issue.description?.trim() || "Brak opisu"}
+          </p>
           <p className="truncate text-xs text-muted-foreground">{category}</p>
           <p className="text-[11px] text-muted-foreground/90">{relative}</p>
         </div>

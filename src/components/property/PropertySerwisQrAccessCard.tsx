@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Copy, Download, Printer, QrCode } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import type { PropertyDetail } from "@/hooks/useProperties";
-import { useGeneratePropertyQR } from "@/hooks/usePropertyQR";
+import { useGeneratePropertyQR, useUpdateAnonymousQrReports } from "@/hooks/usePropertyQR";
 import { buildSerwisIssueReportUrl } from "@/lib/serwisIssueReportUrl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/sonner";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,6 +44,7 @@ async function copyText(label: string, text: string) {
 
 export function PropertySerwisQrAccessCard({ property, canManage, accessPending }: Props) {
   const generate = useGeneratePropertyQR(property.id);
+  const anonymousMut = useUpdateAnonymousQrReports(property.id);
   const [qrOpen, setQrOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -113,6 +116,24 @@ export function PropertySerwisQrAccessCard({ property, canManage, accessPending 
                   aby zapisać go w <code className="text-[11px]">issue_qr_token</code>.
                 </p>
               ) : null}
+
+              <div className="flex items-start justify-between gap-4 rounded-md border border-border/60 bg-muted/15 px-3 py-3">
+                <div className="space-y-1 pr-2">
+                  <Label htmlFor="anon-qr-reports" className="text-sm font-medium">
+                    Zgłoszenia bez logowania
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Gdy włączone, mieszkaniec zgłasza usterkę samym kodem QR. Gdy wyłączone, wymagane jest konto
+                    DOMIO (członek organizacji lub dostęp do budynku).
+                  </p>
+                </div>
+                <Switch
+                  id="anon-qr-reports"
+                  checked={property.allowAnonymousQrReports}
+                  disabled={!canManage || accessPending || anonymousMut.isPending}
+                  onCheckedChange={(checked) => anonymousMut.mutate(checked)}
+                />
+              </div>
             </>
           )}
 

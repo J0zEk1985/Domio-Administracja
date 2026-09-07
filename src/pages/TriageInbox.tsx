@@ -78,7 +78,7 @@ export default function TriageInbox() {
           <GripVertical className="h-4 w-4 text-muted-foreground/70 group-hover:text-muted-foreground" />
         </PanelResizeHandle>
 
-        <Panel defaultSize={70} minSize={50} className="min-w-0 p-3 md:p-4">
+        <Panel defaultSize={70} minSize={50} className="min-w-0 bg-card p-4 md:p-5">
           <IssueDetailsPanel issue={selectedIssue} />
         </Panel>
       </PanelGroup>

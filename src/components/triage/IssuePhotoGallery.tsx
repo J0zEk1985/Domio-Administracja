@@ -18,9 +18,9 @@ export function IssuePhotoGallery({ issue, excludeAfter }: IssuePhotoGalleryProp
 
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/20 py-12 text-center">
-        <ImageIcon className="h-10 w-10 text-muted-foreground/60" aria-hidden />
-        <p className="mt-3 text-sm text-muted-foreground">Brak zdjęć przy tym zgłoszeniu.</p>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/40 py-12 text-center">
+        <ImageIcon className="h-10 w-10 text-muted-foreground" aria-hidden />
+        <p className="mt-3 text-sm font-medium text-foreground">Brak zdjęć przy tym zgłoszeniu.</p>
       </div>
     );
   }

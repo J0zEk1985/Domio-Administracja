@@ -55,3 +55,51 @@ export function useGeneratePropertyQR(locationId: string | undefined) {
     },
   });
 }
+
+export function useUpdateAnonymousQrReports(locationId: string | undefined) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (allowAnonymous: boolean) => {
+      if (!locationId?.trim()) throw new Error("Brak identyfikatora nieruchomości.");
+
+      const actor = await getOrgAndActor();
+      if (!actor.isOwner) {
+        const ok = await hasLocationAdministrationAccess(actor.userId, locationId);
+        if (!ok) {
+          throw new Error("Brak uprawnień do zmiany ustawień QR dla tego budynku.");
+        }
+      }
+
+      const { error } = await supabase
+        .from("cleaning_locations")
+        .update({ allow_anonymous_qr_reports: allowAnonymous })
+        .eq("id", locationId);
+
+      if (error) {
+        console.error("[useUpdateAnonymousQrReports] cleaning_locations update:", error);
+        throw error;
+      }
+    },
+    onSuccess: async (_data, allowAnonymous) => {
+      if (locationId) {
+        await qc.invalidateQueries({ queryKey: propertyQueryKey(locationId) });
+      }
+      toast.success(
+        allowAnonymous
+          ? "Zgłoszenia z QR są dostępne bez logowania."
+          : "Zgłoszenia z QR wymagają zalogowania.",
+      );
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Nie udało się zapisać ustawienia QR.";
+      toast.error(msg);
+      console.error("[useUpdateAnonymousQrReports]", err);
+    },
+  });
+}

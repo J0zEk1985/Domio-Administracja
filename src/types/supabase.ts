@@ -238,6 +238,7 @@ export type Database = {
           is_admin_active: boolean | null
           is_cleaning_active: boolean | null
           is_maintenance_active: boolean | null
+          allow_anonymous_qr_reports: boolean
           issue_qr_token: string | null
           latitude: number | null
           location_master_id: string | null
@@ -289,6 +290,7 @@ export type Database = {
           is_admin_active?: boolean | null
           is_cleaning_active?: boolean | null
           is_maintenance_active?: boolean | null
+          allow_anonymous_qr_reports?: boolean
           issue_qr_token?: string | null
           latitude?: number | null
           location_master_id?: string | null
@@ -340,6 +342,7 @@ export type Database = {
           is_admin_active?: boolean | null
           is_cleaning_active?: boolean | null
           is_maintenance_active?: boolean | null
+          allow_anonymous_qr_reports?: boolean
           issue_qr_token?: string | null
           latitude?: number | null
           location_master_id?: string | null
@@ -3689,6 +3692,7 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           address: string
+          allow_anonymous_qr_reports: boolean
           id: string
           org_id: string
         }[]
