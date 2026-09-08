@@ -102,37 +102,19 @@ export function uniqueBuildingOptions(issues: TriageIssue[]): BuildingOption[] {
     .sort((a, b) => a.name.localeCompare(b.name, "pl"));
 }
 
-export type AssigneeOption =
-  | { kind: "vendor"; id: string; label: string }
-  | { kind: "staff"; id: string; label: string };
+export type AssigneeOption = { kind: "vendor"; id: string; label: string };
 
+/** Contractor organizations (vendor_partners), never individual technicians. */
 export function uniqueAssigneeOptions(issues: TriageIssue[]): AssigneeOption[] {
   const vendors = new Map<string, string>();
-  const staff = new Map<string, string>();
 
   for (const i of issues) {
     const vid = i.delegated_vendor_id;
     const vname = i.delegated_vendor?.name?.trim();
     if (vid && vname) vendors.set(vid, vname);
-
-    const sid = i.assigned_staff_id;
-    const sname = i.assigned_staff?.full_name?.trim();
-    if (sid && sname) staff.set(sid, sname);
   }
 
-  const out: AssigneeOption[] = [
-    ...[...vendors.entries()].map(([id, label]) => ({
-      kind: "vendor" as const,
-      id,
-      label,
-    })),
-    ...[...staff.entries()].map(([id, label]) => ({
-      kind: "staff" as const,
-      id,
-      label,
-    })),
-  ];
-
-  out.sort((a, b) => a.label.localeCompare(b.label, "pl"));
-  return out;
+  return [...vendors.entries()]
+    .map(([id, label]) => ({ kind: "vendor" as const, id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pl"));
 }

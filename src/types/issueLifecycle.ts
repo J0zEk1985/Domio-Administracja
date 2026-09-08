@@ -37,7 +37,15 @@ export interface PropertyIssueLifecycleFields {
   transfer_authorized_by: string | null;
   is_transfer_requested: boolean | null;
   transfer_reason: string | null;
+  marketplace_scope: IssueMarketplaceScope | null;
 }
+
+export type IssueMarketplaceScope = "serving" | "all";
+
+export const MARKETPLACE_SCOPE_LABELS: Record<IssueMarketplaceScope, string> = {
+  serving: "Firmy obsługujące tę wspólnotę",
+  all: "Wszystkie firmy w systemie",
+};
 
 export type TriageRoutingLock =
   | "unlocked"
@@ -85,6 +93,9 @@ export const ISSUE_LIFECYCLE_ERROR_CODES = [
   "ISSUE_DELEGATE_FORBIDDEN",
   "ISSUE_UNCLAIM_LOCKED",
   "ISSUE_ROUTING_FORBIDDEN",
+  "ISSUE_BROADCAST_SCOPE_REQUIRED",
+  "ISSUE_MARKETPLACE_ALREADY_CLAIMED",
+  "ISSUE_MARKETPLACE_FORBIDDEN",
 ] as const;
 
 export type IssueLifecycleErrorCode =
@@ -117,6 +128,10 @@ const ERROR_MESSAGE_PL: Record<IssueLifecycleErrorCode, string> = {
   ISSUE_UNCLAIM_LOCKED: "Nie można zdjąć technika bez anulowania albo autoryzowanej cesji.",
   ISSUE_ROUTING_FORBIDDEN:
     "Technik nie może odrzucać, anulować ani przekazywać zlecenia do innej firmy.",
+  ISSUE_BROADCAST_SCOPE_REQUIRED: "Wybierz zakres giełdy: firmy obsługujące albo wszystkie.",
+  ISSUE_MARKETPLACE_ALREADY_CLAIMED:
+    "To zgłoszenie zostało już podjęte przez kogoś innego.",
+  ISSUE_MARKETPLACE_FORBIDDEN: "Brak uprawnień do podjęcia tego zgłoszenia z giełdy.",
 };
 
 export function issueLifecycleErrorMessagePl(err: unknown): string {

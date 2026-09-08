@@ -3,6 +3,8 @@ import { subMonths } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 import type { PropertyIssueLifecycleFields } from "@/types/issueLifecycle";
+import type { PropertyIssueProtocolFields } from "@/lib/issueProtocol";
+import { parseProtocolFields } from "@/lib/issueProtocol";
 import type { IssueStatus } from "@/lib/triageIssueUi";
 
 /** Cap rows returned to the browser; combined with a time window. */
@@ -21,7 +23,8 @@ export function triageIssuesQueryKey(): readonly [typeof TRIAGE_ISSUES_QUERY_ROO
 type PropertyIssueRow = Database["public"]["Tables"]["property_issues"]["Row"];
 
 export type TriageIssue = Omit<PropertyIssueRow, "status"> &
-  PropertyIssueLifecycleFields & {
+  PropertyIssueLifecycleFields &
+  PropertyIssueProtocolFields & {
     status: IssueStatus | null;
     location: { name: string | null; address: string | null } | null;
     reporter: { full_name: string | null } | null;
@@ -64,24 +67,32 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     throw error;
   }
 
-  return ((data ?? []) as unknown as TriageIssue[]).map((row) => ({
-    ...row,
-    claimed_at: row.claimed_at ?? null,
-    cancelled_at: row.cancelled_at ?? null,
-    cancelled_by: row.cancelled_by ?? null,
-    cancel_reason: row.cancel_reason ?? null,
-    cancel_requested_at: row.cancel_requested_at ?? null,
-    cancel_requested_by: row.cancel_requested_by ?? null,
-    cancel_request_reason: row.cancel_request_reason ?? null,
-    transfer_to_vendor_id: row.transfer_to_vendor_id ?? null,
-    transfer_authorized_at: row.transfer_authorized_at ?? null,
-    transfer_authorized_by: row.transfer_authorized_by ?? null,
-    location: row.location ?? null,
-    reporter: row.reporter ?? null,
-    organization: row.organization ?? null,
-    delegated_vendor: row.delegated_vendor ?? null,
-    assigned_staff: row.assigned_staff ?? null,
-  }));
+  return ((data ?? []) as unknown as TriageIssue[]).map((row) => {
+    const protocol = parseProtocolFields(row as unknown as Record<string, unknown>);
+    return {
+      ...row,
+      ...protocol,
+      claimed_at: row.claimed_at ?? null,
+      cancelled_at: row.cancelled_at ?? null,
+      cancelled_by: row.cancelled_by ?? null,
+      cancel_reason: row.cancel_reason ?? null,
+      cancel_requested_at: row.cancel_requested_at ?? null,
+      cancel_requested_by: row.cancel_requested_by ?? null,
+      cancel_request_reason: row.cancel_request_reason ?? null,
+      transfer_to_vendor_id: row.transfer_to_vendor_id ?? null,
+      transfer_authorized_at: row.transfer_authorized_at ?? null,
+      transfer_authorized_by: row.transfer_authorized_by ?? null,
+      location: row.location ?? null,
+      reporter: row.reporter ?? null,
+      organization: row.organization ?? null,
+      delegated_vendor: row.delegated_vendor ?? null,
+      assigned_staff: row.assigned_staff ?? null,
+      marketplace_scope:
+        row.marketplace_scope === "all" || row.marketplace_scope === "serving"
+          ? row.marketplace_scope
+          : null,
+    };
+  });
 }
 
 export function useTriageIssues(enabled: boolean = true) {

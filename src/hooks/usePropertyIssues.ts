@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
+import { parseProtocolFields } from "@/lib/issueProtocol";
 import type { Database } from "@/types/supabase";
 
 const STALE_MS = 0;
@@ -54,13 +55,36 @@ async function fetchPropertyIssues(locationId: string): Promise<PropertyIssue[]>
     throw error;
   }
 
-  return ((data ?? []) as RowWithEmbeds[]).map((row) => ({
-    ...row,
-    location: row.location ?? null,
-    reporter: row.reporter ?? null,
-    delegated_vendor: row.delegated_vendor ?? null,
-    assigned_staff: row.assigned_staff ?? null,
-  }));
+  return ((data ?? []) as RowWithEmbeds[]).map((row) => {
+    const protocol = parseProtocolFields(row as unknown as Record<string, unknown>);
+    return {
+      ...row,
+      ...protocol,
+      claimed_at: (row as { claimed_at?: string | null }).claimed_at ?? null,
+      cancelled_at: (row as { cancelled_at?: string | null }).cancelled_at ?? null,
+      cancelled_by: (row as { cancelled_by?: string | null }).cancelled_by ?? null,
+      cancel_reason: (row as { cancel_reason?: string | null }).cancel_reason ?? null,
+      cancel_requested_at: (row as { cancel_requested_at?: string | null }).cancel_requested_at ?? null,
+      cancel_requested_by: (row as { cancel_requested_by?: string | null }).cancel_requested_by ?? null,
+      cancel_request_reason:
+        (row as { cancel_request_reason?: string | null }).cancel_request_reason ?? null,
+      transfer_to_vendor_id: (row as { transfer_to_vendor_id?: string | null }).transfer_to_vendor_id ?? null,
+      transfer_authorized_at:
+        (row as { transfer_authorized_at?: string | null }).transfer_authorized_at ?? null,
+      transfer_authorized_by:
+        (row as { transfer_authorized_by?: string | null }).transfer_authorized_by ?? null,
+      location: row.location ? { name: row.location.name, address: null } : null,
+      reporter: row.reporter ?? null,
+      organization: null,
+      delegated_vendor: row.delegated_vendor ?? null,
+      assigned_staff: row.assigned_staff ?? null,
+      marketplace_scope:
+        (row as { marketplace_scope?: string | null }).marketplace_scope === "all" ||
+        (row as { marketplace_scope?: string | null }).marketplace_scope === "serving"
+          ? ((row as { marketplace_scope?: "serving" | "all" }).marketplace_scope ?? null)
+          : null,
+    };
+  });
 }
 
 export function usePropertyIssues(locationId: string | undefined, enabled: boolean = true) {

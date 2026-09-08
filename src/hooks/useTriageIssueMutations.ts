@@ -101,20 +101,23 @@ export function useDelegateIssue() {
   });
 }
 
-export type BroadcastIssueVars = { issueId: string };
+export type BroadcastIssueVars = { issueId: string; scope: "serving" | "all" };
 
 export function useBroadcastIssue() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ issueId }: BroadcastIssueVars) => {
-      await broadcastPropertyIssue(issueId);
+    mutationFn: async ({ issueId, scope }: BroadcastIssueVars) => {
+      await broadcastPropertyIssue(issueId, scope);
     },
-    onMutate: async ({ issueId }): Promise<Ctx> => {
+    onMutate: async ({ issueId, scope }): Promise<Ctx> => {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
       const previous = qc.getQueryData<TriageIssue[]>(triageIssuesQueryKey());
       qc.setQueryData<TriageIssue[]>(triageIssuesQueryKey(), (old) =>
-        patchIssue(old, issueId, { is_public_broadcast: true }),
+        patchIssue(old, issueId, {
+          is_public_broadcast: true,
+          marketplace_scope: scope,
+        }),
       );
       return { previous };
     },

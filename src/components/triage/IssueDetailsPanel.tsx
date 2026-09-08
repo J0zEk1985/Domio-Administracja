@@ -93,7 +93,9 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
               Priorytet: {issuePriorityLabelPl(issue.priority)}
             </Badge>
             {issue.is_public_broadcast ? (
-              <Badge className="bg-emerald-600/90 font-normal hover:bg-emerald-600">Na giełdzie</Badge>
+              <Badge className="bg-emerald-600/90 font-normal hover:bg-emerald-600">
+                {issue.marketplace_scope === "all" ? "Giełda: wszystkie firmy" : "Na giełdzie"}
+              </Badge>
             ) : null}
           </div>
           <p className="text-sm font-medium text-foreground">
@@ -124,6 +126,12 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
           <section className="space-y-2">
             <h2 className="text-sm font-medium text-foreground">Rozwiązanie</h2>
             <div className="space-y-2 rounded-lg border border-border/60 bg-muted/10 p-4 text-sm">
+              {issue.protocol_number ? (
+                <p>
+                  <span className="text-muted-foreground">Numer protokołu: </span>
+                  {issue.protocol_number}
+                </p>
+              ) : null}
               <p>
                 <span className="text-muted-foreground">Data rozwiązania: </span>
                 {formatDt(issue.resolved_at)}

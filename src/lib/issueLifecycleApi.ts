@@ -52,8 +52,14 @@ export async function requestPropertyIssueCancel(
   });
 }
 
-export async function broadcastPropertyIssue(issueId: string): Promise<void> {
-  await invokeRpc("broadcast_property_issue", { p_issue_id: issueId });
+export async function broadcastPropertyIssue(
+  issueId: string,
+  scope: "serving" | "all",
+): Promise<void> {
+  await invokeRpc("broadcast_property_issue", {
+    p_issue_id: issueId,
+    p_scope: scope,
+  });
 }
 
 export async function delegatePropertyIssue(

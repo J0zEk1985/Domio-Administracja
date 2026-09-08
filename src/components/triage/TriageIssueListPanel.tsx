@@ -4,9 +4,11 @@ import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
+import { useVendorPartners } from "@/hooks/useVendorPartners";
 import {
   applyTriageInboxFilters,
   DEFAULT_TRIAGE_INBOX_FILTERS,
+  type AssigneeOption,
   type TriageInboxFiltersState,
   type TriageInboxStatusFilter,
   uniqueAssigneeOptions,
@@ -128,6 +130,22 @@ function BuildingFilterCombobox({
   );
 }
 
+function mergeContractorOptions(
+  fromIssues: AssigneeOption[],
+  catalog: { id: string; name: string }[],
+): AssigneeOption[] {
+  const map = new Map<string, string>();
+  for (const o of fromIssues) map.set(o.id, o.label);
+  for (const v of catalog) {
+    const name = v.name.trim();
+    if (!v.id || !name) continue;
+    if (!map.has(v.id)) map.set(v.id, name);
+  }
+  return [...map.entries()]
+    .map(([id, label]) => ({ kind: "vendor" as const, id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pl"));
+}
+
 function AssigneeFilterCombobox({
   issues,
   assignee,
@@ -138,19 +156,18 @@ function AssigneeFilterCombobox({
   onAssigneeChange: (next: TriageInboxFiltersState["assignee"]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const options = useMemo(() => uniqueAssigneeOptions(issues), [issues]);
+  const vendorsQuery = useVendorPartners(open);
+  const fromIssues = useMemo(() => uniqueAssigneeOptions(issues), [issues]);
+  const options = useMemo(
+    () => mergeContractorOptions(fromIssues, vendorsQuery.data ?? []),
+    [fromIssues, vendorsQuery.data],
+  );
 
-  const label =
-    assignee.kind === "all"
-      ? "Wykonawca"
-      : assignee.kind === "vendor"
-        ? `Firma: ${options.find((o) => o.kind === "vendor" && o.id === assignee.id)?.label ?? "…"}`
-        : `Technik: ${options.find((o) => o.kind === "staff" && o.id === assignee.id)?.label ?? "…"}`;
+  const selectedLabel =
+    assignee.kind === "vendor" ? options.find((o) => o.id === assignee.id)?.label : null;
+  const label = selectedLabel ?? "Wykonawca";
 
-  const isSelected = (o: (typeof options)[number]): boolean => {
-    if (assignee.kind === "all") return false;
-    return assignee.kind === o.kind && assignee.id === o.id;
-  };
+  const isSelected = (o: AssigneeOption): boolean => assignee.kind === "vendor" && assignee.id === o.id;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -160,23 +177,23 @@ function AssigneeFilterCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-9 min-w-[8.5rem] max-w-[12rem] shrink-0 justify-between px-2.5 text-xs font-normal"
+          className="h-9 min-w-[8.5rem] max-w-[14rem] shrink-0 justify-between px-2.5 text-xs font-normal"
         >
           <span className="truncate">{label}</span>
           <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-45" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent className="w-[min(24rem,calc(100vw-1.5rem))] p-0" align="start">
         <Command>
           <div className="flex items-center border-b px-2" cmdk-input-wrapper="">
             <Search className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-45" />
             <CmdkInput
-              placeholder="Szukaj wykonawcy…"
+              placeholder="Szukaj kontrahenta…"
               className="flex h-9 w-full rounded-md bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
           <CommandList className="max-h-56">
-            <CommandGroup>
+            <CommandGroup heading="Kontrahenci">
               <CommandItem
                 value="dowolny wykonawca"
                 onSelect={() => {
@@ -184,24 +201,22 @@ function AssigneeFilterCombobox({
                   setOpen(false);
                 }}
               >
-                <Check className={cn("mr-2 h-4 w-4", assignee.kind === "all" ? "opacity-100" : "opacity-0")} />
+                <Check className={cn("mr-2 h-4 w-4 shrink-0", assignee.kind === "all" ? "opacity-100" : "opacity-0")} />
                 Dowolny
               </CommandItem>
               {options.map((o) => (
                 <CommandItem
-                  key={`${o.kind}-${o.id}`}
-                  value={`${o.kind} ${o.label} ${o.id}`}
-                  keywords={[o.label, o.kind === "vendor" ? "firma" : "technik"]}
+                  key={o.id}
+                  value={`${o.label} ${o.id}`}
+                  keywords={[o.label, "firma", "kontrahent", "organizacja"]}
+                  className="items-start"
                   onSelect={() => {
-                    if (o.kind === "vendor") onAssigneeChange({ kind: "vendor", id: o.id });
-                    else onAssigneeChange({ kind: "staff", id: o.id });
+                    onAssigneeChange({ kind: "vendor", id: o.id });
                     setOpen(false);
                   }}
                 >
-                  <Check className={cn("mr-2 h-4 w-4", isSelected(o) ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">
-                    {o.kind === "vendor" ? "Firma" : "Technik"}: {o.label}
-                  </span>
+                  <Check className={cn("mr-2 mt-0.5 h-4 w-4 shrink-0", isSelected(o) ? "opacity-100" : "opacity-0")} />
+                  <span className="whitespace-normal break-words leading-snug">{o.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

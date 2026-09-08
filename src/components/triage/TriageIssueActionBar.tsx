@@ -14,11 +14,17 @@ import {
   useRequestPropertyIssueCancel,
   useRequestPropertyIssueTransfer,
 } from "@/hooks/useIssueLifecycleMutations";
-import { getTriageRoutingLock } from "@/types/issueLifecycle";
+import { getTriageRoutingLock, MARKETPLACE_SCOPE_LABELS, type IssueMarketplaceScope } from "@/types/issueLifecycle";
 import { issueStatusLabelPl, type IssueStatus } from "@/lib/triageIssueUi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { VendorPartnerCombobox } from "@/components/triage/VendorPartnerCombobox";
 import { StaffAssignCombobox } from "@/components/triage/StaffAssignCombobox";
 import { RejectIssueDialog } from "@/components/triage/RejectIssueDialog";
@@ -207,11 +213,15 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
                 <span className="inline-flex">
                   <Button type="button" variant="secondary" size="sm" className="gap-1.5" disabled>
                     <Send className="h-3.5 w-3.5" />
-                    Wyślij na giełdę
+                    Na giełdzie
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent>Już widoczne na giełdzie.</TooltipContent>
+              <TooltipContent>
+                {issue.marketplace_scope
+                  ? MARKETPLACE_SCOPE_LABELS[issue.marketplace_scope]
+                  : "Już widoczne na giełdzie."}
+              </TooltipContent>
             </Tooltip>
           ) : routingLocked ? (
             <Tooltip>
@@ -228,17 +238,44 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="gap-1.5"
-              disabled={busy}
-              onClick={() => broadcastMut.mutate({ issueId: issue.id })}
-            >
-              {broadcastMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              Wyślij na giełdę
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="secondary" size="sm" className="gap-1.5" disabled={busy}>
+                  {broadcastMut.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                  Wyślij na giełdę
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-72">
+                <DropdownMenuItem
+                  onSelect={() =>
+                    broadcastMut.mutate({ issueId: issue.id, scope: "serving" satisfies IssueMarketplaceScope })
+                  }
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">Firmy obsługujące</span>
+                    <span className="text-xs text-muted-foreground">
+                      Tylko podmioty z umową na tę wspólnotę / budynek.
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    broadcastMut.mutate({ issueId: issue.id, scope: "all" satisfies IssueMarketplaceScope })
+                  }
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">Wszystkie firmy</span>
+                    <span className="text-xs text-muted-foreground">
+                      Każda firma Serwis w systemie może podjąć zlecenie.
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           <div className="flex flex-wrap items-center gap-2">
