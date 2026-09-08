@@ -26,10 +26,11 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
 
   const building = formatIssueBuildingLabel(issue.location);
   const category = issue.category?.trim() || "Bez kategorii";
+  const isResolved = issue.status === "resolved";
   const isClosed =
-    issue.status === "resolved" ||
-    issue.status === "rejected" ||
-    issue.status === "cancelled";
+    isResolved || issue.status === "rejected" || issue.status === "cancelled";
+  const strikeAddress =
+    issue.status === "rejected" || issue.status === "cancelled";
 
   return (
     <button
@@ -37,10 +38,16 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
       onClick={onSelect}
       className={cn(
         "w-full rounded-xl border bg-card p-3 text-left shadow-sm transition",
-        "hover:border-primary/30 hover:shadow-md",
+        "hover:shadow-md",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        selected ? "border-primary/50 ring-1 ring-primary/30" : "border-border/70",
-        isClosed && "opacity-[0.72]",
+        isResolved
+          ? selected
+            ? "border-emerald-500/80 ring-1 ring-emerald-500/40"
+            : "border-emerald-500/60 hover:border-emerald-500/80"
+          : selected
+            ? "border-primary/50 ring-1 ring-primary/30"
+            : "border-border/70 hover:border-primary/30",
+        isClosed && !isResolved && "opacity-[0.72]",
       )}
     >
       <div className="flex items-start gap-2">
@@ -54,7 +61,7 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
             <p
               className={cn(
                 "truncate text-sm font-semibold leading-tight text-foreground",
-                isClosed && "line-through decoration-muted-foreground/60",
+                strikeAddress && "line-through decoration-muted-foreground/60",
               )}
             >
               {building}
