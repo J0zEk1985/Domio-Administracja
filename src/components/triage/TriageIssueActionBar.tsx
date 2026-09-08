@@ -99,7 +99,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
   }
 
   const hint = statusActionHint(status, lock, technicianName);
-  const isNew = status === "new";
+  const canAcceptAndOpen = status === "new" || status === "pending_admin_approval";
   const broadcastDone = issue.is_public_broadcast === true;
   const canReject = lock === "unlocked";
   const canCancelNow = lock === "claimed_internal";
@@ -136,7 +136,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {isNew ? (
+          {canAcceptAndOpen ? (
             <Button
               type="button"
               size="sm"
@@ -251,6 +251,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
                   issueId: issue.id,
                   staffId: s.userId,
                   staffName: s.fullName,
+                  currentStatus: status ?? null,
                 })
               }
             />

@@ -134,16 +134,27 @@ export function useBroadcastIssue() {
   });
 }
 
-export type AssignStaffIssueVars = { issueId: string; staffId: string; staffName: string };
+export type AssignStaffIssueVars = {
+  issueId: string;
+  staffId: string;
+  staffName: string;
+  currentStatus?: string | null;
+};
 
 export function useAssignStaffIssue() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ issueId, staffId }: AssignStaffIssueVars) => {
+    mutationFn: async ({ issueId, staffId, currentStatus }: AssignStaffIssueVars) => {
+      const patch: { assigned_staff_id: string; status?: IssueStatus } = {
+        assigned_staff_id: staffId,
+      };
+      if (currentStatus === "pending_admin_approval" || currentStatus === "new") {
+        patch.status = "open";
+      }
       const { error } = await supabase
         .from("property_issues")
-        .update({ assigned_staff_id: staffId })
+        .update(patch)
         .eq("id", issueId);
 
       if (error) {
@@ -151,13 +162,16 @@ export function useAssignStaffIssue() {
         throw error;
       }
     },
-    onMutate: async ({ issueId, staffId, staffName }): Promise<Ctx> => {
+    onMutate: async ({ issueId, staffId, staffName, currentStatus }): Promise<Ctx> => {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
       const previous = qc.getQueryData<TriageIssue[]>(triageIssuesQueryKey());
       qc.setQueryData<TriageIssue[]>(triageIssuesQueryKey(), (old) =>
         patchIssue(old, issueId, {
           assigned_staff_id: staffId,
           assigned_staff: { full_name: staffName },
+          ...(currentStatus === "pending_admin_approval" || currentStatus === "new"
+            ? { status: "open" as IssueStatus }
+            : {}),
         }),
       );
       return { previous };
