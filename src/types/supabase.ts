@@ -235,9 +235,9 @@ export type Database = {
           id: string
           instruction_notes: string | null
           is_active_in_serwis: boolean | null
-          is_admin_active: boolean | null
-          is_cleaning_active: boolean | null
-          is_maintenance_active: boolean | null
+          is_admin_active: boolean
+          is_cleaning_active: boolean
+          is_maintenance_active: boolean
           allow_anonymous_qr_reports: boolean
           issue_qr_token: string | null
           latitude: number | null
