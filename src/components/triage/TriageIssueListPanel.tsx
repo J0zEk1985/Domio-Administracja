@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 const STATUS_OPTIONS: { value: TriageInboxStatusFilter; label: string }[] = [
   { value: "all_active", label: "Wszystkie aktywne" },
   { value: "new", label: "Nowe" },
-  { value: "open", label: "Otwarte" },
+  { value: "open", label: "Otwarte (wolne)" },
   { value: "in_progress", label: "W toku" },
   { value: "pending_admin_approval", label: "Akceptacja" },
   { value: "waiting_for_parts", label: "Części" },

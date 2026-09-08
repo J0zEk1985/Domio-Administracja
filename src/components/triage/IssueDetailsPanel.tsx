@@ -5,6 +5,7 @@ import { Building2, User } from "lucide-react";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
+import { CleaningOriginBadge } from "@/components/triage/CleaningOriginBadge";
 import { issuePriorityLabelPl, issueReporterTypeLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
 import { mergeIssueTimeline } from "@/components/triage/issueTimeline";
 import { useIssueLifecycleEvents } from "@/hooks/useIssueLifecycleMutations";
@@ -89,6 +90,7 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
             <Badge variant="outline" className="font-normal">
               {issueStatusLabelPl(issue.status)}
             </Badge>
+            <CleaningOriginBadge issue={issue} />
             <Badge variant="secondary" className="font-normal">
               Priorytet: {issuePriorityLabelPl(issue.priority)}
             </Badge>

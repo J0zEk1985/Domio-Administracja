@@ -55,4 +55,18 @@ describe("applyTriageInboxFilters", () => {
     });
     expect(filtered.map((i) => i.id)).toEqual(["1"]);
   });
+
+  it("Otwarte excludes tickets already taken by Serwis", () => {
+    const issues = [
+      issue({ id: "free", status: "open", assigned_staff_id: null }),
+      issue({ id: "taken", status: "open", assigned_staff_id: "tech-1" }),
+      issue({ id: "b2b", status: "open", delegated_vendor_id: "v1" }),
+      issue({ id: "market", status: "open", is_public_broadcast: true }),
+    ];
+    const filtered = applyTriageInboxFilters(issues, {
+      ...DEFAULT_TRIAGE_INBOX_FILTERS,
+      status: "open",
+    });
+    expect(filtered.map((i) => i.id)).toEqual(["free"]);
+  });
 });

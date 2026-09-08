@@ -3698,6 +3698,10 @@ export type Database = {
         Args: { p_issue_id: string }
         Returns: undefined
       }
+      resolve_cleaning_released_property_issue: {
+        Args: { p_issue_id: string }
+        Returns: undefined
+      }
       lookup_location_by_public_qr_token: {
         Args: { p_token: string }
         Returns: {

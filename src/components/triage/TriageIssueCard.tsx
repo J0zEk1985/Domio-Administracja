@@ -3,6 +3,7 @@ import { pl } from "date-fns/locale";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
+import { CleaningOriginBadge } from "@/components/triage/CleaningOriginBadge";
 import {
   issuePriorityBadgeVariant,
   issuePriorityLabelPl,
@@ -70,6 +71,7 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
               {issuePriorityLabelPl(issue.priority)}
             </Badge>
           </div>
+          <CleaningOriginBadge issue={issue} />
           <p className="line-clamp-2 text-xs text-foreground/80">
             {issue.description?.trim() || "Brak opisu"}
           </p>

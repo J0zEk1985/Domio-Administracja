@@ -45,6 +45,14 @@ function matchesStatusFilter(issue: TriageIssue, status: TriageInboxStatusFilter
   }
 
   if (!st) return false;
+  if (status === "open") {
+    const takenBySerwis =
+      Boolean(issue.assigned_staff_id) ||
+      Boolean(issue.delegated_vendor_id) ||
+      Boolean(issue.claimed_by_org_id) ||
+      issue.is_public_broadcast === true;
+    return st === "open" && !takenBySerwis;
+  }
   return st === status;
 }
 
