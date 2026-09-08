@@ -26,6 +26,7 @@ export function issueStatusLabelPl(status: IssueStatus | null | undefined): stri
     new: "Nowe",
     open: "Otwarte",
     pending_admin_approval: "Oczekuje na akceptację",
+    pending_cleaning_review: "W module sprzątania",
     in_progress: "W realizacji",
     waiting_for_parts: "Oczekiwanie na części",
     delegated: "Delegowane (B2B)",
@@ -49,7 +50,7 @@ export function issueReporterTypeLabelPl(type: string | null | undefined): strin
     administrator: "Dyspozytor",
     admin: "Administrator",
     tenant: "Mieszkaniec",
-    public_qr: "Zgłoszenie QR",
+    cleaner: "Sprzątacz",
   };
   return map[key] ?? type;
 }
@@ -63,6 +64,8 @@ export function issueStatusDotClass(status: IssueStatus | null | undefined): str
     case "open":
       return "bg-blue-500";
     case "pending_admin_approval":
+      return "bg-amber-500";
+    case "pending_cleaning_review":
       return "bg-amber-500";
     case "in_progress":
       return "bg-emerald-500";

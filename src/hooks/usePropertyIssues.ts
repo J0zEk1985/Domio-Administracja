@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { parseProtocolFields } from "@/lib/issueProtocol";
 import type { Database } from "@/types/supabase";
@@ -48,6 +49,7 @@ async function fetchPropertyIssues(locationId: string): Promise<PropertyIssue[]>
     )
     .eq("org_id", String(orgId))
     .eq("location_id", locationId)
+    .or(ADMIN_VISIBLE_ISSUES_OR)
     .order("created_at", { ascending: false });
 
   if (error) {

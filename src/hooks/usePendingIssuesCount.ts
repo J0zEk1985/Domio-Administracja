@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
 
 export const PENDING_ISSUES_COUNT_ROOT = "pending-issues-count" as const;
 
@@ -26,6 +27,7 @@ async function fetchPendingIssuesCount(): Promise<number> {
     .from("property_issues")
     .select("*", { count: "exact", head: true })
     .eq("org_id", String(orgId))
+    .or(ADMIN_VISIBLE_ISSUES_OR)
     .in("status", [...PENDING_TRIAGE_STATUSES]);
 
   if (error) {

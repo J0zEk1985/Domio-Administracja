@@ -7,9 +7,12 @@ import {
   useDeleteRoutingRule,
   useLocationRoutingRules,
 } from "@/hooks/useLocationRouting";
+import { useSkipCleaningIssueApproval } from "@/hooks/useSkipCleaningIssueApproval";
 import { VendorPartnerCombobox } from "@/components/triage/VendorPartnerCombobox";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -17,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 export type PropertyAutomationsTabProps = {
   locationId: string;
 };
@@ -25,6 +29,7 @@ export function PropertyAutomationsTab({ locationId }: PropertyAutomationsTabPro
   const { data: rules = [], isLoading, isError } = useLocationRoutingRules(locationId);
   const addMut = useAddRoutingRule();
   const delMut = useDeleteRoutingRule();
+  const skipCleaning = useSkipCleaningIssueApproval(locationId);
 
   const [category, setCategory] = useState<string>("");
   const [vendorId, setVendorId] = useState("");
@@ -52,6 +57,32 @@ export function PropertyAutomationsTab({ locationId }: PropertyAutomationsTabPro
           podwykonawców, z pominięciem ręcznego Triage&apos;u.
         </p>
       </header>
+
+      <section className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-muted/10 px-4 py-3 sm:px-5">
+        <div className="space-y-1 pr-2">
+          <Label htmlFor="skip-cleaning-approval" className="text-sm font-medium">
+            Pomiń akceptację usterek z modułu Cleaning
+          </Label>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Gdy włączone, usterki przekazane ze sprzątania omijają kolejkę Triage i trafiają od razu
+            do Serwisu.
+          </p>
+        </div>
+        {skipCleaning.query.isLoading ? (
+          <Skeleton className="h-6 w-11 shrink-0 rounded-full" />
+        ) : skipCleaning.query.isError ? (
+          <p className="text-xs text-destructive shrink-0 max-w-[10rem] text-right">
+            Nie udało się wczytać ustawienia.
+          </p>
+        ) : (
+          <Switch
+            id="skip-cleaning-approval"
+            checked={skipCleaning.query.data === true}
+            disabled={skipCleaning.mutation.isPending}
+            onCheckedChange={(checked) => skipCleaning.mutation.mutate(checked)}
+          />
+        )}
+      </section>
 
       <section className="space-y-3">
         <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Aktywne reguły</h3>

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { subMonths } from "date-fns";
 import { supabase } from "@/lib/supabase";
+import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
 import type { Database } from "@/types/supabase";
 import type { PropertyIssueLifecycleFields } from "@/types/issueLifecycle";
 import type { PropertyIssueProtocolFields } from "@/lib/issueProtocol";
@@ -58,6 +59,7 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     `,
     )
     .eq("org_id", String(orgId))
+    .or(ADMIN_VISIBLE_ISSUES_OR)
     .gte("created_at", since.toISOString())
     .order("created_at", { ascending: false })
     .limit(MAX_TRIAGE_ISSUES);

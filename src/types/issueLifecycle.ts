@@ -96,6 +96,7 @@ export const ISSUE_LIFECYCLE_ERROR_CODES = [
   "ISSUE_BROADCAST_SCOPE_REQUIRED",
   "ISSUE_MARKETPLACE_ALREADY_CLAIMED",
   "ISSUE_MARKETPLACE_FORBIDDEN",
+  "ISSUE_CLEANING_RELEASE_FORBIDDEN",
 ] as const;
 
 export type IssueLifecycleErrorCode =
@@ -132,6 +133,8 @@ const ERROR_MESSAGE_PL: Record<IssueLifecycleErrorCode, string> = {
   ISSUE_MARKETPLACE_ALREADY_CLAIMED:
     "To zgłoszenie zostało już podjęte przez kogoś innego.",
   ISSUE_MARKETPLACE_FORBIDDEN: "Brak uprawnień do podjęcia tego zgłoszenia z giełdy.",
+  ISSUE_CLEANING_RELEASE_FORBIDDEN:
+    "Nie można przekazać tej usterki poza moduł sprzątania.",
 };
 
 export function issueLifecycleErrorMessagePl(err: unknown): string {

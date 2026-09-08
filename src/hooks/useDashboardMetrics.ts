@@ -2,6 +2,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { addDays, addHours, parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
+import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
 
 export const DASHBOARD_METRICS_STALE_MS = 60_000;
 
@@ -83,6 +84,7 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
       .from("property_issues")
       .select("id, location_id, created_at, category, description, location:cleaning_locations(name)")
       .eq("org_id", orgId)
+      .or(ADMIN_VISIBLE_ISSUES_OR)
       .in("status", ACTIVE_ISSUE_STATUSES)
       .lt("created_at", cutoff)
       .order("created_at", { ascending: true })
