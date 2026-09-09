@@ -235,7 +235,6 @@ const Dashboard = () => {
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <VerificationAlertsCard orgId={orgId} />
         <ActionCard
           title="Zaległe usterki"
           accentClass="border-l-4 border-l-red-600"
@@ -285,6 +284,8 @@ const Dashboard = () => {
           detailLinkMode="plain"
         />
       </div>
+
+      <VerificationAlertsCard orgId={orgId} />
     </div>
   );
 };

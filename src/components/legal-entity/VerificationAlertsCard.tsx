@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { VerificationNeededBadge } from "@/components/legal-entity/VerificationNeededBadge";
 import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
@@ -40,6 +39,13 @@ export function VerificationAlertsCard({ orgId }: { orgId: string | null }) {
   const { data: alerts = [], isLoading, error } = useOrgVerificationAlerts(orgId);
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
+  if (!orgId || isLoading) {
+    return null;
+  }
+  if (!error && alerts.length === 0) {
+    return null;
+  }
+
   const onRetry = async (legalEntityId: string) => {
     setRetryingId(legalEntityId);
     try {
@@ -57,7 +63,7 @@ export function VerificationAlertsCard({ orgId }: { orgId: string | null }) {
   };
 
   return (
-    <Card className="overflow-hidden border-border shadow-sm border-l-4 border-l-amber-500 lg:col-span-2">
+    <Card className="overflow-hidden border-border shadow-sm border-l-4 border-l-amber-500">
       <CardHeader className="space-y-1 pb-3">
         <div className="flex items-center gap-2">
           <CardTitle className="text-base font-semibold tracking-tight">Podmioty do sprawdzenia</CardTitle>
@@ -68,18 +74,11 @@ export function VerificationAlertsCard({ orgId }: { orgId: string | null }) {
         </p>
       </CardHeader>
       <CardContent className="pt-0">
-        {isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-full max-w-md" />
-          </div>
-        ) : error ? (
+        {error ? (
           <p className="text-sm text-destructive flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             Nie udało się wczytać kolejki weryfikacji.
           </p>
-        ) : alerts.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">Brak podmiotów oczekujących na sprawdzenie.</p>
         ) : (
           <ul className="space-y-3">
             {alerts.map((alert) => {
