@@ -7,12 +7,15 @@ import { z } from "zod";
 import { Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useCommunities,
-  useCreateCommunity,
   useUpdateCommunity,
+  communityQueryKeys,
 } from "@/hooks/useCommunities";
+import { LegalEntityNipField } from "@/components/legal-entity/LegalEntityNipField";
+import { HOUSING_KINDS } from "@/lib/legalEntityMessages";
+import type { LegalEntityPublic } from "@/lib/legalEntityApi";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -74,17 +77,13 @@ export default function Communities() {
     queryFn: fetchMyOrgId,
   });
 
+  const queryClient = useQueryClient();
   const { data: communities, isPending, isError } = useCommunities(orgId ?? null);
-  const createMutation = useCreateCommunity();
   const updateMutation = useUpdateCommunity();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [createEntity, setCreateEntity] = useState<LegalEntityPublic | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const form = useForm<CommunityFormValues>({
-    resolver: zodResolver(communityFormSchema),
-    defaultValues: { name: "", nip: "" },
-  });
 
   const editForm = useForm<CommunityFormValues>({
     resolver: zodResolver(communityFormSchema),
@@ -93,26 +92,16 @@ export default function Communities() {
 
   const editingRow = editingId ? communities?.find((c) => c.id === editingId) : undefined;
 
-  const onCreateSubmit = (values: CommunityFormValues) => {
+  const onCreateSubmit = async () => {
     if (!orgId) return;
-    const nipTrimmed = values.nip?.trim();
-    createMutation.mutate(
-      {
-        name: values.name.trim(),
-        org_id: orgId,
-        nip: nipTrimmed === undefined || nipTrimmed === "" ? null : nipTrimmed,
-      },
-      {
-        onSuccess: () => {
-          setCreateOpen(false);
-          form.reset({ name: "", nip: "" });
-          toast.success("Wspólnota utworzona.");
-        },
-        onError: (e) => {
-          toast.error(e instanceof Error ? e.message : "Nie udało się utworzyć wspólnoty.");
-        },
-      },
-    );
+    if (!createEntity) {
+      toast.error("Sprawdź NIP w GUS i dodaj wspólnotę do Domio.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: communityQueryKeys.list(orgId) });
+    setCreateOpen(false);
+    setCreateEntity(null);
+    toast.success("Wspólnota dodana.");
   };
 
   const onEditOpen = (id: string) => {
@@ -127,14 +116,12 @@ export default function Communities() {
 
   const onEditSubmit = (values: CommunityFormValues) => {
     if (!orgId || !editingId) return;
-    const nipTrimmed = values.nip?.trim();
     updateMutation.mutate(
       {
         id: editingId,
         orgId,
         updates: {
           name: values.name.trim(),
-          nip: nipTrimmed === undefined || nipTrimmed === "" ? null : nipTrimmed,
         },
       },
       {
@@ -172,10 +159,17 @@ export default function Communities() {
         <div>
           <h1 className="text-lg font-semibold text-foreground">Wspólnoty</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Zarządzaj wspólnotami przypisanymi do organizacji.
+            Wspólnoty i spółdzielnie dodajesz po NIP (GUS). Kody dostępu zostają przy Twojej organizacji.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>+ Nowa Wspólnota</Button>
+        <Button
+          onClick={() => {
+            setCreateEntity(null);
+            setCreateOpen(true);
+          }}
+        >
+          + Nowa Wspólnota
+        </Button>
       </div>
 
       <div className="rounded-md border">
@@ -238,53 +232,43 @@ export default function Communities() {
         )}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) setCreateEntity(null);
+        }}
+      >
         <DialogContent
+          className="sm:max-w-lg"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>Nowa wspólnota</DialogTitle>
-            <DialogDescription>Podaj nazwę (min. 3 znaki). NIP jest opcjonalny.</DialogDescription>
+            <DialogDescription>
+              Zacznij od NIP. Dane rejestrowe pobieramy z GUS. Niekompletnego
+              podmiotu nie zapisujemy.
+            </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onCreateSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nazwa</FormLabel>
-                    <FormControl>
-                      <Input {...field} autoComplete="off" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="nip"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>NIP</FormLabel>
-                    <FormControl>
-                      <Input {...field} autoComplete="off" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                  Anuluj
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Zapisywanie…" : "Utwórz"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          {orgId ? (
+            <LegalEntityNipField
+              orgId={orgId}
+              value={createEntity}
+              onChange={setCreateEntity}
+              allowedKinds={HOUSING_KINDS}
+              flags={{ isAdmin: true }}
+              required
+            />
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              Anuluj
+            </Button>
+            <Button type="button" onClick={() => void onCreateSubmit()} disabled={!createEntity}>
+              Zapisz
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -317,10 +301,13 @@ export default function Communities() {
                 name="nip"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>NIP</FormLabel>
+                    <FormLabel>NIP (rejestr globalny)</FormLabel>
                     <FormControl>
-                      <Input {...field} autoComplete="off" />
+                      <Input {...field} autoComplete="off" disabled />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      NIP zmienia wyłącznie administrator platformy DOMIO.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

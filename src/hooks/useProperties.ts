@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
+import { attachLegalEntityToBuilding, fetchCommunityLegalEntityId, LegalEntityApiError } from "@/lib/legalEntityApi";
 import { getOrgAndActor, hasLocationAdministrationAccess } from "@/lib/orgAccess";
 import { communityQueryKeys } from "@/hooks/useCommunities";
 
@@ -627,6 +628,27 @@ export function useAssignLocationsToCommunity(communityId: string | undefined) {
       }
       if (!comm) {
         throw new Error("Nie znaleziono wspólnoty.");
+      }
+
+      const legalEntityId = await fetchCommunityLegalEntityId(communityId);
+
+      if (legalEntityId) {
+        for (const locationId of locationIds) {
+          try {
+            await attachLegalEntityToBuilding({
+              orgId: actor.orgId,
+              cleaningLocationId: locationId,
+              legalEntityId,
+            });
+          } catch (attachErr) {
+            console.error("[useAssignLocationsToCommunity] attach:", attachErr);
+            if (attachErr instanceof LegalEntityApiError) {
+              throw attachErr;
+            }
+            throw new Error("Nie udało się dopiąć podmiotu do części budynków.");
+          }
+        }
+        return;
       }
 
       const { error: bulkErr } = await supabase

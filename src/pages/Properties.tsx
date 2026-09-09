@@ -105,9 +105,16 @@ export default function Properties() {
     let rows = !q
       ? [...data]
       : data.filter(
-          (r) => r.name.toLowerCase().includes(q) || r.address.toLowerCase().includes(q),
+          (r) =>
+            r.name.toLowerCase().includes(q) ||
+            r.address.toLowerCase().includes(q) ||
+            (r.communityName?.toLowerCase().includes(q) ?? false),
         );
     rows.sort((a, b) => {
+      const group = (a.communityName ?? "Żż").localeCompare(b.communityName ?? "Żż", "pl", {
+        sensitivity: "base",
+      });
+      if (group !== 0) return group;
       const cmp = a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
       return nameSort === "asc" ? cmp : -cmp;
     });
@@ -141,7 +148,7 @@ export default function Properties() {
         <CardContent className="space-y-4">
           <Input
             type="search"
-            placeholder="Szukaj po nazwie lub adresie…"
+            placeholder="Szukaj po nazwie, adresie lub wspólnocie…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-md"
@@ -194,6 +201,7 @@ export default function Properties() {
                 <TableHeader>
                   <TableRow>
                     <SortablePropertyHead direction={nameSort} onToggle={toggleNameSort} />
+                    <TableHead className="hidden md:table-cell">Wspólnota</TableHead>
                     <TableHead className="w-[100px] text-center hidden sm:table-cell">Administratorzy</TableHead>
                     <TableHead className="w-[140px] text-right">Akcje</TableHead>
                   </TableRow>
@@ -211,8 +219,11 @@ export default function Properties() {
                           {row.address}
                         </span>
                         <span className="text-[11px] text-muted-foreground sm:hidden mt-1 block">
-                          Administratorzy: {row.adminCount}
+                          {row.communityName ?? "Bez wspólnoty"} · Administratorzy: {row.adminCount}
                         </span>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {row.communityName ?? "Bez wspólnoty"}
                       </TableCell>
                       <TableCell className="text-center text-sm text-muted-foreground hidden sm:table-cell">
                         {row.adminCount}
