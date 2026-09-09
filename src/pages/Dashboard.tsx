@@ -252,7 +252,7 @@ const Dashboard = () => {
           isLoading={missedCleaning.isLoading}
           error={missedCleaning.error}
           emptyTitle="Plan sprzątania pod kontrolą"
-          emptyMessage="Brak niezakończonych zleceń z przeszłym terminem realizacji."
+          emptyMessage="Brak niewykonanych zleceń z poprzednich dni."
           rows={missedCleaning.data}
           isExpanded={expandedCleaning}
           onToggleExpanded={() => setExpandedCleaning((v) => !v)}

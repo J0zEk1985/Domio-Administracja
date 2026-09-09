@@ -1,8 +1,9 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { addDays, addHours, parseISO } from "date-fns";
+import { addDays, addHours, parseISO, startOfDay } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
+import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
 
 export const DASHBOARD_METRICS_STALE_MS = 60_000;
 
@@ -31,6 +32,8 @@ const INCOMPLETE_TASK_STATUSES: Database["public"]["Enums"]["task_status"][] = [
 ];
 
 type LocationName = { name: string | null };
+type LocationLabel = { name: string | null; address?: string | null };
+type SectionName = { name: string | null };
 
 export type DashboardOverdueIssue = {
   id: string;
@@ -127,13 +130,15 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
 
 async function fetchMissedCleaning(orgId: string): Promise<DashboardMissedCleaning[]> {
   try {
-    const nowIso = new Date().toISOString();
+    const todayStartIso = startOfDay(new Date()).toISOString();
     const { data, error } = await supabase
       .from("cleaning_tasks")
-      .select("id, location_id, scheduled_at, task_type, location:cleaning_locations(name)")
+      .select(
+        "id, location_id, scheduled_at, task_type, coordinator_notes, location:cleaning_locations(name, address), section:property_sections(name)",
+      )
       .eq("org_id", orgId)
       .in("status", INCOMPLETE_TASK_STATUSES)
-      .lt("scheduled_at", nowIso)
+      .lt("scheduled_at", todayStartIso)
       .order("scheduled_at", { ascending: true })
       .limit(ROW_LIMIT);
 
@@ -147,19 +152,46 @@ async function fetchMissedCleaning(orgId: string): Promise<DashboardMissedCleani
       location_id: string | null;
       scheduled_at: string;
       task_type: Database["public"]["Enums"]["task_type"];
-      location: LocationName | null;
+      coordinator_notes: string | null;
+      location: LocationLabel | null;
+      section: SectionName | null;
     }[];
 
-    return rows.map((row) => ({
-      id: row.id,
-      locationId: row.location_id,
-      dueAtIso: row.scheduled_at,
-      buildingName: row.location?.name?.trim() || "—",
-      detail: formatTaskType(row.task_type),
-    }));
+    return rows.map((row) => {
+      const typeLabel = formatTaskType(row.task_type);
+      const taskName = formatCleaningTaskName(row);
+      return {
+        id: row.id,
+        locationId: row.location_id,
+        dueAtIso: row.scheduled_at,
+        buildingName: formatIssueBuildingLabel(row.location),
+        detail: taskName === typeLabel ? typeLabel : `${taskName} · ${typeLabel}`,
+      };
+    });
   } catch (err) {
     console.error("[useDashboardMetrics] fetchMissedCleaning:", err);
     throw err;
+  }
+}
+
+function formatCleaningTaskName(row: {
+  task_type: Database["public"]["Enums"]["task_type"];
+  coordinator_notes: string | null;
+  section: SectionName | null;
+}): string {
+  const sectionName = row.section?.name?.trim();
+  if (sectionName) return sectionName;
+  const notes = row.coordinator_notes?.trim();
+  if (notes) return notes;
+  switch (row.task_type) {
+    case "coordinator_single":
+      return "Zadanie koordynatora";
+    case "long_term":
+      return "Zadanie długoterminowe";
+    case "employee_extra":
+      return "Zadanie dodatkowe";
+    default:
+      return "Zadanie standardowe";
   }
 }
 
