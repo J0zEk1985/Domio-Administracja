@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import {
   createLegalEntityFromGus,
+  createLegalEntityUnverified,
   enrollLegalEntity,
   lookupLegalEntity,
   LegalEntityApiError,
@@ -23,6 +25,9 @@ import {
   LEGAL_ENTITY_KIND_LABELS,
   legalEntityErrorMessage,
 } from "@/lib/legalEntityMessages";
+import { VERIFICATION_ALERTS_ROOT } from "@/lib/legalEntityApi";
+import { LegalEntityUnverifiedForm, type UnverifiedFormValues } from "@/components/legal-entity/LegalEntityUnverifiedForm";
+import { VerificationNeededBadge } from "@/components/legal-entity/VerificationNeededBadge";
 
 export type LegalEntityModuleFlags = {
   isCleaning?: boolean;
@@ -49,6 +54,16 @@ function kindAllowed(kind: string, allowed: LegalEntityKind[]): kind is LegalEnt
   return allowed.includes(kind as LegalEntityKind);
 }
 
+function isGusOutageCode(code: string): boolean {
+  return (
+    code === "gus_unavailable" ||
+    code === "GUS_NOT_CONFIGURED" ||
+    code === "GUS_LOGIN_FAILED" ||
+    code === "GUS_FAILED" ||
+    code.startsWith("GUS_HTTP_")
+  );
+}
+
 export function LegalEntityNipField({
   orgId,
   value,
@@ -59,10 +74,12 @@ export function LegalEntityNipField({
   disabled = false,
   optionalHint,
 }: LegalEntityNipFieldProps) {
+  const queryClient = useQueryClient();
   const [nip, setNip] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [gus, setGus] = React.useState<GusPreview | null>(null);
+  const [unverifiedOpen, setUnverifiedOpen] = React.useState(false);
   const [kind, setKind] = React.useState<LegalEntityKind>(allowedKinds[0] ?? "company");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -72,6 +89,7 @@ export function LegalEntityNipField({
     if (value) {
       setNip(value.nip);
       setGus(null);
+      setUnverifiedOpen(false);
       setMessage(null);
     }
   }, [value]);
@@ -79,6 +97,13 @@ export function LegalEntityNipField({
   const clearSelection = () => {
     onChange(null);
     setGus(null);
+    setUnverifiedOpen(false);
+    setMessage(null);
+  };
+
+  const openUnverified = () => {
+    setGus(null);
+    setUnverifiedOpen(true);
     setMessage(null);
   };
 
@@ -86,6 +111,7 @@ export function LegalEntityNipField({
     setBusy(true);
     setMessage(null);
     setGus(null);
+    setUnverifiedOpen(false);
     try {
       const result = await lookupLegalEntity(orgId, nip);
       if (result.status === "invalid_nip") {
@@ -109,7 +135,6 @@ export function LegalEntityNipField({
         } else {
           onChange(result.entity);
         }
-        setGus(null);
         return;
       }
       if (result.status === "found_in_gus" && result.gusPreview) {
@@ -121,9 +146,18 @@ export function LegalEntityNipField({
         setShortName(result.gusPreview.legalName.slice(0, 80));
         return;
       }
+      if (result.status === "gus_unavailable" || isGusOutageCode(result.status)) {
+        openUnverified();
+        return;
+      }
       setMessage(legalEntityErrorMessage(result.status));
     } catch (err) {
       console.error("[LegalEntityNipField] lookup:", err);
+      const code = err instanceof LegalEntityApiError ? err.code : "RPC_FAILED";
+      if (isGusOutageCode(code)) {
+        openUnverified();
+        return;
+      }
       setMessage(err instanceof LegalEntityApiError ? err.message : legalEntityErrorMessage("RPC_FAILED"));
     } finally {
       setBusy(false);
@@ -148,6 +182,40 @@ export function LegalEntityNipField({
       setGus(null);
     } catch (err) {
       console.error("[LegalEntityNipField] create:", err);
+      const code = err instanceof LegalEntityApiError ? err.code : "RPC_FAILED";
+      if (isGusOutageCode(code)) {
+        openUnverified();
+        return;
+      }
+      setMessage(err instanceof LegalEntityApiError ? err.message : legalEntityErrorMessage("RPC_FAILED"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUnverifiedCreate = async (values: UnverifiedFormValues) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const created = await createLegalEntityUnverified({
+        orgId,
+        nip,
+        kind: values.kind,
+        shortName: values.shortName,
+        legalName: values.legalName,
+        email: values.email,
+        phone: values.phone,
+        city: values.city,
+        postalCode: values.postalCode,
+        street: values.street || null,
+        buildingNumber: values.buildingNumber || null,
+        ...flags,
+      });
+      onChange(created.entity);
+      setUnverifiedOpen(false);
+      await queryClient.invalidateQueries({ queryKey: [VERIFICATION_ALERTS_ROOT] });
+    } catch (err) {
+      console.error("[LegalEntityNipField] unverified:", err);
       setMessage(err instanceof LegalEntityApiError ? err.message : legalEntityErrorMessage("RPC_FAILED"));
     } finally {
       setBusy(false);
@@ -184,7 +252,10 @@ export function LegalEntityNipField({
 
       {value ? (
         <div className="rounded-md border bg-muted/30 p-3 text-sm">
-          <p className="font-medium">{value.shortName}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-medium">{value.shortName}</p>
+            {value.verificationStatus === "pending_manual" ? <VerificationNeededBadge /> : null}
+          </div>
           <p className="text-muted-foreground">{value.legalName}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {LEGAL_ENTITY_KIND_LABELS[value.kind]} · NIP {value.nip}
@@ -254,6 +325,16 @@ export function LegalEntityNipField({
             Dodaj do Domio
           </Button>
         </div>
+      ) : null}
+
+      {unverifiedOpen && !value ? (
+        <LegalEntityUnverifiedForm
+          allowedKinds={allowedKinds}
+          busy={busy}
+          initialKind={kind}
+          onSubmit={(values) => void handleUnverifiedCreate(values)}
+          onCancel={() => setUnverifiedOpen(false)}
+        />
       ) : null}
 
       {message ? <p className="text-sm text-destructive">{message}</p> : null}

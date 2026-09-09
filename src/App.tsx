@@ -28,6 +28,7 @@ import QuickActions from "./pages/QuickActions.tsx";
 import EBoard from "./pages/EBoard.tsx";
 import EBoardDisplay from "./pages/EBoardDisplay.tsx";
 import KioskLayout from "./layouts/KioskLayout.tsx";
+import PostLoginRootRedirect from "./pages/PostLoginRootRedirect.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,8 +54,8 @@ const App = () => (
             </Route>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
+              <Route path="/" element={<PostLoginRootRedirect />} />
               <Route element={<DashboardLayout />}>
-                <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/:id" element={<MemberDetails />} />

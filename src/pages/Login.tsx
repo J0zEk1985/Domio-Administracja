@@ -16,7 +16,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
  */
 export default function Login() {
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/dashboard";
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
 
   const [sessionChecked, setSessionChecked] = useState(false);
   const [hasSession, setHasSession] = useState(false);

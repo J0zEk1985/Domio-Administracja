@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { CompanyDialog } from "@/components/companies/CompanyDialog";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCompanies } from "@/hooks/useCompanies";
+import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
+import {
+  VerificationNeededBadge,
+  rowNeedsVerification,
+} from "@/components/legal-entity/VerificationNeededBadge";
 import { COMPANY_CATEGORY_LABELS } from "@/schemas/companySchema";
 import type { Company } from "@/types/contracts";
 import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/lib/supabase";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SKELETON_ROWS = 8;
@@ -32,6 +39,18 @@ export function CompaniesDataTable() {
 
   const searchForApi = debouncedQuery.trim() === "" ? undefined : debouncedQuery.trim();
   const companiesQuery = useCompanies(searchForApi);
+  const { data: orgId } = useQuery({
+    queryKey: ["my-org-id"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_org_id_safe");
+      if (error) {
+        console.error("[CompaniesDataTable] get_my_org_id_safe:", error);
+        return null;
+      }
+      return data == null || String(data).trim() === "" ? null : String(data);
+    },
+  });
+  const { data: verificationAlerts } = useOrgVerificationAlerts(orgId ?? null);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
@@ -135,7 +154,14 @@ export function CompaniesDataTable() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="font-medium text-foreground">{row.name}</TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{row.name}</span>
+                      {rowNeedsVerification(verificationAlerts, "company", row.id, row.tax_id) ? (
+                        <VerificationNeededBadge />
+                      ) : null}
+                    </div>
+                  </TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">{row.tax_id}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {COMPANY_CATEGORY_LABELS[row.category]}

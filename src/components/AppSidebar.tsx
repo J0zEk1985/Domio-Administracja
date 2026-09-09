@@ -7,7 +7,6 @@ import {
   FileText,
   ListTodo,
   Users,
-  Zap,
   Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -27,6 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { usePendingIssuesCount } from "@/hooks/usePendingIssuesCount";
+import { usePendingVerificationCount } from "@/hooks/useOrgVerificationAlerts";
 
 type NavItem = {
   title: string;
@@ -41,7 +41,6 @@ const navItems: NavItem[] = [
   { title: "Wspólnoty", url: "/communities", icon: Landmark },
   { title: "Budynki", url: "/properties", icon: MapPin },
   { title: "Zgłoszenia", url: "/issues", icon: MessageSquareWarning },
-  { title: "Panel terenowy", url: "/quick-actions", icon: Zap },
   { title: "Tablica ogłoszeń", url: "/e-board", icon: Megaphone },
   { title: "Umowy & Firmy", url: "/contracts", icon: FileText },
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ShieldCheck },
@@ -54,6 +53,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { data: ownerAccess, isLoading: ownerLoading } = useIsOrgOwner();
   const { data: pendingIssuesCount = 0 } = usePendingIssuesCount();
+  const { data: pendingVerificationCount = 0 } = usePendingVerificationCount();
   const showTeam = !ownerLoading && ownerAccess?.isOwner === true;
 
   const visibleItems = navItems.filter((item) => !item.ownerOnly || showTeam);
@@ -100,6 +100,14 @@ export function AppSidebar() {
                           className="h-5 min-w-5 justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground"
                         >
                           {pendingIssuesCount > 99 ? "99+" : pendingIssuesCount}
+                        </Badge>
+                      ) : null}
+                      {!collapsed && item.url === "/dashboard" && pendingVerificationCount > 0 ? (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 min-w-5 justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-amber-950"
+                        >
+                          {pendingVerificationCount > 99 ? "99+" : pendingVerificationCount}
                         </Badge>
                       ) : null}
                     </NavLink>

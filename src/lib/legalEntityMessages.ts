@@ -49,7 +49,22 @@ export function legalEntityErrorMessage(
       return "Ten adres jest już przypisany do innego podmiotu.";
     }
     case "LEGAL_ENTITY_INCOMPLETE_DATA":
-      return "Uzupełnij e-mail, telefon i dane z GUS. Niekompletnego podmiotu nie zapisujemy.";
+      return "Uzupełnij e-mail, telefon, nazwę, miasto i kod pocztowy.";
+    case "LEGAL_ENTITY_GUS_STILL_AVAILABLE":
+      return "GUS działa. Użyj standardowej weryfikacji NIP.";
+    case "LEGAL_ENTITY_UNVERIFIED_FORBIDDEN":
+      return "Brak uprawnień do dodania podmiotu bez weryfikacji GUS.";
+    case "LEGAL_ENTITY_VERIFY_PLATFORM_ONLY":
+      return "Tę czynność może wykonać tylko administrator platformy DOMIO.";
+    case "LEGAL_ENTITY_ALREADY_VERIFIED":
+      return "Ten podmiot jest już zweryfikowany.";
+    case "LEGAL_ENTITY_REGON_TAKEN":
+      return "Ten REGON jest już w rejestrze DOMIO.";
+    case "LEGAL_ENTITY_INVALID_VERIFICATION_REASON":
+      return "Nieprawidłowy powód zapisu awaryjnego.";
+    case "GUS_LOGIN_FAILED":
+    case "GUS_FAILED":
+      return "Serwis GUS jest niedostępny. Możesz dodać podmiot bez weryfikacji — trafi do kolejki do sprawdzenia.";
     case "LEGAL_ENTITY_NOT_ENROLLED":
       return "Najpierw dodaj podmiot do organizacji.";
     case "BUILDING_ADDRESS_REQUIRED":
@@ -57,6 +72,9 @@ export function legalEntityErrorMessage(
     case "DUPLICATE_BUILDING":
       return "Ten adres istnieje już w systemie DOMIO.";
     default:
+      if (code.startsWith("GUS_HTTP_")) {
+        return "Serwis GUS jest niedostępny. Możesz dodać podmiot bez weryfikacji — trafi do kolejki do sprawdzenia.";
+      }
       return "Nie udało się wykonać operacji. Spróbuj ponownie.";
   }
 }
