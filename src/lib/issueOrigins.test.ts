@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isIssueFromCleaningModule, shouldShowCleaningOriginBadge } from "@/lib/issueOrigins";
+import { issueSourceLabelPl, isIssueFromCleaningModule, shouldShowCleaningOriginBadge } from "@/lib/issueOrigins";
 
 describe("isIssueFromCleaningModule", () => {
   it("tags Cleaning source and cleaner reporter", () => {
@@ -18,5 +18,22 @@ describe("shouldShowCleaningOriginBadge", () => {
   it("follows the same Cleaning origin rule", () => {
     expect(shouldShowCleaningOriginBadge({ source: "cleaning" })).toBe(true);
     expect(shouldShowCleaningOriginBadge({ source: "admin_ui" })).toBe(false);
+  });
+});
+
+describe("issueSourceLabelPl", () => {
+  it("maps known sources to Polish labels", () => {
+    expect(issueSourceLabelPl({ source: "serwis" })).toBe("Technik");
+    expect(issueSourceLabelPl({ source: "tenant_qr" })).toBe("Kod QR");
+    expect(issueSourceLabelPl({ source: "public_qr" })).toBe("Kod QR");
+    expect(issueSourceLabelPl({ source: "cleaning" })).toBe("Sprzątanie");
+    expect(issueSourceLabelPl({ source: "admin_ui" })).toBe("Administrator");
+    expect(issueSourceLabelPl({ source: "dispatcher" })).toBe("Administrator");
+    expect(issueSourceLabelPl({ source: "email_ai" })).toBe("E-mail");
+    expect(issueSourceLabelPl({ source: "manual" })).toBe("Ręcznie");
+  });
+
+  it("falls back to Cleaning when reporter is a cleaner", () => {
+    expect(issueSourceLabelPl({ source: "manual", reporter_type: "cleaner" })).toBe("Sprzątanie");
   });
 });

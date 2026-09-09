@@ -3,11 +3,13 @@ import { pl } from "date-fns/locale";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
-import { CleaningOriginBadge } from "@/components/triage/CleaningOriginBadge";
+import { IssueSourceBadge } from "@/components/triage/IssueSourceBadge";
 import {
+  issueCoordinatorBucket,
+  issueCoordinatorBucketDotClass,
+  issueCoordinatorBucketLabelPl,
   issuePriorityBadgeVariant,
   issuePriorityLabelPl,
-  issueStatusDotClass,
 } from "@/lib/triageIssueUi";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -27,11 +29,10 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
 
   const building = formatIssueBuildingLabel(issue.location);
   const category = issue.category?.trim() || "Bez kategorii";
-  const isResolved = issue.status === "resolved";
-  const isClosed =
-    isResolved || issue.status === "rejected" || issue.status === "cancelled";
-  const strikeAddress =
-    issue.status === "rejected" || issue.status === "cancelled";
+  const bucket = issueCoordinatorBucket(issue);
+  const isResolved = bucket === "resolved";
+  const isClosed = bucket === "resolved" || bucket === "rejected" || bucket === "cancelled";
+  const strikeAddress = bucket === "rejected" || bucket === "cancelled";
 
   return (
     <button
@@ -53,8 +54,8 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
     >
       <div className="flex items-start gap-2">
         <span
-          className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", issueStatusDotClass(issue.status))}
-          title=""
+          className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", issueCoordinatorBucketDotClass(bucket))}
+          title={issueCoordinatorBucketLabelPl(bucket)}
           aria-hidden
         />
         <div className="min-w-0 flex-1 space-y-1.5">
@@ -71,7 +72,12 @@ export function TriageIssueCard({ issue, selected, onSelect }: TriageIssueCardPr
               {issuePriorityLabelPl(issue.priority)}
             </Badge>
           </div>
-          <CleaningOriginBadge issue={issue} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className="text-[10px] font-medium">
+              {issueCoordinatorBucketLabelPl(bucket)}
+            </Badge>
+            <IssueSourceBadge issue={issue} />
+          </div>
           <p className="line-clamp-2 text-xs text-foreground/80">
             {issue.description?.trim() || "Brak opisu"}
           </p>

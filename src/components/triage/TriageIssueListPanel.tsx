@@ -37,13 +37,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS: { value: TriageInboxStatusFilter; label: string }[] = [
-  { value: "all_active", label: "Wszystkie aktywne" },
-  { value: "new", label: "Nowe" },
-  { value: "open", label: "Otwarte (wolne)" },
-  { value: "in_progress", label: "W toku" },
-  { value: "pending_admin_approval", label: "Akceptacja" },
-  { value: "waiting_for_parts", label: "Części" },
-  { value: "delegated", label: "Delegowane" },
+  { value: "all", label: "Wszystkie" },
+  { value: "awaiting_approval", label: "Do akceptacji" },
+  { value: "on_marketplace", label: "Na giełdzie" },
+  { value: "in_progress", label: "W trakcie realizacji" },
   { value: "resolved", label: "Zrealizowane" },
   { value: "rejected", label: "Odrzucone" },
   { value: "cancelled", label: "Anulowane" },
@@ -271,7 +268,7 @@ export function TriageIssueListPanel({
           value={filters.status}
           onValueChange={(v) => onFiltersChange({ ...filters, status: v as TriageInboxStatusFilter })}
         >
-          <SelectTrigger className="h-9 w-[min(100%,11rem)] shrink-0 text-xs">
+          <SelectTrigger className="h-9 w-[min(100%,14rem)] shrink-0 text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

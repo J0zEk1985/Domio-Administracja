@@ -1,14 +1,15 @@
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
-import type { IssueStatus } from "@/lib/triageIssueUi";
-import { TERMINAL_ISSUE_STATUSES } from "@/lib/triageIssueUi";
+import {
+  issueCoordinatorBucket,
+  isMarketplaceWaiting,
+  type IssueCoordinatorBucket,
+} from "@/lib/triageIssueUi";
 import type { DateRange } from "react-day-picker";
 import { endOfDay, startOfDay } from "date-fns";
 
-/** Status dropdown (includes aggregate “active only”). */
-export type TriageInboxStatusFilter =
-  | "all_active"
-  | IssueStatus;
+/** Status dropdown — coordinator buckets, not raw DB enum values. */
+export type TriageInboxStatusFilter = "all" | IssueCoordinatorBucket;
 
 export type TriageInboxBuildingFilter = "all" | string;
 
@@ -25,35 +26,16 @@ export type TriageInboxFiltersState = {
 };
 
 export const DEFAULT_TRIAGE_INBOX_FILTERS: TriageInboxFiltersState = {
-  status: "all_active",
+  status: "awaiting_approval",
   building: "all",
   assignee: { kind: "all" },
   dateRange: undefined,
 };
 
-function isTerminalStatus(s: IssueStatus | null | undefined): boolean {
-  if (!s) return false;
-  return (TERMINAL_ISSUE_STATUSES as readonly string[]).includes(s);
-}
-
 function matchesStatusFilter(issue: TriageIssue, status: TriageInboxStatusFilter): boolean {
-  const st = issue.status ?? undefined;
-
-  if (status === "all_active") {
-    if (!st) return true;
-    return !isTerminalStatus(st);
-  }
-
-  if (!st) return false;
-  if (status === "open") {
-    const takenBySerwis =
-      Boolean(issue.assigned_staff_id) ||
-      Boolean(issue.delegated_vendor_id) ||
-      Boolean(issue.claimed_by_org_id) ||
-      issue.is_public_broadcast === true;
-    return st === "open" && !takenBySerwis;
-  }
-  return st === status;
+  if (status === "all") return true;
+  if (status === "on_marketplace") return isMarketplaceWaiting(issue);
+  return issueCoordinatorBucket(issue) === status;
 }
 
 function matchesBuilding(issue: TriageIssue, building: TriageInboxBuildingFilter): boolean {

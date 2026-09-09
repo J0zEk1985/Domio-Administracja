@@ -12,13 +12,18 @@ import {
 import {
   useCancelPropertyIssue,
   useRequestPropertyIssueCancel,
-  useRequestPropertyIssueTransfer,
 } from "@/hooks/useIssueLifecycleMutations";
-import { getTriageRoutingLock, MARKETPLACE_SCOPE_LABELS, type IssueMarketplaceScope } from "@/types/issueLifecycle";
-import { issueStatusLabelPl, type IssueStatus } from "@/lib/triageIssueUi";
+import { getTriageRoutingLock, type IssueMarketplaceScope } from "@/types/issueLifecycle";
+import {
+  issueCoordinatorBucket,
+  issueCoordinatorBucketLabelPl,
+  issueCoordinatorDetailPl,
+  isMarketplaceWaiting,
+  type IssueStatus,
+} from "@/lib/triageIssueUi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,21 +45,26 @@ function statusActionHint(
   status: IssueStatus | null | undefined,
   lock: ReturnType<typeof getTriageRoutingLock>,
   technicianName: string | null,
+  marketplaceWaiting: boolean,
 ): string | null {
+  if (marketplaceWaiting) {
+    return "Wystawione na giełdzie — czekamy, aż firma podejmie zlecenie. Możesz anulować albo przypisać samodzielnie.";
+  }
   if (lock === "claimed_internal") {
     const who = technicianName ? `Podjął: ${technicianName}. ` : "";
-    return `${who}Do startu prac możesz anulować zlecenie. Giełda i zmiana firmy wymagają cesji.`;
+    return `${who}Do startu prac możesz anulować zlecenie albo zmienić technika.`;
   }
   if (lock === "in_progress") {
-    return "Prace w toku. Giełda i B2B zablokowane. Możesz złożyć wniosek o anulowanie.";
+    return "Prace w toku. Możesz złożyć wniosek o anulowanie.";
+  }
+  if (lock === "delegated") {
+    return "Zgłoszenie u partnera B2B. Do startu prac możesz anulować zlecenie.";
   }
   if (lock === "transfer_pending") {
     return "Wniosek o cesję czeka na zgodę kontrahenta.";
   }
   if (!status) return null;
   if (status === "new") return "Nowe zgłoszenie — możesz je zaakceptować lub odrzucić.";
-  if (status === "delegated") return "Zgłoszenie u partnera B2B — dalsza zmiana firmy wymaga zgody kontrahenta.";
-  if (status === "waiting_for_parts") return "Oczekiwanie na części.";
   if (status === "pending_admin_approval") return "Wymaga decyzji administracyjnej.";
   return null;
 }
@@ -62,13 +72,10 @@ function statusActionHint(
 export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [pendingVendor, setPendingVendor] = useState<{ id: string; name: string } | null>(null);
 
   const rejectMut = useRejectIssue();
   const cancelMut = useCancelPropertyIssue();
   const requestCancelMut = useRequestPropertyIssueCancel();
-  const requestTransferMut = useRequestPropertyIssueTransfer();
   const delegateMut = useDelegateIssue();
   const broadcastMut = useBroadcastIssue();
   const assignMut = useAssignStaffIssue();
@@ -79,7 +86,6 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
       rejectMut.isPending ||
       cancelMut.isPending ||
       requestCancelMut.isPending ||
-      requestTransferMut.isPending ||
       delegateMut.isPending ||
       broadcastMut.isPending ||
       assignMut.isPending ||
@@ -88,7 +94,6 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
       rejectMut.isPending,
       cancelMut.isPending,
       requestCancelMut.isPending,
-      requestTransferMut.isPending,
       delegateMut.isPending,
       broadcastMut.isPending,
       assignMut.isPending,
@@ -99,29 +104,33 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
   const status = issue.status ?? undefined;
   const lock = getTriageRoutingLock(issue);
   const technicianName = issue.assigned_staff?.full_name?.trim() || null;
+  const marketplaceWaiting = isMarketplaceWaiting(issue);
+  const started = Boolean(issue.started_at) || status === "in_progress";
+  const bucket = issueCoordinatorBucket(issue);
+  const bucketDetail = issueCoordinatorDetailPl(issue);
 
   if (status === "resolved" || status === "rejected" || status === "cancelled") {
     return null;
   }
 
-  const hint = statusActionHint(status, lock, technicianName);
+  const hint = statusActionHint(status, lock, technicianName, marketplaceWaiting);
   const canAcceptAndOpen = status === "new" || status === "pending_admin_approval";
-  const broadcastDone = issue.is_public_broadcast === true;
-  const canReject = lock === "unlocked";
-  const canCancelNow = lock === "claimed_internal";
-  const canRequestCancel = lock === "in_progress";
-  const canBroadcast = lock === "unlocked" && !broadcastDone;
-  const canDirectDelegate = lock === "unlocked";
-  const canRequestTransfer =
-    lock === "claimed_internal" || lock === "in_progress" || lock === "delegated";
-  const routingLocked = !canBroadcast;
+  const canReject = lock === "unlocked" && !marketplaceWaiting;
+  const canCancelNow =
+    lock === "claimed_internal" || marketplaceWaiting || (lock === "delegated" && !started);
+  const canRequestCancel = lock === "in_progress" || (lock === "delegated" && started);
+  const canBroadcast = lock === "unlocked" && !marketplaceWaiting && issue.is_public_broadcast !== true;
+  const showB2b = lock === "unlocked";
+  const showStaff = lock !== "in_progress" && lock !== "transfer_pending";
+  const showRoutingControls = showB2b || canBroadcast || showStaff;
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-3 border-b border-border bg-card px-1 pb-4 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="font-normal">
-            {issueStatusLabelPl(status)}
+            {issueCoordinatorBucketLabelPl(bucket)}
+            {bucketDetail ? ` · ${bucketDetail}` : ""}
           </Badge>
           {technicianName && (lock === "claimed_internal" || lock === "in_progress") ? (
             <Badge variant="outline" className="font-normal">
@@ -183,61 +192,28 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
             </Button>
           ) : null}
 
-          <Separator orientation="vertical" className="hidden h-6 sm:block" />
+          {showRoutingControls ? (
+            <Separator orientation="vertical" className="hidden h-6 sm:block" />
+          ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {canDirectDelegate ? "Deleguj (B2B)" : "Cesja (B2B)"}
-            </span>
-            <VendorPartnerCombobox
-              value={issue.delegated_vendor_id ?? ""}
-              disabled={busy || lock === "transfer_pending" || (!canDirectDelegate && !canRequestTransfer)}
-              onPick={(v) => {
-                if (canDirectDelegate) {
+          {showB2b ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Deleguj (B2B)</span>
+              <VendorPartnerCombobox
+                value={issue.delegated_vendor_id ?? ""}
+                disabled={busy}
+                onPick={(v) => {
                   delegateMut.mutate({
                     issueId: issue.id,
                     vendorId: v.id,
                     vendorName: v.name,
                   });
-                  return;
-                }
-                setPendingVendor({ id: v.id, name: v.name });
-                setTransferOpen(true);
-              }}
-            />
-          </div>
+                }}
+              />
+            </div>
+          ) : null}
 
-          {broadcastDone ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <Button type="button" variant="secondary" size="sm" className="gap-1.5" disabled>
-                    <Send className="h-3.5 w-3.5" />
-                    Na giełdzie
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {issue.marketplace_scope
-                  ? MARKETPLACE_SCOPE_LABELS[issue.marketplace_scope]
-                  : "Już widoczne na giełdzie."}
-              </TooltipContent>
-            </Tooltip>
-          ) : routingLocked ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <Button type="button" variant="secondary" size="sm" className="gap-1.5" disabled>
-                    <Send className="h-3.5 w-3.5" />
-                    Wyślij na giełdę
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                Zlecenie podjęte lub delegowane — giełda wymaga autoryzowanej cesji.
-              </TooltipContent>
-            </Tooltip>
-          ) : (
+          {canBroadcast ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" variant="secondary" size="sm" className="gap-1.5" disabled={busy}>
@@ -276,23 +252,25 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
+          ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">Wewnętrzny serwis</span>
-            <StaffAssignCombobox
-              value={issue.assigned_staff_id ?? ""}
-              disabled={busy || lock === "in_progress"}
-              onPick={(s) =>
-                assignMut.mutate({
-                  issueId: issue.id,
-                  staffId: s.userId,
-                  staffName: s.fullName,
-                  currentStatus: status ?? null,
-                })
-              }
-            />
-          </div>
+          {showStaff ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Wewnętrzny serwis</span>
+              <StaffAssignCombobox
+                value={issue.assigned_staff_id ?? ""}
+                disabled={busy}
+                onPick={(s) =>
+                  assignMut.mutate({
+                    issueId: issue.id,
+                    staffId: s.userId,
+                    staffName: s.fullName,
+                    currentStatus: status ?? null,
+                  })
+                }
+              />
+            </div>
+          ) : null}
         </div>
 
         {hint ? (
@@ -335,36 +313,6 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
           cancelMut.mutate(
             { issueId: issue.id, reason },
             { onSuccess: () => setCancelOpen(false) },
-          );
-        }}
-      />
-
-      <IssueReasonDialog
-        open={transferOpen}
-        onOpenChange={(open) => {
-          setTransferOpen(open);
-          if (!open) setPendingVendor(null);
-        }}
-        isPending={requestTransferMut.isPending}
-        title="Wniosek o cesję B2B"
-        description={
-          pendingVendor
-            ? `Firma „${pendingVendor.name}” musi zaakceptować przejęcie. Dopóki nie wyrazi zgody, technik zostaje przy zleceniu.`
-            : "Wybierz firmę i podaj powód."
-        }
-        confirmLabel="Wyślij wniosek"
-        confirmVariant="default"
-        placeholder="Dlaczego przekazujesz zlecenie tej firmie?"
-        onConfirm={(reason) => {
-          if (!pendingVendor) return;
-          requestTransferMut.mutate(
-            { issueId: issue.id, vendorId: pendingVendor.id, reason },
-            {
-              onSuccess: () => {
-                setTransferOpen(false);
-                setPendingVendor(null);
-              },
-            },
           );
         }}
       />

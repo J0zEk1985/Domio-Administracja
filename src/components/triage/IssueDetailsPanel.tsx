@@ -5,8 +5,14 @@ import { Building2, User } from "lucide-react";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
-import { CleaningOriginBadge } from "@/components/triage/CleaningOriginBadge";
-import { issuePriorityLabelPl, issueReporterTypeLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
+import { IssueSourceBadge } from "@/components/triage/IssueSourceBadge";
+import {
+  issueCoordinatorBucket,
+  issueCoordinatorBucketLabelPl,
+  issueCoordinatorDetailPl,
+  issuePriorityLabelPl,
+  issueReporterTypeLabelPl,
+} from "@/lib/triageIssueUi";
 import { mergeIssueTimeline } from "@/components/triage/issueTimeline";
 import { useIssueLifecycleEvents } from "@/hooks/useIssueLifecycleMutations";
 import { TriageIssueActionBar } from "@/components/triage/TriageIssueActionBar";
@@ -72,6 +78,8 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
   const reporterRole = issueReporterTypeLabelPl(issue.reporter_type);
   const reporterOrg = issue.organization?.name?.trim() || null;
   const timeline = mergeIssueTimeline(issue, lifecycleEvents);
+  const bucket = issueCoordinatorBucket(issue);
+  const bucketDetail = issueCoordinatorDetailPl(issue);
   const categoryEditable =
     showCoordinatorActions &&
     issue.status !== "resolved" &&
@@ -88,15 +96,16 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
               {issue.description?.trim() || "Zgłoszenie bez opisu"}
             </h1>
             <Badge variant="outline" className="font-normal">
-              {issueStatusLabelPl(issue.status)}
+              {issueCoordinatorBucketLabelPl(bucket)}
+              {bucketDetail ? ` · ${bucketDetail}` : ""}
             </Badge>
-            <CleaningOriginBadge issue={issue} />
+            <IssueSourceBadge issue={issue} />
             <Badge variant="secondary" className="font-normal">
               Priorytet: {issuePriorityLabelPl(issue.priority)}
             </Badge>
-            {issue.is_public_broadcast ? (
+            {bucket === "on_marketplace" ? (
               <Badge className="bg-emerald-600/90 font-normal hover:bg-emerald-600">
-                {issue.marketplace_scope === "all" ? "Giełda: wszystkie firmy" : "Na giełdzie"}
+                {issue.marketplace_scope === "all" ? "Giełda: wszystkie firmy" : "Czeka na firmę"}
               </Badge>
             ) : null}
           </div>

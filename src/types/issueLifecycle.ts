@@ -58,6 +58,7 @@ export type TriageRoutingLock =
 export function getTriageRoutingLock(issue: {
   status?: string | null;
   assigned_staff_id?: string | null;
+  claimed_by_org_id?: string | null;
   started_at?: string | null;
   delegated_vendor_id?: string | null;
   is_transfer_requested?: boolean | null;
@@ -67,8 +68,10 @@ export function getTriageRoutingLock(issue: {
   if (issue.delegated_vendor_id) return "delegated";
   const started =
     Boolean(issue.started_at) || issue.status === "in_progress";
-  if (started && issue.assigned_staff_id) return "in_progress";
-  if (issue.assigned_staff_id) return "claimed_internal";
+  const takenInternally =
+    Boolean(issue.assigned_staff_id) || Boolean(issue.claimed_by_org_id);
+  if (started && takenInternally) return "in_progress";
+  if (takenInternally) return "claimed_internal";
   return "unlocked";
 }
 

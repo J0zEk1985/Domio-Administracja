@@ -33,3 +33,31 @@ export function shouldShowCleaningOriginBadge(issue: {
 }): boolean {
   return isIssueFromCleaningModule(issue);
 }
+
+export function issueSourceLabelPl(issue: {
+  reporter_type?: string | null;
+  source?: string | null;
+}): string {
+  const source = (issue.source ?? "").trim().toLowerCase();
+  switch (source) {
+    case "serwis":
+      return "Technik";
+    case "tenant_qr":
+    case "public_qr":
+      return "Kod QR";
+    case "cleaning":
+    case "cleaning_app":
+      return "Sprzątanie";
+    case "admin_ui":
+    case "dispatcher":
+      return "Administrator";
+    case "email_ai":
+      return "E-mail";
+    default:
+      break;
+  }
+  if (isIssueFromCleaningModule(issue)) return "Sprzątanie";
+  const reporterType = (issue.reporter_type ?? "").trim().toLowerCase();
+  if (DISPATCHER_REPORTER_TYPES.has(reporterType)) return "Administrator";
+  return "Ręcznie";
+}
