@@ -25,8 +25,9 @@ async function fetchPendingIssuesCount(): Promise<number> {
 
   const { count, error } = await supabase
     .from("property_issues")
-    .select("*", { count: "exact", head: true })
+    .select("id, location:cleaning_locations!inner(id)", { count: "exact", head: true })
     .eq("org_id", String(orgId))
+    .eq("location.is_admin_active", true)
     .or(ADMIN_VISIBLE_ISSUES_OR)
     .in("status", [...PENDING_TRIAGE_STATUSES]);
 

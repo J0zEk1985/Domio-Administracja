@@ -86,8 +86,9 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
     const cutoff = addHours(new Date(), -OPEN_ISSUE_SLA_HOURS).toISOString();
     const { data, error } = await supabase
       .from("property_issues")
-      .select("id, location_id, created_at, category, description, location:cleaning_locations(name)")
+      .select("id, location_id, created_at, category, description, location:cleaning_locations!inner(name)")
       .eq("org_id", orgId)
+      .eq("location.is_admin_active", true)
       .or(ADMIN_VISIBLE_ISSUES_OR)
       .in("status", ACTIVE_ISSUE_STATUSES)
       .lt("created_at", cutoff)

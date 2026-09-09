@@ -51,7 +51,7 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     .select(
       `
       *,
-      location:cleaning_locations(name, address),
+      location:cleaning_locations!inner(name, address),
       reporter:profiles!property_issues_reporter_id_fkey(full_name),
       organization:organizations!property_issues_org_id_fkey(name),
       delegated_vendor:vendor_partners!property_issues_delegated_vendor_id_fkey(name),
@@ -59,6 +59,7 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
     `,
     )
     .eq("org_id", String(orgId))
+    .eq("location.is_admin_active", true)
     .or(ADMIN_VISIBLE_ISSUES_OR)
     .gte("created_at", since.toISOString())
     .order("created_at", { ascending: false })
