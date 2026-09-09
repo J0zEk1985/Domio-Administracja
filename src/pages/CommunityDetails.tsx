@@ -33,6 +33,11 @@ import {
 } from "@/components/ui/table";
 import { CommunityDomainEditor } from "@/components/communities/CommunityDomainEditor";
 import { CommunityTeamTab } from "@/components/communities/CommunityTeamTab";
+import {
+  VerificationNeededBadge,
+  rowNeedsVerification,
+} from "@/components/legal-entity/VerificationNeededBadge";
+import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -58,6 +63,7 @@ export default function CommunityDetails() {
   });
 
   const communityQuery = useCommunity(communityId, orgId ?? null);
+  const { data: verificationAlerts } = useOrgVerificationAlerts(orgId ?? null);
   const locationsQuery = useLocationsByCommunity(communityId, {
     enabled: Boolean(communityId && orgId),
   });
@@ -154,7 +160,12 @@ export default function CommunityDetails() {
         </Button>
 
         <div className="rounded-xl border border-border/60 bg-card/50 p-6 shadow-sm">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{community.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">{community.name}</h1>
+            {rowNeedsVerification(verificationAlerts, "community", community.id, community.nip) ? (
+              <VerificationNeededBadge />
+            ) : null}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             NIP: <span className="text-foreground/90 tabular-nums">{community.nip?.trim() || "—"}</span>
           </p>

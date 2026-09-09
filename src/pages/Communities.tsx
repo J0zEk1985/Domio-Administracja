@@ -14,6 +14,11 @@ import {
   communityQueryKeys,
 } from "@/hooks/useCommunities";
 import { LegalEntityNipField } from "@/components/legal-entity/LegalEntityNipField";
+import {
+  VerificationNeededBadge,
+  rowNeedsVerification,
+} from "@/components/legal-entity/VerificationNeededBadge";
+import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
 import { HOUSING_KINDS } from "@/lib/legalEntityMessages";
 import type { LegalEntityPublic } from "@/lib/legalEntityApi";
 import { Button } from "@/components/ui/button";
@@ -79,6 +84,7 @@ export default function Communities() {
 
   const queryClient = useQueryClient();
   const { data: communities, isPending, isError } = useCommunities(orgId ?? null);
+  const { data: verificationAlerts } = useOrgVerificationAlerts(orgId ?? null);
   const updateMutation = useUpdateCommunity();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -99,9 +105,14 @@ export default function Communities() {
       return;
     }
     await queryClient.invalidateQueries({ queryKey: communityQueryKeys.list(orgId) });
+    await queryClient.invalidateQueries({ queryKey: ["verification-alerts"] });
     setCreateOpen(false);
     setCreateEntity(null);
-    toast.success("Wspólnota dodana.");
+    toast.success(
+      createEntity.verificationStatus === "pending_manual"
+        ? "Wspólnota dodana. Wymaga sprawdzenia — GUS był niedostępny."
+        : "Wspólnota dodana.",
+    );
   };
 
   const onEditOpen = (id: string) => {
@@ -203,9 +214,14 @@ export default function Communities() {
                 communities?.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">
-                      <Link to={`/communities/${c.id}`} className="text-primary hover:underline">
-                        {c.name}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to={`/communities/${c.id}`} className="text-primary hover:underline">
+                          {c.name}
+                        </Link>
+                        {rowNeedsVerification(verificationAlerts, "community", c.id, c.nip) ? (
+                          <VerificationNeededBadge />
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>{c.nip ?? "—"}</TableCell>
                     <TableCell>{formatStatus(c.status)}</TableCell>
@@ -247,8 +263,8 @@ export default function Communities() {
           <DialogHeader>
             <DialogTitle>Nowa wspólnota</DialogTitle>
             <DialogDescription>
-              Zacznij od NIP. Dane rejestrowe pobieramy z GUS. Niekompletnego
-              podmiotu nie zapisujemy.
+              Zacznij od NIP. Dane rejestrowe pobieramy z GUS. Przy awarii GUS możesz dodać
+              wspólnotę ręcznie — trafi do kolejki do sprawdzenia.
             </DialogDescription>
           </DialogHeader>
           {orgId ? (

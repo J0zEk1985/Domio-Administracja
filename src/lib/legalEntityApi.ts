@@ -19,6 +19,13 @@ export class LegalEntityApiError extends Error {
   }
 }
 
+export type LegalEntityVerificationStatus =
+  | "gus_verified"
+  | "pending_manual"
+  | "manually_verified";
+
+export type LegalEntityVerificationReason = "gus_unavailable" | "gus_not_configured";
+
 export type LegalEntityPublic = {
   id: string;
   kind: LegalEntityKind;
@@ -31,6 +38,8 @@ export type LegalEntityPublic = {
   city: string;
   postalCode: string;
   seatFullAddress: string;
+  verificationStatus: LegalEntityVerificationStatus;
+  verificationReason: LegalEntityVerificationReason | null;
 };
 
 export type GusPreview = {
@@ -54,12 +63,47 @@ export type LookupResult = {
     | "not_in_domio"
     | "not_in_gus"
     | "gus_inactive"
-    | "found_in_gus";
+    | "found_in_gus"
+    | "gus_unavailable";
+  reason?: LegalEntityVerificationReason;
   entity: LegalEntityPublic | null;
   gusPreview: GusPreview | null;
   suggestedKind?: LegalEntityKind;
   alreadyEnrolledInThisOrg: boolean;
 };
+
+export type UnverifiedLegalEntityInput = {
+  orgId: string;
+  kind: LegalEntityKind;
+  nip: string;
+  shortName: string;
+  legalName: string;
+  email: string;
+  phone: string;
+  city: string;
+  postalCode: string;
+  street?: string | null;
+  buildingNumber?: string | null;
+  voivodeship?: string | null;
+  isCleaning?: boolean;
+  isMaintenance?: boolean;
+  isAdmin?: boolean;
+};
+
+export type OrgVerificationAlert = {
+  legalEntityId: string;
+  orgId: string | null;
+  orgName: string | null;
+  kind: LegalEntityKind;
+  nip: string;
+  shortName: string;
+  createdAt: string;
+  reason: LegalEntityVerificationReason | null;
+  overlayKind: "community" | "company";
+  overlayId: string | null;
+};
+
+export const VERIFICATION_ALERTS_ROOT = "verification-alerts";
 
 export type EnrollBuildingResult = {
   status: "created" | "enrolled" | "duplicate";
@@ -171,6 +215,82 @@ export async function createLegalEntityFromGus(args: {
   return data as { entity: LegalEntityPublic };
 }
 
+export async function createLegalEntityUnverified(
+  args: UnverifiedLegalEntityInput,
+): Promise<{ entity: LegalEntityPublic }> {
+  const data = await invokeLookup({
+    action: "createUnverified",
+    orgId: args.orgId,
+    kind: args.kind,
+    nip: args.nip,
+    shortName: args.shortName,
+    legalName: args.legalName,
+    email: args.email,
+    phone: args.phone,
+    city: args.city,
+    postalCode: args.postalCode,
+    street: args.street ?? null,
+    buildingNumber: args.buildingNumber ?? null,
+    voivodeship: args.voivodeship ?? null,
+    isCleaning: args.isCleaning === true,
+    isMaintenance: args.isMaintenance === true,
+    isAdmin: args.isAdmin === true,
+  });
+  return data as { entity: LegalEntityPublic };
+}
+
+export async function retryLegalEntityGus(
+  legalEntityId: string,
+): Promise<{ entity: LegalEntityPublic }> {
+  const data = await invokeLookup({
+    action: "retryGus",
+    legalEntityId,
+  });
+  return data as { entity: LegalEntityPublic };
+}
+
+type RpcClient = {
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+function rpcClient(): RpcClient {
+  return supabase as unknown as RpcClient;
+}
+
+function asAlertList(raw: unknown): OrgVerificationAlert[] {
+  let value: unknown = raw;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(value)) return [];
+  return value as OrgVerificationAlert[];
+}
+
+export async function listOrgVerificationAlerts(orgId: string): Promise<OrgVerificationAlert[]> {
+  const { data, error } = await rpcClient().rpc("list_org_verification_alerts", { p_org_id: orgId });
+  if (error) {
+    console.error("[legalEntityApi] list_org_verification_alerts:", error);
+    throw new LegalEntityApiError(error.message || "RPC_FAILED");
+  }
+  return asAlertList(data);
+}
+
+export async function countOrgVerificationAlerts(orgId: string): Promise<number> {
+  const { data, error } = await rpcClient().rpc("count_org_verification_alerts", { p_org_id: orgId });
+  if (error) {
+    console.error("[legalEntityApi] count_org_verification_alerts:", error);
+    throw new LegalEntityApiError(error.message || "RPC_FAILED");
+  }
+  return typeof data === "number" ? data : 0;
+}
+
 export async function enrollBuilding(args: {
   orgId: string;
   legalEntityId: string | null;
@@ -243,12 +363,20 @@ export async function fetchAttachedLegalEntity(
 
   const entity = await db
     .from("legal_entities")
-    .select("id, short_name, legal_name, nip_normalized, kind, status, regon_normalized, krs_normalized, city, postal_code, seat_full_address")
+    .select("id, short_name, legal_name, nip_normalized, kind, status, regon_normalized, krs_normalized, city, postal_code, seat_full_address, verification_status, verification_reason")
     .eq("id", entityId)
     .maybeSingle();
   if (entity.error) throw entity.error;
   const row = entity.data;
   if (!row || typeof row.id !== "string") return null;
+  const verificationStatus =
+    row.verification_status === "pending_manual" || row.verification_status === "manually_verified"
+      ? row.verification_status
+      : "gus_verified";
+  const verificationReason =
+    row.verification_reason === "gus_unavailable" || row.verification_reason === "gus_not_configured"
+      ? row.verification_reason
+      : null;
   return {
     id: row.id,
     kind: row.kind as LegalEntityKind,
@@ -261,6 +389,8 @@ export async function fetchAttachedLegalEntity(
     city: typeof row.city === "string" ? row.city : "",
     postalCode: typeof row.postal_code === "string" ? row.postal_code : "",
     seatFullAddress: typeof row.seat_full_address === "string" ? row.seat_full_address : "",
+    verificationStatus,
+    verificationReason,
   };
 }
 

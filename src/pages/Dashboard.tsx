@@ -14,7 +14,7 @@ import {
   type DashboardMissedCleaning,
   type DashboardOverdueIssue,
 } from "@/hooks/useDashboardMetrics";
-import { cn } from "@/lib/utils";
+import { VerificationAlertsCard } from "@/components/legal-entity/VerificationAlertsCard";
 
 const PREVIEW_COUNT = 3;
 
@@ -234,6 +234,7 @@ const Dashboard = () => {
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <VerificationAlertsCard orgId={orgId} />
         <ActionCard
           title="Zaległe usterki"
           accentClass="border-l-4 border-l-red-600"
