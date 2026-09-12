@@ -49,7 +49,7 @@ export function legalEntityErrorMessage(
       return "Ten adres jest już przypisany do innego podmiotu.";
     }
     case "LEGAL_ENTITY_INCOMPLETE_DATA":
-      return "Uzupełnij e-mail, telefon, nazwę, miasto i kod pocztowy.";
+      return "Uzupełnij nazwę, miasto i kod pocztowy. E-mail i telefon, jeśli podane, muszą być poprawne.";
     case "LEGAL_ENTITY_GUS_STILL_AVAILABLE":
       return "GUS działa. Użyj standardowej weryfikacji NIP.";
     case "LEGAL_ENTITY_UNVERIFIED_FORBIDDEN":

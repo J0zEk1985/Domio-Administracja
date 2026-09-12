@@ -39,6 +39,18 @@ function formatPostal(raw: string): string {
   return `${digits.slice(0, 2)}-${digits.slice(2)}`;
 }
 
+function optionalEmailOk(raw: string): boolean {
+  const value = raw.trim();
+  if (value.length === 0) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function optionalPhoneOk(raw: string): boolean {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 0) return true;
+  return digits.length >= 9;
+}
+
 export function LegalEntityUnverifiedForm({
   allowedKinds,
   busy,
@@ -59,8 +71,8 @@ export function LegalEntityUnverifiedForm({
   const canSubmit =
     shortName.trim().length >= 3 &&
     legalName.trim().length >= 3 &&
-    email.trim().length >= 5 &&
-    phone.replace(/\D/g, "").length >= 9 &&
+    optionalEmailOk(email) &&
+    optionalPhoneOk(phone) &&
     city.trim().length >= 2 &&
     /^\d{2}-\d{3}$/.test(postalCode);
 
@@ -105,7 +117,7 @@ export function LegalEntityUnverifiedForm({
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="unverified-email">E-mail</Label>
+          <Label htmlFor="unverified-email">E-mail (opcjonalnie)</Label>
           <Input
             id="unverified-email"
             type="email"
@@ -116,7 +128,7 @@ export function LegalEntityUnverifiedForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="unverified-phone">Telefon</Label>
+          <Label htmlFor="unverified-phone">Telefon (opcjonalnie)</Label>
           <Input
             id="unverified-phone"
             type="tel"

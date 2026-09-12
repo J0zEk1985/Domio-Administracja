@@ -10,8 +10,10 @@ import {
   parseJsonToBoardMembers,
   parseJsonToFinancialDetails,
   parseJsonToOperationalNotes,
+  serializeAccessCodesForSave,
   type CommunityDomainFormValues,
 } from "@/schemas/communitySchema";
+import { CommunityAccessCodesCard } from "@/components/communities/CommunityAccessCodesCard";
 import { isValidOptionalEmail } from "@/types/propertyAdminData";
 import { useUpdateCommunity } from "@/hooks/useCommunities";
 import { Button } from "@/components/ui/button";
@@ -112,7 +114,9 @@ export function CommunityDomainEditor({ community, orgId }: Props) {
       regon: values.regon?.trim() || null,
       board_email: be === "" ? null : be,
       financial_details: values.financial_details as Database["public"]["Tables"]["communities"]["Row"]["financial_details"],
-      access_codes: values.access_codes as Database["public"]["Tables"]["communities"]["Row"]["access_codes"],
+      access_codes: serializeAccessCodesForSave(
+        values.access_codes,
+      ) as Database["public"]["Tables"]["communities"]["Row"]["access_codes"],
       operational_notes: values.operational_notes as Database["public"]["Tables"]["communities"]["Row"]["operational_notes"],
       board_members: values.board_members as unknown as Database["public"]["Tables"]["communities"]["Row"]["board_members"],
     };
@@ -498,53 +502,7 @@ export function CommunityDomainEditor({ community, orgId }: Props) {
           </TabsContent>
 
           <TabsContent value="codes" className="mt-4">
-            <Card className="border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Kody dostępu</CardTitle>
-                <CardDescription>Domofon, szyfrator i brama — współdzielone dla budynków pod wspólnotą.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="access_codes.intercom"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kod do domofonu</FormLabel>
-                      <FormControl>
-                        <Input {...field} autoComplete="off" disabled={pending} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="access_codes.keypad"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kod do szyfratora</FormLabel>
-                      <FormControl>
-                        <Input {...field} autoComplete="off" disabled={pending} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="access_codes.gate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kod do bramy</FormLabel>
-                      <FormControl>
-                        <Input {...field} autoComplete="off" disabled={pending} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+            <CommunityAccessCodesCard control={form.control} pending={pending} />
           </TabsContent>
 
           <TabsContent value="notes" className="mt-4">

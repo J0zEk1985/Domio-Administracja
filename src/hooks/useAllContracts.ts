@@ -24,7 +24,9 @@ async function fetchAllContracts(filters?: UseAllContractsFilters): Promise<Prop
   try {
     let query = supabase
       .from("property_contracts")
-      .select("*, company:companies(*), location:cleaning_locations(*)")
+      .select(
+        "*, company:companies!property_contracts_company_id_fkey(*), location:cleaning_locations!property_contracts_location_id_fkey(*)",
+      )
       .order("created_at", { ascending: false });
 
     if (filters?.companyId) {

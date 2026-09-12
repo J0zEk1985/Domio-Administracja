@@ -216,12 +216,14 @@ async function fetchExpiringInspections(orgId: string): Promise<DashboardExpirin
 async function fetchExpiringContracts(orgId: string): Promise<DashboardExpiringContract[]> {
   try {
     const horizon = addDays(new Date(), CONTRACT_HORIZON_DAYS).toISOString();
+    // Hint FKs: cleaning_locations also points back via cleaning_scope_contract_id,
+    // so an unhinted embed is PGRST201 (HTTP 300).
     const { data, error } = await supabase
       .from("property_contracts")
       .select(
-        "id, location_id, end_date, type, custom_type_name, location:cleaning_locations!inner(name, org_id), company:companies(name)",
+        "id, location_id, end_date, type, custom_type_name, location:cleaning_locations!property_contracts_location_id_fkey!inner(name), company:companies!property_contracts_company_id_fkey(name)",
       )
-      .eq("location.org_id", orgId)
+      .eq("cleaning_locations.org_id", orgId)
       .not("end_date", "is", null)
       .lte("end_date", horizon.slice(0, 10))
       .order("end_date", { ascending: true })

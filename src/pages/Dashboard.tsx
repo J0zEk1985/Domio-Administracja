@@ -211,10 +211,7 @@ const Dashboard = () => {
     expiringContracts,
   } = useDashboardMetrics();
   const { data: ownerAccess } = useIsOrgOwner();
-  const mailboxRole = (ownerAccess?.membershipRole ?? "").trim().toLowerCase();
-  const canManageMailboxes =
-    ownerAccess?.isOwner === true ||
-    ["owner", "admin", "administrator", "coordinator"].includes(mailboxRole);
+  const isOrgOwner = ownerAccess?.isOwner === true;
 
   const [expandedIssues, setExpandedIssues] = useState(false);
   const [expandedCleaning, setExpandedCleaning] = useState(false);
@@ -239,10 +236,6 @@ const Dashboard = () => {
         <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
           Brak przypisanej organizacji — lista zadań nie jest dostępna.
         </p>
-      ) : null}
-
-      {orgId ? (
-        <OrgInboundMailboxesCard orgId={orgId} canManage={canManageMailboxes} moduleFilter="administracja" />
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -297,6 +290,10 @@ const Dashboard = () => {
       </div>
 
       <VerificationAlertsCard orgId={orgId} />
+
+      {orgId && isOrgOwner ? (
+        <OrgInboundMailboxesCard orgId={orgId} canManage moduleFilter="administracja" />
+      ) : null}
     </div>
   );
 };

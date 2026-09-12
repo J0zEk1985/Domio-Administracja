@@ -10,15 +10,31 @@ export const communityBoardMemberSchema = z.object({
 
 export type CommunityBoardMemberForm = z.infer<typeof communityBoardMemberSchema>;
 
-export const communityAccessCodesSchema = z
-  .object({
-    intercom: z.string().optional(),
-    keypad: z.string().optional(),
-    gate: z.string().optional(),
-    legacyText: z.string().optional(),
-    legacySingle: z.string().optional(),
-  })
-  .passthrough();
+export const ACCESS_CODE_KINDS = ["intercom", "keypad", "gate", "other"] as const;
+export type AccessCodeKind = (typeof ACCESS_CODE_KINDS)[number];
+
+export const ACCESS_CODE_KIND_LABELS: Record<AccessCodeKind, string> = {
+  intercom: "Domofon",
+  keypad: "Szyfrator",
+  gate: "Brama",
+  other: "Inny",
+};
+
+export const communityAccessCodeKindSchema = z.enum(ACCESS_CODE_KINDS);
+
+export const communityAccessCodeEntrySchema = z.object({
+  id: z.string().min(1),
+  kind: communityAccessCodeKindSchema,
+  code: z.string().max(80),
+  location: z.string().max(120),
+});
+
+export type CommunityAccessCodeEntry = z.infer<typeof communityAccessCodeEntrySchema>;
+
+/** Canonical `communities.access_codes` JSONB: `{ entries: [...] }`. */
+export const communityAccessCodesSchema = z.object({
+  entries: z.array(communityAccessCodeEntrySchema),
+});
 
 export type CommunityAccessCodesForm = z.infer<typeof communityAccessCodesSchema>;
 
@@ -83,9 +99,85 @@ export function parseJsonToFinancialDetails(raw: unknown): CommunityFinancialDet
   return p.success ? p.data : {};
 }
 
+function trimCode(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parseAccessCodeEntry(item: unknown): CommunityAccessCodeEntry | null {
+  if (!isRecord(item)) return null;
+  const kindRaw = item.kind;
+  const kind = ACCESS_CODE_KINDS.includes(kindRaw as AccessCodeKind)
+    ? (kindRaw as AccessCodeKind)
+    : "other";
+  const code = trimCode(item.code);
+  if (!code) return null;
+  const location = typeof item.location === "string" ? item.location.trim() : "";
+  const id =
+    typeof item.id === "string" && item.id.length > 0 ? item.id : crypto.randomUUID();
+  const parsed = communityAccessCodeEntrySchema.safeParse({
+    id,
+    kind,
+    code: code.slice(0, 80),
+    location: location.slice(0, 120),
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+function entriesFromLegacyObject(raw: Record<string, unknown>): CommunityAccessCodeEntry[] {
+  const entries: CommunityAccessCodeEntry[] = [];
+  const push = (kind: AccessCodeKind, value: unknown, id: string) => {
+    const code = trimCode(value).slice(0, 80);
+    if (!code) return;
+    entries.push({ id, kind, code, location: "" });
+  };
+  push("intercom", raw.intercom, "legacy-intercom");
+  push("keypad", raw.keypad, "legacy-keypad");
+  push("gate", raw.gate, "legacy-gate");
+  if (entries.length > 0) return entries;
+  push("other", raw.legacyText, "legacy-text");
+  if (entries.length > 0) return entries;
+  push("other", raw.legacySingle, "legacy-single");
+  return entries;
+}
+
 export function parseJsonToAccessCodes(raw: unknown): CommunityAccessCodesForm {
-  const p = communityAccessCodesSchema.safeParse(raw);
-  return p.success ? p.data : {};
+  if (Array.isArray(raw)) {
+    return { entries: raw.map(parseAccessCodeEntry).filter((e): e is CommunityAccessCodeEntry => e != null) };
+  }
+  if (!isRecord(raw)) return { entries: [] };
+  if (Array.isArray(raw.entries)) {
+    const entries = raw.entries
+      .map(parseAccessCodeEntry)
+      .filter((e): e is CommunityAccessCodeEntry => e != null);
+    if (entries.length > 0) return { entries };
+  }
+  return { entries: entriesFromLegacyObject(raw) };
+}
+
+export function serializeAccessCodesForSave(form: CommunityAccessCodesForm): CommunityAccessCodesForm {
+  return {
+    entries: form.entries
+      .map((entry) => ({
+        id: entry.id,
+        kind: entry.kind,
+        code: entry.code.trim().slice(0, 80),
+        location: entry.location.trim().slice(0, 120),
+      }))
+      .filter((entry) => entry.code.length > 0),
+  };
+}
+
+export function formatAccessCodeEntry(entry: CommunityAccessCodeEntry): string {
+  const label = ACCESS_CODE_KIND_LABELS[entry.kind];
+  const location = entry.location.trim();
+  const code = entry.code.trim();
+  return location ? `${label} (${location}): ${code}` : `${label}: ${code}`;
+}
+
+export function formatCommunityAccessCodesDisplay(raw: unknown): string | null {
+  const { entries } = parseJsonToAccessCodes(raw);
+  if (entries.length === 0) return null;
+  return entries.map(formatAccessCodeEntry).join("\n");
 }
 
 export function parseJsonToOperationalNotes(raw: unknown): CommunityOperationalNotesForm {

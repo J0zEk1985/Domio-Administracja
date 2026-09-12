@@ -50,6 +50,18 @@ function digitsOnly(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 10);
 }
 
+function optionalEmailOk(raw: string): boolean {
+  const value = raw.trim();
+  if (value.length === 0) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function optionalPhoneOk(raw: string): boolean {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 0) return true;
+  return digits.length >= 9;
+}
+
 function kindAllowed(kind: string, allowed: LegalEntityKind[]): kind is LegalEntityKind {
   return allowed.includes(kind as LegalEntityKind);
 }
@@ -299,7 +311,7 @@ export function LegalEntityNipField({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="legal-entity-email">E-mail kontaktowy</Label>
+            <Label htmlFor="legal-entity-email">E-mail kontaktowy (opcjonalnie)</Label>
             <Input
               id="legal-entity-email"
               type="email"
@@ -310,7 +322,7 @@ export function LegalEntityNipField({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="legal-entity-phone">Telefon</Label>
+            <Label htmlFor="legal-entity-phone">Telefon (opcjonalnie)</Label>
             <Input
               id="legal-entity-phone"
               type="tel"
@@ -320,7 +332,7 @@ export function LegalEntityNipField({
               disabled={busy}
             />
           </div>
-          <Button type="button" onClick={() => void handleCreate()} disabled={busy || email.trim().length < 5 || phone.replace(/\D/g, "").length < 9}>
+          <Button type="button" onClick={() => void handleCreate()} disabled={busy || !optionalEmailOk(email) || !optionalPhoneOk(phone)}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Dodaj do Domio
           </Button>
