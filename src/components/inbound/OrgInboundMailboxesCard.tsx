@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { InboundIngestMode, InboundModule } from "@/types/inboundEmail";
 
 const INBOUND_DOMAIN =
-  (import.meta.env.VITE_INBOUND_MAIL_DOMAIN as string | undefined)?.trim() || 'inbound.domio.pl'
+  (import.meta.env.VITE_INBOUND_MAIL_DOMAIN as string | undefined)?.trim() || 'domio.com.pl'
 
 const MODULE_LABEL: Record<InboundModule, string> = {
   serwis: 'Serwis',
