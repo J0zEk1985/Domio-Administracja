@@ -7,6 +7,7 @@ import {
   fetchVendorEmailTemplates,
   saveVendorEmailChannel,
   saveVendorEmailTemplate,
+  assignUnmatchedVendorEmail,
   type VendorEmailSaveInput,
   type VendorEmailTemplateSaveInput,
 } from "@/lib/vendorEmailApi";
@@ -70,6 +71,21 @@ export function useSaveVendorEmailTemplate(vendorId: string | null) {
     onError: (err) => {
       console.error("[useSaveVendorEmailTemplate]", err);
       toast.error(err instanceof Error ? err.message : "Nie udało się zapisać wzorca.");
+    },
+  });
+}
+
+export function useAssignUnmatchedVendorEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: assignUnmatchedVendorEmail,
+    onSuccess: async () => {
+      toast.success("Przypisano wiadomość do zgłoszenia.");
+      await qc.invalidateQueries({ queryKey: unmatchedVendorEmailsQueryKey });
+    },
+    onError: (err) => {
+      console.error("[useAssignUnmatchedVendorEmail]", err);
+      toast.error(err instanceof Error ? err.message : "Nie udało się przypisać wiadomości.");
     },
   });
 }

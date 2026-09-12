@@ -16,7 +16,7 @@ export type IssueEmailDispatchStatus = "queued" | "sent" | "failed" | "cancelled
 /** Denormalized list field on property_issues — no cancelled (row stays queued|sent|failed). */
 export type PropertyIssueEmailDispatchStatus = "queued" | "sent" | "failed";
 
-export type VendorEmailMatchMethod = "token" | "vendor_ref" | "template" | "unmatched";
+export type VendorEmailMatchMethod = "token" | "vendor_ref" | "template" | "thread" | "manual" | "unmatched";
 
 export type VendorEmailInboundEventStatus =
   | "received"
@@ -178,9 +178,11 @@ export const ISSUE_EMAIL_DISPATCH_STATUS_LABEL: Record<IssueEmailDispatchStatus,
 };
 
 export const VENDOR_EMAIL_MATCH_METHOD_LABEL: Record<VendorEmailMatchMethod, string> = {
-  token: "Token korelacji",
+  token: "Numer DOMIO",
   vendor_ref: "Numer w systemie firmy",
   template: "Szablon wiadomości",
+  thread: "Wątek e-mail",
+  manual: "Przypisane ręcznie",
   unmatched: "Niedopasowane",
 };
 

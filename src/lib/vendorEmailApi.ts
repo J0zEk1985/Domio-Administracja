@@ -250,6 +250,41 @@ export async function saveVendorEmailTemplate(
   return mapTemplate(data as TemplateRow);
 }
 
+export async function assignUnmatchedVendorEmail(input: {
+  eventId: string;
+  issueId: string;
+  eventType: VendorEmailEventType;
+  vendorExternalRef?: string;
+}): Promise<void> {
+  const ref = input.issueId.trim();
+  let issueId = ref;
+  const uuidRe =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRe.test(ref)) {
+    const token = ref.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!/^[a-z0-9]{12}$/.test(token)) {
+      throw new Error("Podaj numer DOMIO (12 znaków) albo identyfikator zgłoszenia.");
+    }
+    const { data, error } = await fromTable("property_issues")
+      .select("id")
+      .eq("email_correlation_token", token)
+      .maybeSingle();
+    if (error) rpcError("assignUnmatchedVendorEmail.lookup", error);
+    if (!data || typeof (data as { id?: string }).id !== "string") {
+      throw new Error("Nie znaleziono zgłoszenia o tym numerze DOMIO.");
+    }
+    issueId = (data as { id: string }).id;
+  }
+
+  const { error } = await supabase.rpc("assign_unmatched_vendor_email", {
+    p_event_id: input.eventId,
+    p_issue_id: issueId,
+    p_event_type: input.eventType,
+    p_vendor_external_ref: input.vendorExternalRef?.trim() || null,
+  });
+  if (error) rpcError("assign_unmatched_vendor_email", error);
+}
+
 export async function fetchUnmatchedVendorEmails(): Promise<VendorEmailInboundEvent[]> {
   const orgId = await requireOrgId();
   const { data, error } = await fromTable("vendor_email_inbound_events")
