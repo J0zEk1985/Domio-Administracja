@@ -48,6 +48,9 @@ function mandateErrorMessage(code: string, fallback: string): string {
     MANDATE_ORG_REQUIRED: "Wskaż organizację DOMIO albo podmiot spoza systemu.",
     MANDATE_COMMUNITY_NOT_FOUND: "Nie znaleziono wspólnoty w rejestrze.",
     MANDATE_PARTNER_NOT_FOUND: "Nie znaleziono podmiotu prawnego.",
+    PROVIDER_DIRECTORY_FORBIDDEN: "Brak uprawnień do katalogu usługodawców.",
+    PROVIDER_DIRECTORY_ADMIN_REQUIRED: "Katalog usługodawców jest dostępny w module Administracja.",
+    PROVIDER_DIRECTORY_MODULE_INVALID: "Nieprawidłowy moduł katalogu.",
     MANDATE_ACCEPTANCE_REQUIRED: "Mandat wymaga akceptacji drugiej strony.",
     ILLEGAL_STATUS_TRANSITION: "Niedozwolone przejście statusu.",
     COOP_CLEANING_MANDATE_INACTIVE: "Firma sprzątająca nie ma aktywnego mandatu Cleaning.",
@@ -137,7 +140,48 @@ export async function fetchOrgAdminLegalEntityId(orgId: string): Promise<string 
     throwRpc(error, "Nie udało się wczytać NIP organizacji.");
   }
   const id = data?.legal_entity_id;
-  return typeof id === "string" && id.length > 0 ? id : null;
+  if (typeof id === "string" && id.length > 0) return id;
+
+  const orgRes = await supabase
+    .from("organizations")
+    .select("legal_entity_id")
+    .eq("id", orgId)
+    .maybeSingle();
+  if (orgRes.error) {
+    console.error("[mandateApi] organizations.legal_entity_id:", orgRes.error);
+    return null;
+  }
+  const fallback = (orgRes.data as { legal_entity_id?: string | null } | null)?.legal_entity_id;
+  return typeof fallback === "string" && fallback.length > 0 ? fallback : null;
+}
+
+export type ProviderDirectoryRow = {
+  orgId: string;
+  orgName: string;
+  city: string | null;
+  nip: string;
+  legalEntityId: string;
+};
+
+export async function listProviderDirectory(
+  actingOrgId: string,
+  module: "maintenance" | "cleaning",
+): Promise<ProviderDirectoryRow[]> {
+  const { data, error } = await supabase.rpc("list_provider_directory", {
+    p_acting_org_id: actingOrgId,
+    p_module: module,
+  });
+  if (error) throwRpc(error, "Nie udało się wczytać katalogu usługodawców.");
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      orgId: asString(r.org_id),
+      orgName: asString(r.org_name),
+      city: asStringOrNull(r.city),
+      nip: asString(r.nip),
+      legalEntityId: asString(r.legal_entity_id),
+    };
+  });
 }
 
 export async function listLocationModulePresence(

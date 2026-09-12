@@ -7,6 +7,7 @@ import {
   inviteServiceMandate,
   listCooperationLinks,
   listLocationModulePresence,
+  listProviderDirectory,
   listServiceMandates,
   revokeServiceMandate,
   upsertBuildingCooperationLink,
@@ -18,6 +19,7 @@ export const ecosystemQueryKeys = {
   presence: (masterId: string) => ["location-presence", masterId] as const,
   mandates: (entityId: string) => ["service-mandates", entityId] as const,
   coop: (masterId: string) => ["cooperation-links", masterId] as const,
+  directory: (orgId: string) => ["provider-directory", orgId] as const,
 };
 
 export function useLocationPresence(locationMasterId: string | null) {
@@ -49,6 +51,43 @@ export function useCommunityLegalEntityId(communityId: string | null) {
     queryKey: ["community-legal-entity-id", communityId ?? ""],
     queryFn: () => fetchCommunityLegalEntityId(communityId!),
     enabled: Boolean(communityId),
+  });
+}
+
+export function useProviderDirectory(actingOrgId: string | null) {
+  return useQuery({
+    queryKey: ecosystemQueryKeys.directory(actingOrgId ?? ""),
+    queryFn: async () => {
+      const [cleaning, maintenance] = await Promise.all([
+        listProviderDirectory(actingOrgId!, "cleaning"),
+        listProviderDirectory(actingOrgId!, "maintenance"),
+      ]);
+      const map = new Map<
+        string,
+        {
+          orgId: string;
+          orgName: string;
+          city: string | null;
+          nip: string;
+          legalEntityId: string;
+          isCleaning: boolean;
+          isMaintenance: boolean;
+        }
+      >();
+      for (const row of cleaning) {
+        map.set(row.orgId, { ...row, isCleaning: true, isMaintenance: false });
+      }
+      for (const row of maintenance) {
+        const prev = map.get(row.orgId);
+        if (prev) {
+          prev.isMaintenance = true;
+        } else {
+          map.set(row.orgId, { ...row, isCleaning: false, isMaintenance: true });
+        }
+      }
+      return [...map.values()].sort((a, b) => a.orgName.localeCompare(b.orgName, "pl"));
+    },
+    enabled: Boolean(actingOrgId),
   });
 }
 

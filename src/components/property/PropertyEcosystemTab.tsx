@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { COOP_NONE, PropertyEcosystemCoopCard } from "@/components/property/PropertyEcosystemCoopCard";
+import { PropertyEcosystemDirectoryCard } from "@/components/property/PropertyEcosystemDirectoryCard";
 import { PropertyEcosystemPresenceCard } from "@/components/property/PropertyEcosystemPresenceCard";
 import {
   useCommunityLegalEntityId,
@@ -22,6 +23,7 @@ import {
   useLocationPresence,
   useMandateActions,
   useOrgAdminLegalEntityId,
+  useProviderDirectory,
   useServiceMandates,
   useUpsertCooperation,
 } from "@/hooks/useBuildingEcosystem";
@@ -58,6 +60,8 @@ export function PropertyEcosystemTab({
   const communityLegalEntityId = entityQuery.data ?? null;
 
   const presenceQuery = useLocationPresence(locationMasterId);
+  const directoryQuery = useProviderDirectory(orgId);
+  const [directoryQueryText, setDirectoryQueryText] = useState("");
   const mandatesQuery = useServiceMandates(communityLegalEntityId);
   const coopQuery = useCooperationLinks(locationMasterId);
   const invite = useInviteMandate(communityLegalEntityId);
@@ -78,6 +82,18 @@ export function PropertyEcosystemTab({
   }, [activeLink?.id, activeLink?.cleaningOrgId, activeLink?.maintenanceOrgId, activeLink?.cleaningIssuesToSerwis, activeLink?.skipAdminTriage]);
 
   const presence = presenceQuery.data ?? [];
+  const directoryRows = useMemo(() => {
+    const q = directoryQueryText.trim().toLowerCase();
+    const rows = directoryQuery.data ?? [];
+    if (!q) return rows;
+    return rows.filter((row) => {
+      return (
+        row.orgName.toLowerCase().includes(q) ||
+        (row.city ?? "").toLowerCase().includes(q) ||
+        row.nip.includes(q)
+      );
+    });
+  }, [directoryQuery.data, directoryQueryText]);
   const cleaningOrgs = useMemo(
     () => (presenceQuery.data ?? []).filter((row) => row.isCleaning),
     [presenceQuery.data],
@@ -145,6 +161,20 @@ export function PropertyEcosystemTab({
     });
   };
 
+  const inviteFromDirectory = (
+    row: (typeof directoryRows)[number],
+    module: "cleaning" | "maintenance",
+  ) => {
+    invite.mutate({
+      actingOrgId: orgId,
+      locationMasterId,
+      partnerOrgId: row.orgId,
+      partnerLegalEntityId: row.legalEntityId,
+      module,
+      role: "primary_operator",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PropertyEcosystemPresenceCard
@@ -161,6 +191,24 @@ export function PropertyEcosystemTab({
         invitePending={invite.isPending}
         onInviteCleaning={(row) => invitePartner(row, "cleaning")}
         onInviteMaintenance={(row) => invitePartner(row, "maintenance")}
+      />
+
+      <PropertyEcosystemDirectoryCard
+        canManage={canManage}
+        loading={directoryQuery.isLoading}
+        errorMessage={
+          directoryQuery.isError
+            ? directoryQuery.error instanceof Error
+              ? directoryQuery.error.message
+              : "Nie udało się wczytać katalogu usługodawców."
+            : null
+        }
+        query={directoryQueryText}
+        onQueryChange={setDirectoryQueryText}
+        rows={directoryRows}
+        invitePending={invite.isPending}
+        onInviteCleaning={(row) => inviteFromDirectory(row, "cleaning")}
+        onInviteMaintenance={(row) => inviteFromDirectory(row, "maintenance")}
       />
 
       <Card className="border-border/60 shadow-sm">
