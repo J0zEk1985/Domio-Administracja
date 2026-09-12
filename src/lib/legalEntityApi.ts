@@ -407,3 +407,42 @@ export async function attachLegalEntityToBuilding(args: {
   });
   return data as { legalEntityId: string };
 }
+
+export type CommunityStatus = "active" | "inactive";
+
+export type DeactivateCommunityResult = {
+  communityId: string;
+  status: CommunityStatus;
+  deactivatedAt: string | null;
+  mandatesSuperseded: number;
+  buildingsAdminPaused: number;
+};
+
+function asCount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+export async function deactivateCommunityForOrg(
+  orgId: string,
+  communityId: string,
+): Promise<DeactivateCommunityResult> {
+  const { data, error } = await rpcClient().rpc("deactivate_community_for_org", {
+    p_org_id: orgId,
+    p_community_id: communityId,
+  });
+  if (error) {
+    console.error("[legalEntityApi] deactivate_community_for_org:", error);
+    throw new LegalEntityApiError(error.message || "RPC_FAILED");
+  }
+  const rec = asRecord(data);
+  if (!rec || typeof rec.communityId !== "string") {
+    throw new LegalEntityApiError("RPC_FAILED");
+  }
+  return {
+    communityId: rec.communityId,
+    status: rec.status === "inactive" ? "inactive" : "active",
+    deactivatedAt: typeof rec.deactivatedAt === "string" ? rec.deactivatedAt : null,
+    mandatesSuperseded: asCount(rec.mandatesSuperseded),
+    buildingsAdminPaused: asCount(rec.buildingsAdminPaused),
+  };
+}

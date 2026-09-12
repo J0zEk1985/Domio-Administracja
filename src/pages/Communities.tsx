@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useCommunities,
   useUpdateCommunity,
+  useDeactivateCommunity,
   communityQueryKeys,
 } from "@/hooks/useCommunities";
 import { LegalEntityNipField } from "@/components/legal-entity/LegalEntityNipField";
@@ -18,7 +19,9 @@ import {
   VerificationNeededBadge,
   rowNeedsVerification,
 } from "@/components/legal-entity/VerificationNeededBadge";
+import { DeactivateCommunityDialog } from "@/components/communities/DeactivateCommunityDialog";
 import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
+import { formatCommunityStatus, isCommunityInactive } from "@/lib/communityStatus";
 import { HOUSING_KINDS } from "@/lib/legalEntityMessages";
 import type { LegalEntityPublic } from "@/lib/legalEntityApi";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -56,15 +61,6 @@ const communityFormSchema = z.object({
 });
 
 type CommunityFormValues = z.infer<typeof communityFormSchema>;
-
-function formatStatus(status: string | null): string {
-  if (status === null || status === "") return "—";
-  const s = status.toLowerCase();
-  if (s === "active") return "Aktywna";
-  if (s === "inactive") return "Nieaktywna";
-  if (s === "archived") return "Zarchiwizowana";
-  return status;
-}
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -90,6 +86,9 @@ export default function Communities() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createEntity, setCreateEntity] = useState<LegalEntityPublic | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+  const [deactivateId, setDeactivateId] = useState<string | null>(null);
+  const deactivateMutation = useDeactivateCommunity();
 
   const editForm = useForm<CommunityFormValues>({
     resolver: zodResolver(communityFormSchema),
@@ -97,6 +96,10 @@ export default function Communities() {
   });
 
   const editingRow = editingId ? communities?.find((c) => c.id === editingId) : undefined;
+  const deactivateRow = deactivateId ? communities?.find((c) => c.id === deactivateId) : undefined;
+  const visibleCommunities = (communities ?? []).filter(
+    (c) => showInactive || !isCommunityInactive(c.status),
+  );
 
   const onCreateSubmit = async () => {
     if (!orgId) return;
@@ -147,6 +150,20 @@ export default function Communities() {
     );
   };
 
+  const onDeactivate = () => {
+    if (!orgId || !deactivateId) return;
+    deactivateMutation.mutate(
+      { orgId, communityId: deactivateId },
+      {
+        onSuccess: () => {
+          setDeactivateId(null);
+          setEditingId(null);
+          toast.success("Wspólnota dezaktywowana. Historia zostaje w archiwum.");
+        },
+      },
+    );
+  };
+
   if (orgLoading) {
     return (
       <div className="flex-1 space-y-4 p-6">
@@ -173,14 +190,26 @@ export default function Communities() {
             Wspólnoty i spółdzielnie dodajesz po NIP (GUS). Kody dostępu zostają przy Twojej organizacji.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setCreateEntity(null);
-            setCreateOpen(true);
-          }}
-        >
-          + Nowa Wspólnota
-        </Button>
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-inactive-communities"
+              checked={showInactive}
+              onCheckedChange={setShowInactive}
+            />
+            <Label htmlFor="show-inactive-communities" className="text-sm font-normal cursor-pointer">
+              Pokaż nieaktywne
+            </Label>
+          </div>
+          <Button
+            onClick={() => {
+              setCreateEntity(null);
+              setCreateOpen(true);
+            }}
+          >
+            + Nowa Wspólnota
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -204,15 +233,17 @@ export default function Communities() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {communities?.length === 0 ? (
+              {visibleCommunities.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-muted-foreground">
-                    Brak wspólnot. Dodaj pierwszą.
+                    {showInactive ? "Brak wspólnot." : "Brak aktywnych wspólnot. Dodaj pierwszą albo pokaż nieaktywne."}
                   </TableCell>
                 </TableRow>
               ) : (
-                communities?.map((c) => (
-                  <TableRow key={c.id}>
+                visibleCommunities.map((c) => {
+                  const inactive = isCommunityInactive(c.status);
+                  return (
+                  <TableRow key={c.id} className={inactive ? "opacity-70" : undefined}>
                     <TableCell className="font-medium">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link to={`/communities/${c.id}`} className="text-primary hover:underline">
@@ -224,24 +255,27 @@ export default function Communities() {
                       </div>
                     </TableCell>
                     <TableCell>{c.nip ?? "—"}</TableCell>
-                    <TableCell>{formatStatus(c.status)}</TableCell>
+                    <TableCell>{formatCommunityStatus(c.status)}</TableCell>
                     <TableCell className="text-muted-foreground tabular-nums">
                       {format(new Date(c.created_at), "d MMM yyyy", { locale: pl })}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onEditOpen(c.id)}
-                        aria-label="Edytuj"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      {inactive ? null : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onEditOpen(c.id)}
+                          aria-label="Edytuj"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -328,18 +362,40 @@ export default function Communities() {
                   </FormItem>
                 )}
               />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditingId(null)}>
-                  Anuluj
-                </Button>
-                <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? "Zapisywanie…" : "Zapisz"}
-                </Button>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between sm:space-x-0">
+                {editingRow && !isCommunityInactive(editingRow.status) ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeactivateId(editingRow.id)}
+                  >
+                    Dezaktywuj
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" onClick={() => setEditingId(null)}>
+                    Anuluj
+                  </Button>
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? "Zapisywanie…" : "Zapisz"}
+                  </Button>
+                </div>
               </DialogFooter>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
+
+      <DeactivateCommunityDialog
+        open={deactivateId !== null}
+        communityName={deactivateRow?.name ?? ""}
+        pending={deactivateMutation.isPending}
+        onOpenChange={(open) => !open && setDeactivateId(null)}
+        onConfirm={onDeactivate}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, Building2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,81 +12,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
-import { useProperties } from "@/hooks/useProperties";
+import { AddBuildingDialog } from "@/components/property/AddBuildingDialog";
+import {
+  PropertiesTableSkeleton,
+  SortablePropertyHead,
+  type NameSortDir,
+} from "@/components/property/PropertiesTableParts";
+import { useProperties, PROPERTIES_QUERY_KEY } from "@/hooks/useProperties";
+import { communityQueryKeys } from "@/hooks/useCommunities";
 import { toast } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
-type NameSortDir = "asc" | "desc";
-
-function PropertiesTableSkeleton() {
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">Nieruchomość</TableHead>
-            <TableHead className="w-[100px] text-center hidden sm:table-cell">Administratorzy</TableHead>
-            <TableHead className="w-[140px] text-right">Akcje</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {[1, 2, 3, 4].map((i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <Skeleton className="h-4 w-48 mb-1" />
-                <Skeleton className="h-3 w-64" />
-              </TableCell>
-              <TableCell className="hidden sm:table-cell text-center">
-                <Skeleton className="h-4 w-8 mx-auto" />
-              </TableCell>
-              <TableCell className="text-right">
-                <Skeleton className="ml-auto h-8 w-24" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-function SortablePropertyHead({
-  direction,
-  onToggle,
-}: {
-  direction: NameSortDir;
-  onToggle: () => void;
-}) {
-  return (
-    <TableHead className="p-0">
-      <button
-        type="button"
-        className={cn(
-          "flex w-full items-center gap-1.5 px-2 py-3 text-left font-medium",
-          "hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        )}
-        onClick={onToggle}
-        aria-sort={direction === "asc" ? "ascending" : "descending"}
-      >
-        <span>Nieruchomość</span>
-        {direction === "asc" ? (
-          <ArrowUp className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-        ) : (
-          <ArrowDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-        )}
-      </button>
-    </TableHead>
-  );
+async function fetchMyOrgId(): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_my_org_id_safe");
+  if (error) {
+    console.error("[Properties] get_my_org_id_safe:", error);
+    return null;
+  }
+  if (data == null || String(data).trim() === "") return null;
+  return String(data);
 }
 
 export default function Properties() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: orgId } = useQuery({
+    queryKey: ["my-org-id"],
+    queryFn: fetchMyOrgId,
+  });
   const { data, isLoading, isError, error, refetch } = useProperties(true);
   const [search, setSearch] = useState("");
   const [nameSort, setNameSort] = useState<NameSortDir>("asc");
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     if (!isError || !error) return;
@@ -128,14 +88,30 @@ export default function Properties() {
   const listEmpty = !data || data.length === 0;
   const searchNoHits = !listEmpty && filtered.length === 0;
 
+  async function handleBuildingAdded(locationId: string) {
+    await queryClient.invalidateQueries({ queryKey: [PROPERTIES_QUERY_KEY] });
+    await queryClient.invalidateQueries({ queryKey: communityQueryKeys.all });
+    navigate(`/properties/${locationId}`);
+  }
+
   return (
     <div className="flex-1 space-y-6 p-6">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">Budynki</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Nieruchomości z aktywnym modułem Administracja (<code className="text-[11px]">cleaning_locations</code>,{" "}
-          <code className="text-[11px]">is_admin_active</code>).
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Budynki</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Nieruchomości z aktywnym modułem Administracja. Dodaj budynek po adresie z Google Places.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className="shrink-0 gap-2"
+          onClick={() => setAddOpen(true)}
+          disabled={!orgId}
+        >
+          <Plus className="h-4 w-4" />
+          Dodaj budynek
+        </Button>
       </div>
 
       <Card className="border-border/60 shadow-sm">
@@ -185,8 +161,17 @@ export default function Properties() {
               </div>
               <p className="text-sm font-medium text-foreground">Brak budynków w administracji</p>
               <p className="max-w-sm text-xs text-muted-foreground">
-                Nie znaleziono nieruchomości z włączonym modułem Administracja dla tej organizacji.
+                Nie znaleziono nieruchomości z włączonym modułem Administracja. Dodaj pierwszy budynek.
               </p>
+              <Button
+                type="button"
+                className="mt-1 gap-2"
+                onClick={() => setAddOpen(true)}
+                disabled={!orgId}
+              >
+                <Plus className="h-4 w-4" />
+                Dodaj budynek
+              </Button>
             </div>
           ) : searchNoHits ? (
             <div
@@ -250,6 +235,15 @@ export default function Properties() {
           )}
         </CardContent>
       </Card>
+
+      {orgId ? (
+        <AddBuildingDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          orgId={orgId}
+          onSuccess={(id) => void handleBuildingAdded(id)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_HUB_URL?: string;
   /** Publiczny origin aplikacji DOMIO Serwis (linki QR zgłoszeń). Domyślnie https://serwis.domio.com.pl */
   readonly VITE_SERWIS_PUBLIC_ORIGIN?: string;
+  /** Klucz Google Maps (Places Autocomplete) — ten sam co w Cleaning/Serwis. */
+  readonly VITE_GOOGLE_MAPS_API_KEY?: string;
 }
 
 interface ImportMeta {

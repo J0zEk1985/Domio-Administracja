@@ -5,6 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { propertyIssuesQueryKey } from "@/hooks/usePropertyIssues";
 import { triageIssuesQueryKey } from "@/hooks/useTriageIssues";
+import { MAX_ISSUE_PHOTOS, uploadIssuePhotos } from "@/lib/issuePhotos";
 
 const issuePriorityEnum = z.enum(["medium", "critical"]);
 
@@ -19,6 +20,10 @@ export const createIssueSchema = z.object({
 
 export type CreateIssueFormValues = z.infer<typeof createIssueSchema>;
 
+export type CreateIssueInput = CreateIssueFormValues & {
+  photos?: File[];
+};
+
 function errMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "object" && err !== null && "message" in err) {
@@ -31,9 +36,13 @@ export function useCreateIssue() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateIssueFormValues) => {
-      const { community_id: _communityId, ...insertPayload } = input;
+    mutationFn: async (input: CreateIssueInput) => {
+      const { community_id: _communityId, photos = [], ...insertPayload } = input;
       void _communityId;
+      if (photos.length > MAX_ISSUE_PHOTOS) {
+        throw new Error(`Maksymalnie ${MAX_ISSUE_PHOTOS} zdjęć.`);
+      }
+
       const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
       if (orgErr) {
         console.error("[useCreateIssue] get_my_org_id_safe:", orgErr);
@@ -55,7 +64,14 @@ export function useCreateIssue() {
         throw new Error("Musisz być zalogowany, aby utworzyć zgłoszenie.");
       }
 
+      const issueId = crypto.randomUUID();
+      const photosBefore =
+        photos.length > 0
+          ? await uploadIssuePhotos({ orgId: String(orgId), issueId, files: photos })
+          : [];
+
       const { error } = await supabase.from("property_issues").insert({
+        id: issueId,
         org_id: String(orgId),
         location_id: insertPayload.location_id,
         category: insertPayload.category.trim(),
@@ -65,6 +81,7 @@ export function useCreateIssue() {
         reporter_type: "admin",
         reporter_id: user.id,
         source: "admin_ui",
+        photos_before: photosBefore.length > 0 ? photosBefore : null,
       });
 
       if (error) {

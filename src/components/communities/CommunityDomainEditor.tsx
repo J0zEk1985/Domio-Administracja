@@ -37,6 +37,7 @@ type CommunityRow = Database["public"]["Tables"]["communities"]["Row"];
 type Props = {
   community: CommunityRow;
   orgId: string;
+  readOnly?: boolean;
 };
 
 function telHref(phone: string): string {
@@ -50,7 +51,7 @@ function parseOptionalNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function CommunityDomainEditor({ community, orgId }: Props) {
+export function CommunityDomainEditor({ community, orgId, readOnly = false }: Props) {
   const update = useUpdateCommunity();
 
   const defaults = useMemo((): CommunityDomainFormValues => {
@@ -95,6 +96,7 @@ export function CommunityDomainEditor({ community, orgId }: Props) {
   );
 
   function onSubmit(values: CommunityDomainFormValues) {
+    if (readOnly) return;
     const be = values.board_email?.trim() ?? "";
     if (!isValidOptionalEmail(be)) {
       toast.error("Niepoprawny adres e-mail zarządu.");
@@ -131,7 +133,7 @@ export function CommunityDomainEditor({ community, orgId }: Props) {
     );
   }
 
-  const pending = update.isPending;
+  const pending = update.isPending || readOnly;
 
   return (
     <Form {...form}>
@@ -557,16 +559,20 @@ export function CommunityDomainEditor({ community, orgId }: Props) {
         </Tabs>
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={pending || !form.formState.isDirty} className="min-w-[160px] gap-2">
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Zapisywanie…
-              </>
-            ) : (
-              "Zapisz zmiany wspólnoty"
-            )}
-          </Button>
+          {readOnly ? (
+            <p className="text-sm text-muted-foreground">Wspólnota nieaktywna — dane są tylko do odczytu.</p>
+          ) : (
+            <Button type="submit" disabled={pending || !form.formState.isDirty} className="min-w-[160px] gap-2">
+              {pending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Zapisywanie…
+                </>
+              ) : (
+                "Zapisz zmiany wspólnoty"
+              )}
+            </Button>
+          )}
         </div>
       </form>
     </Form>

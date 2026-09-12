@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
+import { deactivateCommunityForOrg, LegalEntityApiError } from "@/lib/legalEntityApi";
 import type { Database } from "@/types/supabase";
 
 type CommunityRow = Database["public"]["Tables"]["communities"]["Row"];
@@ -83,6 +84,36 @@ export function useCreateCommunity() {
       await queryClient.invalidateQueries({
         queryKey: communityQueryKeys.list(variables.org_id),
       });
+    },
+  });
+}
+
+export function useDeactivateCommunity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (args: { orgId: string; communityId: string }) => {
+      return deactivateCommunityForOrg(args.orgId, args.communityId);
+    },
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: communityQueryKeys.list(variables.orgId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: communityQueryKeys.detail(variables.communityId),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      await queryClient.invalidateQueries({ queryKey: ["community-locations"] });
+    },
+    onError: (e: unknown) => {
+      const msg =
+        e instanceof LegalEntityApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Nie udało się dezaktywować wspólnoty.";
+      toast.error(msg);
+      console.error("[useDeactivateCommunity]", e);
     },
   });
 }

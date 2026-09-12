@@ -554,7 +554,6 @@ async function fetchLocationsForCommunity(communityId: string): Promise<Communit
     .select("id, name, address")
     .eq("org_id", actor.orgId)
     .eq("community_id", communityId)
-    .eq("is_admin_active", true)
     .order("name", { ascending: true });
 
   if (error) {
@@ -620,7 +619,7 @@ export function useAssignLocationsToCommunity(communityId: string | undefined) {
 
       const { data: comm, error: cErr } = await supabase
         .from("communities")
-        .select("id")
+        .select("id, status")
         .eq("id", communityId)
         .eq("org_id", actor.orgId)
         .maybeSingle();
@@ -631,6 +630,9 @@ export function useAssignLocationsToCommunity(communityId: string | undefined) {
       }
       if (!comm) {
         throw new Error("Nie znaleziono wspólnoty.");
+      }
+      if ((comm.status ?? "").toLowerCase() === "inactive") {
+        throw new LegalEntityApiError("COMMUNITY_INACTIVE");
       }
 
       const legalEntityId = await fetchCommunityLegalEntityId(communityId);

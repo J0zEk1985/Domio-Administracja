@@ -128,3 +128,9 @@
     text-wrap: balance;
   }
 }
+
+/* Google Places Autocomplete — above dialogs, pointer events work */
+.pac-container {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}

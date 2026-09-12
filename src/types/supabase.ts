@@ -552,6 +552,8 @@ export type Database = {
           board_email: string | null
           board_members: Json
           created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
           financial_details: Json
           id: string
           legal_name: string | null
@@ -560,7 +562,7 @@ export type Database = {
           operational_notes: Json
           org_id: string
           regon: string | null
-          status: string | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -568,6 +570,8 @@ export type Database = {
           board_email?: string | null
           board_members?: Json
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           financial_details?: Json
           id?: string
           legal_name?: string | null
@@ -576,7 +580,7 @@ export type Database = {
           operational_notes?: Json
           org_id: string
           regon?: string | null
-          status?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -584,6 +588,8 @@ export type Database = {
           board_email?: string | null
           board_members?: Json
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           financial_details?: Json
           id?: string
           legal_name?: string | null
@@ -592,7 +598,7 @@ export type Database = {
           operational_notes?: Json
           org_id?: string
           regon?: string | null
-          status?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: [

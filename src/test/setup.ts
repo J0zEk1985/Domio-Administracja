@@ -13,3 +13,10 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+if (typeof URL.createObjectURL !== "function") {
+  URL.createObjectURL = () => "blob:mock-preview";
+}
+if (typeof URL.revokeObjectURL !== "function") {
+  URL.revokeObjectURL = () => {};
+}

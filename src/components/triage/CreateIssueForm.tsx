@@ -4,6 +4,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Loader2, Mic } from "lucide-react";
 
 import { PropertyLocationCombobox } from "@/components/field/PropertyLocationCombobox";
+import { IssuePhotoPicker } from "@/components/triage/IssuePhotoPicker";
 import { ISSUE_CATEGORY_OPTIONS } from "@/lib/issueCategoryOptions";
 import {
   FIELD_SERVICE_AUTO_SELECT_MAX_M,
@@ -73,6 +74,7 @@ export function CreateIssueForm({
   const createMut = useCreateIssue();
 
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
   const geoAppliedRef = useRef(false);
 
   const defaultFormValues = useMemo<CreateIssueFormValues>(
@@ -133,6 +135,7 @@ export function CreateIssueForm({
   useEffect(() => {
     if (enabled) {
       geoAppliedRef.current = false;
+      setPhotos([]);
       form.reset(defaultFormValues);
     }
   }, [enabled, defaultFormValues, form]);
@@ -202,37 +205,41 @@ export function CreateIssueForm({
   }, [aiPrefill?.version, enabled, form, aiPrefill]);
 
   function onSubmit(values: CreateIssueFormValues) {
-    createMut.mutate(values, {
-      onSuccess: () => {
-        geoAppliedRef.current = false;
-        form.reset({
-          location_id: defaultLocationId ?? "",
-          community_id: "",
-          category: "",
-          priority: "medium",
-          description: "",
-        });
-        if (defaultLocationId) {
-          const row = properties.find((p) => p.id === defaultLocationId);
-          if (row?.communityId) {
-            form.setValue("community_id", row.communityId);
+    createMut.mutate(
+      { ...values, photos },
+      {
+        onSuccess: () => {
+          geoAppliedRef.current = false;
+          setPhotos([]);
+          form.reset({
+            location_id: defaultLocationId ?? "",
+            community_id: "",
+            category: "",
+            priority: "medium",
+            description: "",
+          });
+          if (defaultLocationId) {
+            const row = properties.find((p) => p.id === defaultLocationId);
+            if (row?.communityId) {
+              form.setValue("community_id", row.communityId);
+            }
+          } else if (fieldServiceMode && userCoords && sortedProperties.length > 0) {
+            const pick = getFieldServiceAutoSelectLocation(
+              sortedProperties,
+              userCoords.lat,
+              userCoords.lon,
+              FIELD_SERVICE_AUTO_SELECT_MAX_M,
+            );
+            if (pick) {
+              form.setValue("location_id", pick.row.id);
+              form.setValue("community_id", pick.row.communityId ?? "");
+              geoAppliedRef.current = true;
+            }
           }
-        } else if (fieldServiceMode && userCoords && sortedProperties.length > 0) {
-          const pick = getFieldServiceAutoSelectLocation(
-            sortedProperties,
-            userCoords.lat,
-            userCoords.lon,
-            FIELD_SERVICE_AUTO_SELECT_MAX_M,
-          );
-          if (pick) {
-            form.setValue("location_id", pick.row.id);
-            form.setValue("community_id", pick.row.communityId ?? "");
-            geoAppliedRef.current = true;
-          }
-        }
-        onSuccess?.();
+          onSuccess?.();
+        },
       },
-    });
+    );
   }
 
   const pending = createMut.isPending;
@@ -411,6 +418,8 @@ export function CreateIssueForm({
             </FormItem>
           )}
         />
+
+        <IssuePhotoPicker files={photos} onChange={setPhotos} disabled={pending} />
 
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-2">
           {onCancel ? (

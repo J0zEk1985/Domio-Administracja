@@ -69,9 +69,30 @@ export function legalEntityErrorMessage(
       return "Najpierw dodaj podmiot do organizacji.";
     case "BUILDING_ADDRESS_REQUIRED":
       return "Wybierz adres z Google Places.";
+    case "BUILDING_ENROLL_FORBIDDEN":
+      return "Nie masz uprawnień do dodawania budynków w tej organizacji.";
+    case "BUILDING_MODULE_INVALID":
+      return "Nieprawidłowy moduł budynku.";
     case "DUPLICATE_BUILDING":
       return "Ten adres istnieje już w systemie DOMIO.";
+    case "COMMUNITY_INACTIVE":
+      return "Ta wspólnota jest nieaktywna w Twojej organizacji. Nie można dodać budynków ani wznawiać obsługi administracyjnej bez ponownego dodania po NIP.";
+    case "COMMUNITY_NOT_FOUND":
+      return "Nie znaleziono wspólnoty w tej organizacji.";
+    case "COMMUNITY_DEACTIVATE_FORBIDDEN":
+      return "Brak uprawnień do dezaktywacji wspólnoty.";
+    case "COMMUNITY_STATUS_VIA_RPC":
+      return "Status wspólnoty zmienia się wyłącznie przez dezaktywację lub ponowne dodanie po NIP.";
     default:
+      if (code.includes("COMMUNITY_INACTIVE")) {
+        return legalEntityErrorMessage("COMMUNITY_INACTIVE", owner);
+      }
+      if (code.includes("COMMUNITY_NOT_FOUND")) {
+        return legalEntityErrorMessage("COMMUNITY_NOT_FOUND", owner);
+      }
+      if (code.includes("COMMUNITY_DEACTIVATE_FORBIDDEN")) {
+        return legalEntityErrorMessage("COMMUNITY_DEACTIVATE_FORBIDDEN", owner);
+      }
       if (code.startsWith("GUS_HTTP_")) {
         return "Serwis GUS jest niedostępny. Możesz dodać podmiot bez weryfikacji — trafi do kolejki do sprawdzenia.";
       }

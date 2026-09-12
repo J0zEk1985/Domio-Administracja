@@ -4,14 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
-import { useCommunity } from "@/hooks/useCommunities";
+import { useCommunity, useDeactivateCommunity } from "@/hooks/useCommunities";
 import {
   useAssignLocationsToCommunity,
   useLocationsByCommunity,
   useUnassignedOrgLocationsForCommunityDialog,
 } from "@/hooks/useProperties";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DeactivateCommunityDialog } from "@/components/communities/DeactivateCommunityDialog";
 import {
   Dialog,
   DialogContent,
@@ -41,9 +44,11 @@ import {
   rowNeedsVerification,
 } from "@/components/legal-entity/VerificationNeededBadge";
 import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
+import { formatCommunityStatus, isCommunityInactive } from "@/lib/communityStatus";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/sonner";
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -59,6 +64,8 @@ export default function CommunityDetails() {
   const { communityId } = useParams<{ communityId: string }>();
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const deactivateMutation = useDeactivateCommunity();
 
   const { data: orgId, isLoading: orgLoading } = useQuery({
     queryKey: ["my-org-id"],
@@ -126,6 +133,7 @@ export default function CommunityDetails() {
   }
 
   const community = communityQuery.data;
+  const inactive = isCommunityInactive(community.status);
 
   function toggleLocation(id: string) {
     setSelectedIds((prev) => {
@@ -147,6 +155,18 @@ export default function CommunityDetails() {
     });
   }
 
+  function onDeactivate() {
+    deactivateMutation.mutate(
+      { orgId, communityId: community.id },
+      {
+        onSuccess: () => {
+          setDeactivateOpen(false);
+          toast.success("Wspólnota dezaktywowana. Historia zostaje w archiwum.");
+        },
+      },
+    );
+  }
+
   const unassigned = unassignedQuery.data ?? [];
   const assigned = locationsQuery.data ?? [];
   const buildingIds = assigned.map((r) => r.id);
@@ -163,27 +183,57 @@ export default function CommunityDetails() {
         </Button>
 
         <div className="rounded-xl border border-border/60 bg-card/50 p-6 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">{community.name}</h1>
-            {rowNeedsVerification(verificationAlerts, "community", community.id, community.nip) ? (
-              <VerificationNeededBadge />
-            ) : null}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">{community.name}</h1>
+                <Badge variant={inactive ? "secondary" : "default"}>
+                  {formatCommunityStatus(community.status)}
+                </Badge>
+                {rowNeedsVerification(verificationAlerts, "community", community.id, community.nip) ? (
+                  <VerificationNeededBadge />
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                NIP: <span className="text-foreground/90 tabular-nums">{community.nip?.trim() || "—"}</span>
+              </p>
+            </div>
+            {inactive ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDeactivateOpen(true)}
+              >
+                Dezaktywuj
+              </Button>
+            )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            NIP: <span className="text-foreground/90 tabular-nums">{community.nip?.trim() || "—"}</span>
-          </p>
         </div>
 
-        <CommunityDomainEditor community={community} orgId={orgId} />
+        {inactive ? (
+          <Alert>
+            <AlertTitle>Archiwum — wspólnota nieaktywna</AlertTitle>
+            <AlertDescription>
+              Wpisy zostają u Ciebie. Mandat głównego zarządcy został zakończony. Inny podmiot w DOMIO może
+              przejąć obsługę, ale bez sukcesji nie zobaczy przeglądów, e-tablicy ani ogłoszeń lokatorów z Home.
+              Ponowne dodanie po NIP wznawia tę wspólnotę w Twoim zasobie.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <CommunityDomainEditor community={community} orgId={orgId} readOnly={inactive} />
       </div>
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-semibold text-foreground">Budynki przypisane do wspólnoty</h2>
-          <Button type="button" className="gap-1.5 shrink-0" onClick={() => setAssignOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Przypisz budynek
-          </Button>
+          {inactive ? null : (
+            <Button type="button" className="gap-1.5 shrink-0" onClick={() => setAssignOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Przypisz budynek
+            </Button>
+          )}
         </div>
 
         {locationsQuery.isLoading ? (
@@ -192,7 +242,9 @@ export default function CommunityDetails() {
           <p className="text-sm text-destructive">Nie udało się wczytać budynków.</p>
         ) : assigned.length === 0 ? (
           <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            Brak przypisanych budynków. Użyj przycisku powyżej, aby dodać pierwszy.
+            {inactive
+              ? "Brak budynków w archiwum tej wspólnoty."
+              : "Brak przypisanych budynków. Użyj przycisku powyżej, aby dodać pierwszy."}
           </p>
         ) : (
           <div className="rounded-md border">
@@ -210,9 +262,13 @@ export default function CommunityDetails() {
                     <TableCell className="font-medium">{row.name}</TableCell>
                     <TableCell className="text-muted-foreground">{row.address}</TableCell>
                     <TableCell>
-                      <Button variant="link" className="h-auto p-0 text-sm" asChild>
-                        <Link to={`/properties/${row.id}`}>Szczegóły</Link>
-                      </Button>
+                      {inactive ? (
+                        <span className="text-xs text-muted-foreground">Archiwum</span>
+                      ) : (
+                        <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                          <Link to={`/properties/${row.id}`}>Szczegóły</Link>
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -300,7 +356,7 @@ export default function CommunityDetails() {
           </TabsContent>
 
           <TabsContent value="succession" className="mt-4">
-            <CommunitySuccessionTab orgId={orgId} communityId={communityId!} canManage />
+            <CommunitySuccessionTab orgId={orgId} communityId={communityId!} canManage={!inactive} />
           </TabsContent>
         </Tabs>
       </section>
@@ -365,6 +421,14 @@ export default function CommunityDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeactivateCommunityDialog
+        open={deactivateOpen}
+        communityName={community.name}
+        pending={deactivateMutation.isPending}
+        onOpenChange={setDeactivateOpen}
+        onConfirm={onDeactivate}
+      />
     </div>
   );
 }
