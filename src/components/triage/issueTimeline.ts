@@ -4,6 +4,7 @@ import type {
   IssueLifecycleEvent,
   IssueLifecycleEventType,
 } from "@/types/issueLifecycle";
+import { VENDOR_EMAIL_LIFECYCLE_EVENT_LABEL } from "@/types/vendorEmail";
 
 export type TimelineEntry = {
   id: string;
@@ -144,6 +145,10 @@ const LIFECYCLE_TITLE_PL: Record<IssueLifecycleEventType, string> = {
   transfer_requested: "Wniosek o cesję do firmy B2B",
   transfer_accepted: "Kontrahent zaakceptował cesję",
   transfer_rejected: "Wniosek o cesję odrzucony",
+  gps_start_override: "Start bez weryfikacji GPS",
+  dispatcher_forced: "Dyspozytor wymusił kolejkę",
+  dispatcher_unforced: "Zdjęto wymuszenie kolejki",
+  ...VENDOR_EMAIL_LIFECYCLE_EVENT_LABEL,
 };
 
 export function mergeIssueTimeline(
@@ -157,7 +162,11 @@ export function mergeIssueTimeline(
     id: `evt-${e.id}`,
     title: LIFECYCLE_TITLE_PL[e.event_type] ?? e.event_type,
     at: e.created_at,
-    detail: e.payload.reason?.trim() || undefined,
+    detail:
+      e.payload.reason?.trim() ||
+      e.payload.technician_name?.trim() ||
+      e.payload.vendor_external_ref?.trim() ||
+      undefined,
   }));
 
   const merged = [...base, ...fromEvents];

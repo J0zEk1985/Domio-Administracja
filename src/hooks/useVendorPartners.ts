@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Database } from "@/types/supabase";
 
 export const VENDOR_PARTNERS_QUERY_KEY = "vendor-partners" as const;
 
-export type VendorPartnerRow = Pick<
-  Database["public"]["Tables"]["vendor_partners"]["Row"],
-  "id" | "name" | "service_type"
->;
+export type VendorPartnerRow = {
+  id: string;
+  name: string;
+  service_type: string;
+  contact_email: string | null;
+  dispatch_channel: "in_app" | "email" | null;
+};
 
 /**
  * All vendor_partners for the current org — org_id only (no category/status filters).
@@ -25,7 +27,7 @@ export async function fetchOrgVendorPartners(): Promise<VendorPartnerRow[]> {
 
   const { data, error } = await supabase
     .from("vendor_partners")
-    .select("id, name, service_type")
+    .select("id, name, service_type, contact_email, dispatch_channel")
     .eq("org_id", String(orgId))
     .order("name", { ascending: true });
 
@@ -34,7 +36,11 @@ export async function fetchOrgVendorPartners(): Promise<VendorPartnerRow[]> {
     throw error;
   }
 
-  return (data ?? []) as VendorPartnerRow[];
+  return ((data ?? []) as VendorPartnerRow[]).map((row) => ({
+    ...row,
+    contact_email: row.contact_email ?? null,
+    dispatch_channel: row.dispatch_channel === "email" ? "email" : "in_app",
+  }));
 }
 
 export function useVendorPartners(enabled: boolean = true) {

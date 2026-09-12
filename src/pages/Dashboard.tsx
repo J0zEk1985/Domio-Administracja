@@ -16,6 +16,8 @@ import {
   type DashboardOverdueIssue,
 } from "@/hooks/useDashboardMetrics";
 import { VerificationAlertsCard } from "@/components/legal-entity/VerificationAlertsCard";
+import { OrgInboundMailboxesCard } from "@/components/inbound/OrgInboundMailboxesCard";
+import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 
 const PREVIEW_COUNT = 3;
 
@@ -208,6 +210,11 @@ const Dashboard = () => {
     expiringInspections,
     expiringContracts,
   } = useDashboardMetrics();
+  const { data: ownerAccess } = useIsOrgOwner();
+  const mailboxRole = (ownerAccess?.membershipRole ?? "").trim().toLowerCase();
+  const canManageMailboxes =
+    ownerAccess?.isOwner === true ||
+    ["owner", "admin", "administrator", "coordinator"].includes(mailboxRole);
 
   const [expandedIssues, setExpandedIssues] = useState(false);
   const [expandedCleaning, setExpandedCleaning] = useState(false);
@@ -232,6 +239,10 @@ const Dashboard = () => {
         <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
           Brak przypisanej organizacji — lista zadań nie jest dostępna.
         </p>
+      ) : null}
+
+      {orgId ? (
+        <OrgInboundMailboxesCard orgId={orgId} canManage={canManageMailboxes} moduleFilter="administracja" />
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

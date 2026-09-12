@@ -139,9 +139,16 @@ export function VendorPartnerCombobox({
                   >
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="truncate text-sm font-medium leading-snug">{v.name}</span>
-                      {v.service_type ? (
-                        <span className="truncate text-xs text-muted-foreground">{v.service_type}</span>
-                      ) : null}
+                      <span className="flex items-center gap-2">
+                        {v.service_type ? (
+                          <span className="truncate text-xs text-muted-foreground">{v.service_type}</span>
+                        ) : null}
+                        {v.dispatch_channel === "email" ? (
+                          <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                            E-mail
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                   </CommandItem>
                 ))}

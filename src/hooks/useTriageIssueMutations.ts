@@ -3,7 +3,12 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { triageIssuesQueryKey, type TriageIssue } from "@/hooks/useTriageIssues";
-import { rejectPropertyIssue, broadcastPropertyIssue, delegatePropertyIssue } from "@/lib/issueLifecycleApi";
+import {
+  rejectPropertyIssue,
+  broadcastPropertyIssue,
+  delegatePropertyIssue,
+  queueIssueEmailDispatch,
+} from "@/lib/issueLifecycleApi";
 import { issueLifecycleErrorMessagePl } from "@/types/issueLifecycle";
 import type { Database } from "@/types/supabase";
 
@@ -71,7 +76,7 @@ export function useDelegateIssue() {
 
   return useMutation({
     mutationFn: async ({ issueId, vendorId }: DelegateIssueVars) => {
-      await delegatePropertyIssue(issueId, vendorId);
+      return delegatePropertyIssue(issueId, vendorId);
     },
     onMutate: async ({ issueId, vendorId, vendorName }): Promise<Ctx> => {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
@@ -95,8 +100,45 @@ export function useDelegateIssue() {
     onSettled: async () => {
       await invalidateTriageAndCount(qc);
     },
+    onSuccess: (payload) => {
+      toast.success(
+        payload?.queued
+          ? "Zgłoszenie wysłane e-mailem do firmy."
+          : "Delegacja zapisana.",
+      );
+    },
+  });
+}
+
+export type RetryIssueEmailDispatchVars = { issueId: string; vendorId?: string | null };
+
+export function useRetryIssueEmailDispatch() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ issueId, vendorId }: RetryIssueEmailDispatchVars) => {
+      return queueIssueEmailDispatch(issueId, vendorId);
+    },
+    onMutate: async ({ issueId }): Promise<Ctx> => {
+      await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
+      const previous = qc.getQueryData<TriageIssue[]>(triageIssuesQueryKey());
+      qc.setQueryData<TriageIssue[]>(triageIssuesQueryKey(), (old) =>
+        patchIssue(old, issueId, { email_dispatch_status: "queued" }),
+      );
+      return { previous };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) {
+        qc.setQueryData(triageIssuesQueryKey(), ctx.previous);
+      }
+      toast.error(errMessage(err));
+      console.error("[useRetryIssueEmailDispatch]", err);
+    },
+    onSettled: async () => {
+      await invalidateTriageAndCount(qc);
+    },
     onSuccess: () => {
-      toast.success("Delegacja zapisana.");
+      toast.success("Ponowiono wysyłkę e-mail do firmy.");
     },
   });
 }

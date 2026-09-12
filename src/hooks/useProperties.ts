@@ -161,6 +161,8 @@ export type PropertyDetail = {
   qrCodeToken: string | null;
   /** Public QR form: allow reports without login. */
   allowAnonymousQrReports: boolean;
+  /** Shared physical address (`cleaning_locations.location_master_id`). */
+  locationMasterId: string | null;
 };
 
 async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
@@ -169,7 +171,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
   const { data: row, error } = await supabase
     .from("cleaning_locations")
     .select(
-      "id, name, address, org_id, community_id, is_admin_active, latitude, longitude, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token, allow_anonymous_qr_reports",
+      "id, name, address, org_id, community_id, location_master_id, is_admin_active, latitude, longitude, c_kob_building_id, board_portal_token, public_report_token, issue_qr_token, qr_code_token, allow_anonymous_qr_reports",
     )
     .eq("id", propertyId)
     .eq("org_id", actor.orgId)
@@ -208,6 +210,7 @@ async function fetchPropertyById(propertyId: string): Promise<PropertyDetail> {
     issueQrToken: row.issue_qr_token ?? null,
     qrCodeToken: row.qr_code_token ?? null,
     allowAnonymousQrReports: row.allow_anonymous_qr_reports !== false,
+    locationMasterId: row.location_master_id ?? null,
   };
 }
 

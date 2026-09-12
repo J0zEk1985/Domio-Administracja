@@ -615,6 +615,8 @@ export type Database = {
           id: string
           is_free: boolean
           location_id: string
+          estate_id: string | null
+          origin_label: string | null
           org_id: string
           post_type: Database["public"]["Enums"]["community_post_type"]
           price: number | null
@@ -631,6 +633,8 @@ export type Database = {
           id?: string
           is_free?: boolean
           location_id: string
+          estate_id?: string | null
+          origin_label?: string | null
           org_id: string
           post_type: Database["public"]["Enums"]["community_post_type"]
           price?: number | null
@@ -647,6 +651,8 @@ export type Database = {
           id?: string
           is_free?: boolean
           location_id?: string
+          estate_id?: string | null
+          origin_label?: string | null
           org_id?: string
           post_type?: Database["public"]["Enums"]["community_post_type"]
           price?: number | null
@@ -667,6 +673,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_board_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
             referencedColumns: ["id"]
           },
           {
@@ -862,6 +875,98 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estate_members: {
+        Row: {
+          community_id: string
+          consented_at: string | null
+          consented_by: string | null
+          created_at: string
+          estate_id: string
+          id: string
+          invited_by_org_id: string
+          org_id: string
+          status: Database["public"]["Enums"]["estate_member_status"]
+          updated_at: string
+        }
+        Insert: {
+          community_id: string
+          consented_at?: string | null
+          consented_by?: string | null
+          created_at?: string
+          estate_id: string
+          id?: string
+          invited_by_org_id: string
+          org_id: string
+          status?: Database["public"]["Enums"]["estate_member_status"]
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          consented_at?: string | null
+          consented_by?: string | null
+          created_at?: string
+          estate_id?: string
+          id?: string
+          invited_by_org_id?: string
+          org_id?: string
+          status?: Database["public"]["Enums"]["estate_member_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estate_members_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estate_members_estate_id_fkey"
+            columns: ["estate_id"]
+            isOneToOne: false
+            referencedRelation: "estates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estates: {
+        Row: {
+          created_at: string
+          created_by_org_id: string
+          created_by_user_id: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_org_id: string
+          created_by_user_id?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_org_id?: string
+          created_by_user_id?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estates_created_by_org_id_fkey"
+            columns: ["created_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1614,6 +1719,132 @@ export type Database = {
           },
         ]
       }
+      inbound_email_ingest: {
+        Row: {
+          ai_confidence: number | null
+          body_text: string | null
+          created_at: string
+          error_detail: string | null
+          from_address: string | null
+          id: string
+          issue_id: string | null
+          mailbox_id: string | null
+          matched_location_id: string | null
+          message_id: string
+          org_id: string | null
+          output_tokens: number
+          parse_method: string
+          prompt_tokens: number
+          raw_payload: Json
+          status: string
+          subject: string | null
+          to_address: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          body_text?: string | null
+          created_at?: string
+          error_detail?: string | null
+          from_address?: string | null
+          id?: string
+          issue_id?: string | null
+          mailbox_id?: string | null
+          matched_location_id?: string | null
+          message_id: string
+          org_id?: string | null
+          output_tokens?: number
+          parse_method?: string
+          prompt_tokens?: number
+          raw_payload?: Json
+          status?: string
+          subject?: string | null
+          to_address: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          body_text?: string | null
+          created_at?: string
+          error_detail?: string | null
+          from_address?: string | null
+          id?: string
+          issue_id?: string | null
+          mailbox_id?: string | null
+          matched_location_id?: string | null
+          message_id?: string
+          org_id?: string | null
+          output_tokens?: number
+          parse_method?: string
+          prompt_tokens?: number
+          raw_payload?: Json
+          status?: string
+          subject?: string | null
+          to_address?: string
+        }
+        Relationships: []
+      }
+      org_ai_usage_monthly: {
+        Row: {
+          org_id: string
+          output_tokens: number
+          parse_count: number
+          prompt_tokens: number
+          year_month: string
+        }
+        Insert: {
+          org_id: string
+          output_tokens?: number
+          parse_count?: number
+          prompt_tokens?: number
+          year_month: string
+        }
+        Update: {
+          org_id?: string
+          output_tokens?: number
+          parse_count?: number
+          prompt_tokens?: number
+          year_month?: string
+        }
+        Relationships: []
+      }
+      org_inbound_mailboxes: {
+        Row: {
+          alias_local_part: string
+          auto_create_threshold: number
+          created_at: string
+          display_address: string | null
+          id: string
+          ingest_mode: string
+          is_enabled: boolean
+          module: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          alias_local_part: string
+          auto_create_threshold?: number
+          created_at?: string
+          display_address?: string | null
+          id?: string
+          ingest_mode?: string
+          is_enabled?: boolean
+          module: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          alias_local_part?: string
+          auto_create_threshold?: number
+          created_at?: string
+          display_address?: string | null
+          id?: string
+          ingest_mode?: string
+          is_enabled?: boolean
+          module?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_subscriptions: {
         Row: {
           app_id: string
@@ -1836,6 +2067,7 @@ export type Database = {
           max_locations: number | null
           max_storage_gb: number | null
           max_users: number | null
+          ai_monthly_parse_limit: number | null
           name: string
           price_monthly: number
           price_yearly: number
@@ -1851,6 +2083,7 @@ export type Database = {
           max_locations?: number | null
           max_storage_gb?: number | null
           max_users?: number | null
+          ai_monthly_parse_limit?: number | null
           name: string
           price_monthly?: number
           price_yearly?: number
@@ -1866,6 +2099,7 @@ export type Database = {
           max_locations?: number | null
           max_storage_gb?: number | null
           max_users?: number | null
+          ai_monthly_parse_limit?: number | null
           name?: string
           price_monthly?: number
           price_yearly?: number
@@ -3461,6 +3695,59 @@ export type Database = {
         Args: { p_notes: string; p_photo_urls: string[]; p_task_id: string }
         Returns: undefined
       }
+      create_estate: {
+        Args: { p_community_id: string; p_name: string }
+        Returns: string
+      }
+      get_community_estate: {
+        Args: { p_community_id: string }
+        Returns: {
+          consented_at: string
+          created_by_org_id: string
+          estate_id: string
+          estate_name: string
+          estate_status: string
+          invited_by_org_id: string
+          member_id: string
+          member_status: Database["public"]["Enums"]["estate_member_status"]
+        }[]
+      }
+      invite_estate_community: {
+        Args: { p_community_id: string; p_estate_id: string }
+        Returns: string
+      }
+      list_estate_members: {
+        Args: { p_estate_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          consented_at: string
+          invited_by_org_id: string
+          is_own: boolean
+          member_id: string
+          nip: string
+          org_id: string
+          status: Database["public"]["Enums"]["estate_member_status"]
+        }[]
+      }
+      respond_estate_invite: {
+        Args: { p_accept: boolean; p_member_id: string }
+        Returns: undefined
+      }
+      search_communities_for_estate_invite: {
+        Args: { p_estate_id?: string; p_query: string }
+        Returns: {
+          community_id: string
+          display_name: string
+          is_own: boolean
+          link_status: Database["public"]["Enums"]["estate_member_status"]
+          nip: string
+        }[]
+      }
+      withdraw_estate_membership: {
+        Args: { p_member_id: string }
+        Returns: undefined
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -3683,6 +3970,34 @@ export type Database = {
       is_org_manager_safe: { Args: { target_org_id: string }; Returns: boolean }
       is_org_management: { Args: { target_org_id: string }; Returns: boolean }
       is_org_member: { Args: { target_org_id: string }; Returns: boolean }
+      ensure_org_inbound_mailboxes: {
+        Args: { p_org_id: string }
+        Returns: Database["public"]["Tables"]["org_inbound_mailboxes"]["Row"][]
+      }
+      get_org_ai_quota: { Args: { p_org_id: string }; Returns: Json }
+      ingest_email_issue: {
+        Args: {
+          p_to_address: string
+          p_message_id: string
+          p_from_address: string
+          p_subject: string
+          p_body_text: string
+          p_parsed?: Json
+          p_raw_payload?: Json
+        }
+        Returns: Json
+      }
+      resolve_inbound_mailbox: { Args: { p_to_address: string }; Returns: Json }
+      update_org_inbound_mailbox: {
+        Args: {
+          p_id: string
+          p_display_address?: string
+          p_is_enabled?: boolean
+          p_ingest_mode?: string
+          p_auto_create_threshold?: number
+        }
+        Returns: Database["public"]["Tables"]["org_inbound_mailboxes"]["Row"]
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       insert_public_qr_issue: {
         Args: {
@@ -4411,6 +4726,7 @@ export type Database = {
       company_category: "contractor" | "insurer" | "utility" | "other"
       eboard_msg_status: "published" | "pending_moderation" | "archived"
       eboard_msg_type: "official" | "advertisement" | "resident"
+      estate_member_status: "invited" | "accepted" | "rejected" | "withdrawn"
       fleet_role: "admin" | "driver"
       inspection_status: "positive" | "positive_with_defects" | "negative"
       inspection_type:
@@ -4619,6 +4935,7 @@ export const Constants = {
       company_category: ["contractor", "insurer", "utility", "other"],
       eboard_msg_status: ["published", "pending_moderation", "archived"],
       eboard_msg_type: ["official", "advertisement", "resident"],
+      estate_member_status: ["invited", "accepted", "rejected", "withdrawn"],
       fleet_role: ["admin", "driver"],
       inspection_status: ["positive", "positive_with_defects", "negative"],
       inspection_type: [

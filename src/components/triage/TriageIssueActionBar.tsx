@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Loader2, Send, XCircle } from "lucide-react";
+import { Loader2, Mail, Send, XCircle } from "lucide-react";
 
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import {
@@ -8,6 +8,7 @@ import {
   useBroadcastIssue,
   useDelegateIssue,
   useRejectIssue,
+  useRetryIssueEmailDispatch,
 } from "@/hooks/useTriageIssueMutations";
 import {
   useCancelPropertyIssue,
@@ -46,6 +47,7 @@ function statusActionHint(
   lock: ReturnType<typeof getTriageRoutingLock>,
   technicianName: string | null,
   marketplaceWaiting: boolean,
+  emailDispatchStatus: TriageIssue["email_dispatch_status"],
 ): string | null {
   if (marketplaceWaiting) {
     return "Wystawione na giełdzie — czekamy, aż firma podejmie zlecenie. Możesz anulować albo przypisać samodzielnie.";
@@ -58,6 +60,15 @@ function statusActionHint(
     return "Prace w toku. Możesz złożyć wniosek o anulowanie.";
   }
   if (lock === "delegated") {
+    if (emailDispatchStatus === "queued") {
+      return "E-mail do firmy czeka w kolejce wysyłki.";
+    }
+    if (emailDispatchStatus === "failed") {
+      return "Błąd wysyłki e-mail do firmy. Sprawdź adres i wyślij ponownie.";
+    }
+    if (emailDispatchStatus === "sent") {
+      return "Wysłano e-mail do firmy. Status zmieni się po ich wiadomościach CRM.";
+    }
     return "Zgłoszenie u partnera B2B. Do startu prac możesz anulować zlecenie.";
   }
   if (lock === "transfer_pending") {
@@ -77,6 +88,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
   const cancelMut = useCancelPropertyIssue();
   const requestCancelMut = useRequestPropertyIssueCancel();
   const delegateMut = useDelegateIssue();
+  const retryEmailMut = useRetryIssueEmailDispatch();
   const broadcastMut = useBroadcastIssue();
   const assignMut = useAssignStaffIssue();
   const acceptMut = useAcceptOpenIssue();
@@ -87,6 +99,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
       cancelMut.isPending ||
       requestCancelMut.isPending ||
       delegateMut.isPending ||
+      retryEmailMut.isPending ||
       broadcastMut.isPending ||
       assignMut.isPending ||
       acceptMut.isPending,
@@ -95,6 +108,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
       cancelMut.isPending,
       requestCancelMut.isPending,
       delegateMut.isPending,
+      retryEmailMut.isPending,
       broadcastMut.isPending,
       assignMut.isPending,
       acceptMut.isPending,
@@ -113,12 +127,21 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
     return null;
   }
 
-  const hint = statusActionHint(status, lock, technicianName, marketplaceWaiting);
+  const hint = statusActionHint(
+    status,
+    lock,
+    technicianName,
+    marketplaceWaiting,
+    issue.email_dispatch_status,
+  );
   const canAcceptAndOpen = status === "new" || status === "pending_admin_approval";
   const canReject = lock === "unlocked" && !marketplaceWaiting;
   const canCancelNow =
     lock === "claimed_internal" || marketplaceWaiting || (lock === "delegated" && !started);
   const canRequestCancel = lock === "in_progress" || (lock === "delegated" && started);
+  const canRetryEmail =
+    lock === "delegated" &&
+    (issue.email_dispatch_status === "failed" || issue.email_dispatch_status === "queued");
   const canBroadcast = lock === "unlocked" && !marketplaceWaiting && issue.is_public_broadcast !== true;
   const showB2b = lock === "unlocked";
   const showStaff = lock !== "in_progress" && lock !== "transfer_pending";
@@ -189,6 +212,29 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
             >
               <XCircle className="h-3.5 w-3.5" />
               {canRequestCancel ? "Wniosek o anulowanie" : "Anuluj zlecenie"}
+            </Button>
+          ) : null}
+
+          {canRetryEmail ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              disabled={busy}
+              onClick={() =>
+                retryEmailMut.mutate({
+                  issueId: issue.id,
+                  vendorId: issue.delegated_vendor_id,
+                })
+              }
+            >
+              {retryEmailMut.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Mail className="h-3.5 w-3.5" />
+              )}
+              Wyślij e-mail ponownie
             </Button>
           ) : null}
 

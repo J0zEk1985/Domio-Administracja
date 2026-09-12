@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAllContracts } from "@/hooks/useAllContracts";
 import { CompaniesDataTable } from "@/components/companies/CompaniesDataTable";
 import { ContractsDataTable } from "@/components/contracts/ContractsDataTable";
+import { VendorEmailBridgeTab } from "@/components/vendors/VendorEmailBridgeTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
 
@@ -23,7 +24,7 @@ export default function ContractsPage() {
       <div className="space-y-1">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Umowy i Firmy</h1>
         <p className="text-sm text-muted-foreground">
-          Zarządzaj umowami oraz globalnym katalogiem firm. Widok uwzględnia tylko dane, do których masz uprawnienia.
+          Zarządzaj umowami, katalogiem firm oraz mostem e-mail do partnerów bez konta w DOMIO.
         </p>
       </div>
 
@@ -31,12 +32,16 @@ export default function ContractsPage() {
         <TabsList>
           <TabsTrigger value="contracts">Umowy</TabsTrigger>
           <TabsTrigger value="companies">Firmy</TabsTrigger>
+          <TabsTrigger value="email-bridge">Most e-mail</TabsTrigger>
         </TabsList>
         <TabsContent value="contracts" className="mt-6">
           <ContractsDataTable data={contractsQuery.data ?? []} isLoading={contractsQuery.isPending} />
         </TabsContent>
         <TabsContent value="companies" className="mt-6">
           <CompaniesDataTable />
+        </TabsContent>
+        <TabsContent value="email-bridge" className="mt-6">
+          <VendorEmailBridgeTab />
         </TabsContent>
       </Tabs>
     </div>

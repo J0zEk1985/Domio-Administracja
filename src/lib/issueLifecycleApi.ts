@@ -3,6 +3,7 @@ import {
   issueLifecycleErrorMessagePl,
   type IssueLifecycleEvent,
 } from "@/types/issueLifecycle";
+import type { VendorIssueEmailPayload } from "@/types/vendorEmail";
 
 type RpcError = { message?: string } | null;
 
@@ -62,14 +63,70 @@ export async function broadcastPropertyIssue(
   });
 }
 
+function resolveVendorIssueWebhookUrl(): string | null {
+  const fromEnv = (
+    import.meta.env.VITE_N8N_VENDOR_ISSUE_WEBHOOK_URL as string | undefined
+  )?.trim();
+  return fromEnv || null;
+}
+
+async function triggerVendorIssueDispatchWebhook(issueId: string): Promise<void> {
+  const webhook = resolveVendorIssueWebhookUrl();
+  if (!webhook) {
+    console.warn(
+      "[issueLifecycleApi] Brak VITE_N8N_VENDOR_ISSUE_WEBHOOK_URL — e-mail nie został wysłany.",
+    );
+    return;
+  }
+
+  try {
+    const res = await fetch(webhook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ issueId }),
+    });
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => "");
+      throw new Error(bodyText.trim() || `Webhook n8n: ${res.status}`);
+    }
+  } catch (err) {
+    console.error("[issueLifecycleApi] n8n vendor dispatch webhook:", err);
+    throw err instanceof Error
+      ? err
+      : new Error("Nie udało się wywołać automatyzacji n8n.");
+  }
+}
+
 export async function delegatePropertyIssue(
   issueId: string,
   vendorId: string,
-): Promise<void> {
-  await invokeRpc("delegate_property_issue", {
+): Promise<VendorIssueEmailPayload | null> {
+  const data = await invokeRpc("delegate_property_issue", {
     p_issue_id: issueId,
     p_vendor_id: vendorId,
   });
+
+  const payload = (data ?? null) as VendorIssueEmailPayload | null;
+  if (!payload?.queued) {
+    return payload;
+  }
+
+  await triggerVendorIssueDispatchWebhook(issueId);
+  return payload;
+}
+
+export async function queueIssueEmailDispatch(
+  issueId: string,
+  vendorId?: string | null,
+): Promise<VendorIssueEmailPayload | null> {
+  const args: Record<string, unknown> = { p_issue_id: issueId };
+  if (vendorId) {
+    args.p_vendor_id = vendorId;
+  }
+  const data = await invokeRpc("queue_issue_email_dispatch", args);
+  const payload = (data ?? null) as VendorIssueEmailPayload | null;
+  await triggerVendorIssueDispatchWebhook(issueId);
+  return payload;
 }
 
 export async function requestPropertyIssueTransfer(

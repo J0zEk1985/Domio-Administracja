@@ -94,6 +94,14 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
         row.marketplace_scope === "all" || row.marketplace_scope === "serving"
           ? row.marketplace_scope
           : null,
+      email_dispatch_status:
+        row.email_dispatch_status === "queued" ||
+        row.email_dispatch_status === "sent" ||
+        row.email_dispatch_status === "failed"
+          ? row.email_dispatch_status
+          : null,
+      email_correlation_token: row.email_correlation_token ?? null,
+      vendor_external_ref: row.vendor_external_ref ?? null,
     };
   });
 }

@@ -1,3 +1,5 @@
+import type { PropertyIssueEmailDispatchStatus } from "@/types/vendorEmail";
+
 export type IssueLifecycleEventType =
   | "claimed"
   | "started"
@@ -5,12 +7,26 @@ export type IssueLifecycleEventType =
   | "cancelled"
   | "transfer_requested"
   | "transfer_accepted"
-  | "transfer_rejected";
+  | "transfer_rejected"
+  | "gps_start_override"
+  | "dispatcher_forced"
+  | "dispatcher_unforced"
+  | "email_queued"
+  | "email_sent"
+  | "email_accepted"
+  | "email_assigned"
+  | "email_completed"
+  | "email_rejected"
+  | "email_unmatched";
 
 export type IssueLifecycleEventPayload = {
   assigned_staff_id?: string;
   reason?: string | null;
   transfer_to_vendor_id?: string | null;
+  dispatch_id?: string;
+  correlation_token?: string;
+  vendor_external_ref?: string | null;
+  technician_name?: string | null;
 };
 
 export interface IssueLifecycleEvent {
@@ -38,6 +54,9 @@ export interface PropertyIssueLifecycleFields {
   is_transfer_requested: boolean | null;
   transfer_reason: string | null;
   marketplace_scope: IssueMarketplaceScope | null;
+  email_dispatch_status: PropertyIssueEmailDispatchStatus | null;
+  email_correlation_token: string | null;
+  vendor_external_ref: string | null;
 }
 
 export type IssueMarketplaceScope = "serving" | "all";

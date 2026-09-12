@@ -23,6 +23,7 @@ import { IssueCategorySelect } from "@/components/triage/IssueCategorySelect";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ISSUE_EMAIL_DISPATCH_STATUS_LABEL } from "@/types/vendorEmail";
 
 function formatDt(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";
@@ -106,6 +107,11 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
             {bucket === "on_marketplace" ? (
               <Badge className="bg-emerald-600/90 font-normal hover:bg-emerald-600">
                 {issue.marketplace_scope === "all" ? "Giełda: wszystkie firmy" : "Czeka na firmę"}
+              </Badge>
+            ) : null}
+            {issue.email_dispatch_status ? (
+              <Badge variant="secondary" className="font-normal">
+                E-mail: {ISSUE_EMAIL_DISPATCH_STATUS_LABEL[issue.email_dispatch_status]}
               </Badge>
             ) : null}
           </div>
@@ -243,6 +249,16 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
             <p className="mt-1.5 text-sm font-medium text-foreground">
               Partner: {issue.delegated_vendor?.name?.trim() ?? "—"}
             </p>
+            {issue.email_dispatch_status ? (
+              <p className="text-sm text-foreground/80">
+                Wysyłka: {ISSUE_EMAIL_DISPATCH_STATUS_LABEL[issue.email_dispatch_status]}
+              </p>
+            ) : null}
+            {issue.vendor_external_ref ? (
+              <p className="text-sm text-foreground/80">
+                Numer w firmie: {issue.vendor_external_ref}
+              </p>
+            ) : null}
             <p className="text-sm text-foreground/80">
               Przypisany: {issue.assigned_staff?.full_name?.trim() ?? "—"}
             </p>
