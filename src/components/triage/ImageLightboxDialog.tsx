@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { StoragePhoto } from "@/components/StoragePhoto";
 import { cn } from "@/lib/utils";
 
 export type ImageLightboxDialogProps = {
@@ -20,8 +21,9 @@ export function ImageLightboxDialog({ url, open, onOpenChange }: ImageLightboxDi
         <DialogTitle className="sr-only">Podgląd zdjęcia</DialogTitle>
         {url ? (
           <div className="flex flex-1 items-center justify-center p-4 pt-14">
-            <img
-              src={url}
+            <StoragePhoto
+              pathOrUrl={url}
+              fallbackBucket="property-issues"
               alt=""
               className="max-h-[calc(100dvh-5rem)] max-w-full object-contain"
             />

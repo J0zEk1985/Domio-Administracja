@@ -4,6 +4,7 @@ import { ImageIcon } from "lucide-react";
 import { collectIssuePhotoEntries, type IssuePhotoEntry } from "@/lib/collectIssuePhotoUrls";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { ImageLightboxDialog } from "@/components/triage/ImageLightboxDialog";
+import { StoragePhoto } from "@/components/StoragePhoto";
 import { cn } from "@/lib/utils";
 
 export type IssuePhotoGalleryProps = {
@@ -39,11 +40,12 @@ export function IssuePhotoGallery({ issue, excludeAfter }: IssuePhotoGalleryProp
               "hover:border-primary/40 hover:shadow-sm",
             )}
           >
-            <img
-              src={entry.url}
+            <StoragePhoto
+              pathOrUrl={entry.url}
+              fallbackBucket="property-issues"
               alt={entry.label}
               className="h-full w-full object-cover transition group-hover:scale-[1.02]"
-              loading="lazy"
+              onClick={(url) => setLightboxUrl(url)}
             />
             <span className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 text-left text-[11px] font-medium text-white">
               {entry.label}
