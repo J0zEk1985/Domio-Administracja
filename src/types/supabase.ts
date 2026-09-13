@@ -3976,6 +3976,7 @@ export type Database = {
       is_org_manager_safe: { Args: { target_org_id: string }; Returns: boolean }
       is_org_management: { Args: { target_org_id: string }; Returns: boolean }
       is_org_member: { Args: { target_org_id: string }; Returns: boolean }
+      user_has_module_access: { Args: { p_module_slug: string }; Returns: boolean }
       ensure_org_inbound_mailboxes: {
         Args: { p_org_id: string }
         Returns: Database["public"]["Tables"]["org_inbound_mailboxes"]["Row"][]

@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { userHasModuleAccess } from "@/lib/moduleAccess";
+import NoModuleAccess from "@/pages/NoModuleAccess";
 
-type AuthState = "loading" | "authed" | "anon";
+type AuthState = "loading" | "authed" | "anon" | "denied";
 
 export function RequireAuth() {
   const location = useLocation();
@@ -11,13 +13,23 @@ export function RequireAuth() {
 
   useEffect(() => {
     let cancelled = false;
+
+    const resolveAccess = async (hasSession: boolean) => {
+      if (!hasSession) {
+        if (!cancelled) setState("anon");
+        return;
+      }
+      const allowed = await userHasModuleAccess(supabase, "administracja");
+      if (!cancelled) setState(allowed ? "authed" : "denied");
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!cancelled) setState(session ? "authed" : "anon");
+      void resolveAccess(Boolean(session));
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!cancelled) setState(session ? "authed" : "anon");
+      void resolveAccess(Boolean(session));
     });
     return () => {
       cancelled = true;
@@ -36,6 +48,10 @@ export function RequireAuth() {
 
   if (state === "anon") {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (state === "denied") {
+    return <NoModuleAccess />;
   }
 
   return <Outlet />;
