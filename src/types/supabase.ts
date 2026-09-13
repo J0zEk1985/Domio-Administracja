@@ -611,6 +611,101 @@ export type Database = {
           },
         ]
       }
+      community_contact_board_entries: {
+        Row: {
+          community_id: string
+          created_at: string
+          email: string | null
+          id: string
+          label: string
+          org_id: string
+          phone: string | null
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          label: string
+          org_id: string
+          phone?: string | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          label?: string
+          org_id?: string
+          phone?: string | null
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_contact_board_entries_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_emergency_providers: {
+        Row: {
+          community_id: string
+          created_at: string
+          id: string
+          location_id: string | null
+          org_id: string
+          trade_category: string
+          updated_at: string
+          vendor_partner_id: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          org_id: string
+          trade_category: string
+          updated_at?: string
+          vendor_partner_id: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          org_id?: string
+          trade_category?: string
+          updated_at?: string
+          vendor_partner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_emergency_providers_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_emergency_providers_vendor_partner_id_fkey"
+            columns: ["vendor_partner_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_board: {
         Row: {
           author_id: string
@@ -2485,7 +2580,10 @@ export type Database = {
           description: string | null
           estimated_hours: number | null
           estimated_resolution_date: string | null
+          emergency_mode: boolean
+          emergency_vendor_id: string | null
           id: string
+          immediate_fulfillment: boolean
           internal_comments: Json | null
           is_ai_draft: boolean | null
           is_invoiced: boolean | null
@@ -2530,7 +2628,10 @@ export type Database = {
           description?: string | null
           estimated_hours?: number | null
           estimated_resolution_date?: string | null
+          emergency_mode?: boolean
+          emergency_vendor_id?: string | null
           id?: string
+          immediate_fulfillment?: boolean
           internal_comments?: Json | null
           is_ai_draft?: boolean | null
           is_invoiced?: boolean | null
@@ -2575,7 +2676,10 @@ export type Database = {
           description?: string | null
           estimated_hours?: number | null
           estimated_resolution_date?: string | null
+          emergency_mode?: boolean
+          emergency_vendor_id?: string | null
           id?: string
+          immediate_fulfillment?: boolean
           internal_comments?: Json | null
           is_ai_draft?: boolean | null
           is_invoiced?: boolean | null
@@ -2627,6 +2731,13 @@ export type Database = {
           {
             foreignKeyName: "property_issues_delegated_vendor_id_fkey"
             columns: ["delegated_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_issues_emergency_vendor_id_fkey"
+            columns: ["emergency_vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_partners"
             referencedColumns: ["id"]
@@ -3370,10 +3481,12 @@ export type Database = {
           created_at: string | null
           has_system_access: boolean | null
           id: string
+          is_emergency_24h: boolean
           name: string
           org_id: string
           service_type: string
           status: string | null
+          trade_categories: string[]
         }
         Insert: {
           contact_email?: string | null
@@ -3381,10 +3494,12 @@ export type Database = {
           created_at?: string | null
           has_system_access?: boolean | null
           id?: string
+          is_emergency_24h?: boolean
           name: string
           org_id: string
           service_type: string
           status?: string | null
+          trade_categories?: string[]
         }
         Update: {
           contact_email?: string | null
@@ -3392,10 +3507,12 @@ export type Database = {
           created_at?: string | null
           has_system_access?: boolean | null
           id?: string
+          is_emergency_24h?: boolean
           name?: string
           org_id?: string
           service_type?: string
           status?: string | null
+          trade_categories?: string[]
         }
         Relationships: []
       }
@@ -3701,6 +3818,18 @@ export type Database = {
         Args: { p_notes: string; p_photo_urls: string[]; p_task_id: string }
         Returns: undefined
       }
+      create_emergency_issue: {
+        Args: {
+          p_category: string
+          p_description: string
+          p_location_id: string
+          p_photos_before?: string[] | null
+        }
+        Returns: {
+          issue_id: string
+          vendor_id: string
+        }
+      }
       create_estate: {
         Args: { p_community_id: string; p_name: string }
         Returns: string
@@ -3993,6 +4122,14 @@ export type Database = {
           p_raw_payload?: Json
         }
         Returns: Json
+      }
+      resolve_emergency_vendor: {
+        Args: {
+          p_community_id: string
+          p_location_id?: string | null
+          p_trade_category: string
+        }
+        Returns: string
       }
       resolve_inbound_mailbox: { Args: { p_to_address: string }; Returns: Json }
       update_org_inbound_mailbox: {

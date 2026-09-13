@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CommunityDomainEditor } from "@/components/communities/CommunityDomainEditor";
+import { CommunityContactBoardCard } from "@/components/communities/CommunityContactBoardCard";
 import { CommunityTeamTab } from "@/components/communities/CommunityTeamTab";
 import { CommunitySuccessionTab } from "@/components/communities/CommunitySuccessionTab";
 import { CommunityEstateTab } from "@/components/communities/CommunityEstateTab";
@@ -223,6 +224,9 @@ export default function CommunityDetails() {
         ) : null}
 
         <CommunityDomainEditor community={community} orgId={orgId} readOnly={inactive} />
+        {orgId ? (
+          <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
+        ) : null}
       </div>
 
       <section className="space-y-4">

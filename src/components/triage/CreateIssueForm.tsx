@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
@@ -84,6 +86,7 @@ export function CreateIssueForm({
       category: "",
       priority: "medium",
       description: "",
+      immediate_fulfillment: false,
     }),
     [defaultLocationId],
   );
@@ -217,6 +220,7 @@ export function CreateIssueForm({
             category: "",
             priority: "medium",
             description: "",
+            immediate_fulfillment: false,
           });
           if (defaultLocationId) {
             const row = properties.find((p) => p.id === defaultLocationId);
@@ -342,6 +346,28 @@ export function CreateIssueForm({
                 </SelectContent>
               </Select>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="immediate_fulfillment"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-lg border border-border/60 p-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(v) => field.onChange(v === true)}
+                  disabled={pending}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="font-medium">Natychmiastowa realizacja</FormLabel>
+                <FormDescription>
+                  Alarm dyżuru Serwisu (Web Push). To nie jest zgłoszenie do pogotowia 24h.
+                </FormDescription>
+              </div>
             </FormItem>
           )}
         />

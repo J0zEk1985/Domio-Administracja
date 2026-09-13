@@ -16,6 +16,7 @@ export const createIssueSchema = z.object({
   category: z.string().min(1, "Wybierz kategorię."),
   priority: issuePriorityEnum,
   description: z.string().min(10, "Opis musi mieć co najmniej 10 znaków."),
+  immediate_fulfillment: z.boolean(),
 });
 
 export type CreateIssueFormValues = z.infer<typeof createIssueSchema>;
@@ -82,6 +83,8 @@ export function useCreateIssue() {
         reporter_id: user.id,
         source: "admin_ui",
         photos_before: photosBefore.length > 0 ? photosBefore : null,
+        immediate_fulfillment: insertPayload.immediate_fulfillment,
+        emergency_mode: false,
       });
 
       if (error) {

@@ -16,6 +16,7 @@ import {
 import { COOP_NONE, PropertyEcosystemCoopCard } from "@/components/property/PropertyEcosystemCoopCard";
 import { PropertyEcosystemDirectoryCard } from "@/components/property/PropertyEcosystemDirectoryCard";
 import { PropertyEcosystemPresenceCard } from "@/components/property/PropertyEcosystemPresenceCard";
+import { PropertyEcosystemEmergencyProvidersCard } from "@/components/property/PropertyEcosystemEmergencyProvidersCard";
 import {
   useCommunityLegalEntityId,
   useCooperationLinks,
@@ -210,6 +211,14 @@ export function PropertyEcosystemTab({
         onInviteCleaning={(row) => inviteFromDirectory(row, "cleaning")}
         onInviteMaintenance={(row) => inviteFromDirectory(row, "maintenance")}
       />
+
+      {communityId ? (
+        <PropertyEcosystemEmergencyProvidersCard
+          orgId={orgId}
+          communityId={communityId}
+          canManage={canManage}
+        />
+      ) : null}
 
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">

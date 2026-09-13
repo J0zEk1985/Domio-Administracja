@@ -57,6 +57,9 @@ export interface PropertyIssueLifecycleFields {
   email_dispatch_status: PropertyIssueEmailDispatchStatus | null;
   email_correlation_token: string | null;
   vendor_external_ref: string | null;
+  immediate_fulfillment: boolean;
+  emergency_mode: boolean;
+  emergency_vendor_id: string | null;
 }
 
 export type IssueMarketplaceScope = "serving" | "all";
