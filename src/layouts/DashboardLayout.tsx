@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase";
 import { setPreferredAppView } from "@/lib/sessionKeys";
+import { CookieConsentSettingsButton } from "@/components/cookie-consent/CookieConsentRoot";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -66,6 +67,7 @@ export default function DashboardLayout() {
           {isFieldPanel ? "Wróć do panelu administracyjnego" : "Przejdź do panelu terenowego"}
         </TooltipContent>
       </Tooltip>
+      <CookieConsentSettingsButton className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" />
       <ThemeToggle />
       <Button
         type="button"

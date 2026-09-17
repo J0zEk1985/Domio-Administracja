@@ -1,6 +1,10 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  CONSENT_CHANGED_EVENT,
+  hasCategoryConsent,
+} from "@/lib/cookieConsent";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
@@ -26,6 +30,7 @@ export function GooglePlacesAddressInput({
   placeholder = "Wyszukaj adres (Google Places)",
   className,
 }: GooglePlacesAddressInputProps) {
+  const [functionalOk, setFunctionalOk] = React.useState(() => hasCategoryConsent("functional"));
   const [Autocomplete, setAutocomplete] = React.useState<
     React.ComponentType<{
       apiKey: string;
@@ -44,13 +49,22 @@ export function GooglePlacesAddressInput({
   >(null);
 
   React.useEffect(() => {
-    if (!GOOGLE_API_KEY) return;
+    const sync = () => setFunctionalOk(hasCategoryConsent("functional"));
+    window.addEventListener(CONSENT_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(CONSENT_CHANGED_EVENT, sync);
+  }, []);
+
+  React.useEffect(() => {
+    if (!GOOGLE_API_KEY || !functionalOk) {
+      setAutocomplete(null);
+      return;
+    }
     import("react-google-autocomplete")
       .then((m) => setAutocomplete(() => m.default))
       .catch((err) => {
         console.error("[GooglePlacesAddressInput] load autocomplete:", err);
       });
-  }, []);
+  }, [functionalOk]);
 
   const handlePlaceSelect = React.useCallback(
     (place: {
@@ -96,7 +110,13 @@ export function GooglePlacesAddressInput({
     <Input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={GOOGLE_API_KEY ? "Ładowanie…" : "Wpisz adres (brak klucza Google)"}
+      placeholder={
+        !functionalOk
+          ? "Wpisz adres (podpowiedzi Google po zgodzie funkcjonalnej)"
+          : GOOGLE_API_KEY
+            ? "Ładowanie…"
+            : "Wpisz adres (brak klucza Google)"
+      }
       className={className}
     />
   );

@@ -6,6 +6,7 @@ import { HUB_LOGIN_URL, redirectToHubLogin } from "@/lib/hubLogin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CookieConsentSettingsButton } from "@/components/cookie-consent/CookieConsentRoot";
 
 /**
  * Ekran powitalny — struktura i przekierowanie jak Domio-Cleaning `LandingPage.tsx`
@@ -107,8 +108,9 @@ export default function Login() {
         </div>
       </div>
 
-      <footer className="py-4 text-center">
+      <footer className="py-4 text-center space-y-2">
         <p className="text-sm text-gray-500 dark:text-gray-400">© DOMIO</p>
+        <CookieConsentSettingsButton />
       </footer>
     </div>
   );
