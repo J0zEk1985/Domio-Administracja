@@ -40,6 +40,7 @@ import { CommunityTeamTab } from "@/components/communities/CommunityTeamTab";
 import { CommunitySuccessionTab } from "@/components/communities/CommunitySuccessionTab";
 import { CommunityEstateTab } from "@/components/communities/CommunityEstateTab";
 import { CommunityOrdersTab } from "@/components/communities/CommunityOrdersTab";
+import { CommunityAnnouncementReviewTab } from "@/components/communities/CommunityAnnouncementReviewTab";
 import {
   VerificationNeededBadge,
   rowNeedsVerification,
@@ -285,12 +286,13 @@ export default function CommunityDetails() {
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-foreground">Zarządzanie wspólnotą</h2>
         <Tabs defaultValue="contracts-policies" className="w-full">
-          <TabsList className="grid h-auto w-full max-w-5xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 xl:grid-cols-7">
+          <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 xl:grid-cols-8">
             <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
             <TabsTrigger value="tasks">Zadania</TabsTrigger>
             <TabsTrigger value="inspections">Przeglądy</TabsTrigger>
             <TabsTrigger value="team">Zespół</TabsTrigger>
             <TabsTrigger value="orders">Zamówienia</TabsTrigger>
+            <TabsTrigger value="announcements">Ogłoszenia</TabsTrigger>
             <TabsTrigger value="estate">Osiedle</TabsTrigger>
             <TabsTrigger value="succession">Sukcesja</TabsTrigger>
           </TabsList>
@@ -353,6 +355,14 @@ export default function CommunityDetails() {
 
           <TabsContent value="orders" className="mt-4">
             <CommunityOrdersTab orgId={orgId} communityId={communityId!} buildings={assigned} />
+          </TabsContent>
+
+          <TabsContent value="announcements" className="mt-4">
+            <CommunityAnnouncementReviewTab
+              communityId={communityId!}
+              buildingIds={buildingIds}
+              canManage={!inactive}
+            />
           </TabsContent>
 
           <TabsContent value="estate" className="mt-4">

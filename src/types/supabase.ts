@@ -724,6 +724,7 @@ export type Database = {
           status: Database["public"]["Enums"]["community_post_status"]
           title: string
           updated_at: string
+          moderation_hold: string | null
         }
         Insert: {
           author_id: string
@@ -742,6 +743,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["community_post_status"]
           title: string
           updated_at?: string
+          moderation_hold?: string | null
         }
         Update: {
           author_id?: string
@@ -760,6 +762,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["community_post_status"]
           title?: string
           updated_at?: string
+          moderation_hold?: string | null
         }
         Relationships: [
           {
@@ -4049,6 +4052,10 @@ export type Database = {
         }[]
       }
       get_my_org_id_safe: { Args: never; Returns: string }
+      moderate_community_announcement: {
+        Args: { p_action: string; p_community_id: string; p_post_id: string }
+        Returns: Json
+      }
       get_my_org_ids: {
         Args: never
         Returns: {
@@ -4865,7 +4872,7 @@ export type Database = {
       }
     }
     Enums: {
-      community_post_status: "active" | "completed" | "cancelled" | "deleted"
+      community_post_status: "active" | "completed" | "cancelled" | "deleted" | "pending_review"
       community_post_type: "offer" | "request" | "event" | "general"
       company_category: "contractor" | "insurer" | "utility" | "other"
       eboard_msg_status: "published" | "pending_moderation" | "archived"
@@ -5074,7 +5081,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      community_post_status: ["active", "completed", "cancelled", "deleted"],
+      community_post_status: ["active", "completed", "cancelled", "deleted", "pending_review"],
       community_post_type: ["offer", "request", "event", "general"],
       company_category: ["contractor", "insurer", "utility", "other"],
       eboard_msg_status: ["published", "pending_moderation", "archived"],
