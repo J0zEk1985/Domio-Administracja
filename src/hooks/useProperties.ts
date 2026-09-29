@@ -545,13 +545,14 @@ export type CommunityLocationRow = {
   id: string;
   name: string;
   address: string;
+  boardPortalToken?: string;
 };
 
 async function fetchLocationsForCommunity(communityId: string): Promise<CommunityLocationRow[]> {
   const actor = await getOrgAndActor();
   const { data, error } = await supabase
     .from("cleaning_locations")
-    .select("id, name, address")
+    .select("id, name, address, board_portal_token")
     .eq("org_id", actor.orgId)
     .eq("community_id", communityId)
     .order("name", { ascending: true });
@@ -565,6 +566,7 @@ async function fetchLocationsForCommunity(communityId: string): Promise<Communit
     id: l.id,
     name: l.name?.trim() || "—",
     address: l.address?.trim() || "—",
+    boardPortalToken: l.board_portal_token ?? "",
   }));
 }
 

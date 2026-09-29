@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, Printer, QrCode } from "lucide-react";
+import { Copy, ExternalLink, Printer, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { PropertyDetail } from "@/hooks/useProperties";
 import { useRotateLocationToken } from "@/hooks/usePropertyTokens";
@@ -75,7 +75,8 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
         <CardHeader>
           <CardTitle className="text-base">Dostęp zewnętrzny</CardTitle>
           <CardDescription>
-            Bezpieczny link z tokenem dla gości (Zarząd). Udostępniaj tylko zaufanym osobom.
+            Dwa osobne widoki: strona dla zarządu z zadaniami w toku oraz ekran ogłoszeń na budynku. Udostępniaj tylko
+            zaufanym osobom.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -90,7 +91,8 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
               Portal Zarządu
             </h3>
             <p className="text-xs text-muted-foreground">
-              Publiczny adres dla członków zarządu wspólnoty — bez logowania do panelu administracyjnego.
+              Strona dla członków zarządu wspólnoty — ogłoszenia, zgłoszenia i zadania w toku, bez logowania do panelu
+              administracyjnego.
             </p>
             <div
               className={cn(
@@ -114,6 +116,12 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
                 <QrCode className="h-3.5 w-3.5" aria-hidden />
                 Pokaż kod QR
               </Button>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" asChild>
+                <a href={boardUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  Otwórz stronę
+                </a>
+              </Button>
               <Button
                 type="button"
                 variant="destructive"
@@ -128,10 +136,11 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
 
           <section className="space-y-3" aria-labelledby="portal-display-heading">
             <h3 id="portal-display-heading" className="text-sm font-medium text-foreground">
-              Link strony tablicy (Zarząd / TV)
+              Tablica ogłoszeń
             </h3>
             <p className="text-xs text-muted-foreground">
-              Publiczny ekran ogłoszeń wspólnoty — ten sam adres, który kopiujesz w module Tablica ogłoszeń.
+              Publiczny ekran ogłoszeń wspólnoty — do wyświetlenia na budynku (TV / kiosk). Ten sam adres, który
+              kopiujesz w module Tablica ogłoszeń.
             </p>
             {displayUrl ? (
               <>
@@ -162,6 +171,12 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
                   >
                     <QrCode className="h-3.5 w-3.5" aria-hidden />
                     Pokaż kod QR
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" asChild>
+                    <a href={displayUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      Otwórz stronę
+                    </a>
                   </Button>
                 </div>
               </>

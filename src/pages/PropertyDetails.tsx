@@ -170,7 +170,7 @@ export default function PropertyDetails() {
         <p className="text-sm text-muted-foreground mt-1">{property.address}</p>
       </div>
 
-      <CollapsibleSection title="Podstawowe" defaultOpen>
+      <CollapsibleSection title="Podstawowe">
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1">
           <TabsTrigger value="general" className="text-xs sm:text-sm">

@@ -227,12 +227,12 @@ export default function CommunityDetails() {
         ) : null}
       </div>
 
-      <CollapsibleSection title="Podstawowe" defaultOpen>
+      <CollapsibleSection title="Podstawowe">
         <CommunityDomainEditor community={community} orgId={orgId} readOnly={inactive} />
         {orgId ? (
           <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
         ) : null}
-        <CommunityBoardDisplayLinkCard communityId={communityId} />
+        <CommunityBoardDisplayLinkCard communityId={communityId} buildings={assigned} />
 
         <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
