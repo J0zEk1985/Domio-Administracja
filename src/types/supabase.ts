@@ -3837,6 +3837,10 @@ export type Database = {
         Args: { p_community_id: string; p_name: string }
         Returns: string
       }
+      get_board_portal_snapshot: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       get_community_estate: {
         Args: { p_community_id: string }
         Returns: {

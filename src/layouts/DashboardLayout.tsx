@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut, Zap } from "lucide-react";
+import { LayoutDashboard, LogOut, Siren, Zap } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
@@ -15,6 +15,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isFieldPanel = pathname === "/quick-actions";
+  const isEmergency = pathname === "/emergency";
 
   async function handleSignOut() {
     try {
@@ -66,6 +67,24 @@ export default function DashboardLayout() {
         <TooltipContent side="bottom">
           {isFieldPanel ? "Wróć do panelu administracyjnego" : "Przejdź do panelu terenowego"}
         </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant={isEmergency ? "default" : "outline"}
+            size="sm"
+            className={cn(
+              "h-9 gap-2 text-xs",
+              isEmergency && "bg-orange-600 text-white hover:bg-orange-700",
+            )}
+            onClick={() => navigate("/emergency")}
+          >
+            <Siren className="h-3.5 w-3.5" aria-hidden />
+            Zgłoszenie awaryjne
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Zgłoś usterkę do pogotowia 24h</TooltipContent>
       </Tooltip>
       <CookieConsentSettingsButton className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" />
       <ThemeToggle />

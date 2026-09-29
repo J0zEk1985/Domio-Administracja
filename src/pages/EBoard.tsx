@@ -37,12 +37,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -131,7 +132,7 @@ export default function EBoard() {
   const { data: communities = [] } = useCommunities(orgId ?? null);
   const createMut = useCreateEBoardMessage();
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [displayLinkCommunityId, setDisplayLinkCommunityId] = useState("");
 
   const form = useForm<NewMessageFormValues>({
@@ -150,7 +151,7 @@ export default function EBoard() {
 
   const { data: communityBuildings = [], isLoading: buildingsLoading } = useLocationsByCommunity(
     communityId || undefined,
-    { enabled: sheetOpen && Boolean(communityId) },
+    { enabled: dialogOpen && Boolean(communityId) },
   );
 
   useEffect(() => {
@@ -164,7 +165,7 @@ export default function EBoard() {
   }, [communities, displayLinkCommunityId]);
 
   useEffect(() => {
-    if (!sheetOpen) {
+    if (!dialogOpen) {
       form.reset({
         title: "",
         content: "",
@@ -174,7 +175,7 @@ export default function EBoard() {
         valid_until: "",
       });
     }
-  }, [sheetOpen, form]);
+  }, [dialogOpen, form]);
 
   function onSubmit(values: NewMessageFormValues) {
     if (!orgId) return;
@@ -192,7 +193,7 @@ export default function EBoard() {
         valid_until: validUntil,
       },
       {
-        onSuccess: () => setSheetOpen(false),
+        onSuccess: () => setDialogOpen(false),
       },
     );
   }
@@ -269,7 +270,7 @@ export default function EBoard() {
               </Button>
             </div>
           ) : null}
-          <Button type="button" onClick={() => setSheetOpen(true)}>
+          <Button type="button" onClick={() => setDialogOpen(true)}>
             + Nowe ogłoszenie
           </Button>
         </div>
@@ -328,15 +329,17 @@ export default function EBoard() {
         )}
       </div>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="flex w-full flex-col overflow-y-auto sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Nowe ogłoszenie</SheetTitle>
-            <SheetDescription>Uzupełnij treść i zasięg. Budynek jest opcjonalny.</SheetDescription>
-          </SheetHeader>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nowe ogłoszenie</DialogTitle>
+            <DialogDescription>
+              Uzupełnij treść i zasięg. Budynek jest opcjonalny — bez niego komunikat obejmuje całą wspólnotę.
+            </DialogDescription>
+          </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4 flex flex-1 flex-col gap-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="title"
@@ -509,11 +512,11 @@ export default function EBoard() {
                 }}
               />
 
-              <div className="mt-auto flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+              <DialogFooter className="gap-2 sm:gap-0">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setSheetOpen(false)}
+                  onClick={() => setDialogOpen(false)}
                   disabled={createMut.isPending}
                 >
                   Anuluj
@@ -524,11 +527,11 @@ export default function EBoard() {
                   ) : null}
                   Opublikuj
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </Form>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
