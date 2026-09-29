@@ -124,33 +124,6 @@ export const RESIDENT_ORDER_EVENT_LABEL: Record<ResidentOrderEventType, string> 
   cancelled: "Anulowano",
 };
 
-export const RESIDENT_ORDER_TEMPLATE_PLACEHOLDERS = [
-  "{{org.name}}",
-  "{{org.nip}}",
-  "{{org.address}}",
-  "{{org.support_email}}",
-  "{{community.name}}",
-  "{{community.legal_name}}",
-  "{{community.nip}}",
-  "{{community.board_email}}",
-  "{{building.name}}",
-  "{{building.address}}",
-  "{{unit.number}}",
-  "{{resident.full_name}}",
-  "{{resident.email}}",
-  "{{resident.phone}}",
-  "{{order.contact_name}}",
-  "{{order.contact_phone}}",
-  "{{order.contact_email}}",
-  "{{order.id}}",
-  "{{order.notes}}",
-  "{{order.quantity}}",
-  "{{order.created_at}}",
-  "{{item.name}}",
-  "{{item.description}}",
-  "{{item.price_label}}",
-] as const;
-
 export function formatResidentOrderPrice(
   amount: number | null,
   kind: ResidentOrderPriceKind | null,

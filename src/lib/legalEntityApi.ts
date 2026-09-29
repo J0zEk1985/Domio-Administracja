@@ -104,6 +104,34 @@ export type OrgVerificationAlert = {
 };
 
 export const VERIFICATION_ALERTS_ROOT = "verification-alerts";
+export const ORG_LEGAL_ENTITIES_ROOT = "org-legal-entities";
+
+export function mapLegalEntityRow(row: Record<string, unknown> | null): LegalEntityPublic | null {
+  if (!row || typeof row.id !== "string") return null;
+  const verificationStatus =
+    row.verification_status === "pending_manual" || row.verification_status === "manually_verified"
+      ? row.verification_status
+      : "gus_verified";
+  const verificationReason =
+    row.verification_reason === "gus_unavailable" || row.verification_reason === "gus_not_configured"
+      ? row.verification_reason
+      : null;
+  return {
+    id: row.id,
+    kind: row.kind as LegalEntityKind,
+    status: typeof row.status === "string" ? row.status : "active",
+    nip: typeof row.nip_normalized === "string" ? row.nip_normalized : "",
+    regon: typeof row.regon_normalized === "string" ? row.regon_normalized : null,
+    krs: typeof row.krs_normalized === "string" ? row.krs_normalized : null,
+    shortName: typeof row.short_name === "string" ? row.short_name : "",
+    legalName: typeof row.legal_name === "string" ? row.legal_name : "",
+    city: typeof row.city === "string" ? row.city : "",
+    postalCode: typeof row.postal_code === "string" ? row.postal_code : "",
+    seatFullAddress: typeof row.seat_full_address === "string" ? row.seat_full_address : "",
+    verificationStatus,
+    verificationReason,
+  };
+}
 
 export type EnrollBuildingResult = {
   status: "created" | "enrolled" | "duplicate";
@@ -367,31 +395,70 @@ export async function fetchAttachedLegalEntity(
     .eq("id", entityId)
     .maybeSingle();
   if (entity.error) throw entity.error;
-  const row = entity.data;
-  if (!row || typeof row.id !== "string") return null;
-  const verificationStatus =
-    row.verification_status === "pending_manual" || row.verification_status === "manually_verified"
-      ? row.verification_status
-      : "gus_verified";
-  const verificationReason =
-    row.verification_reason === "gus_unavailable" || row.verification_reason === "gus_not_configured"
-      ? row.verification_reason
-      : null;
-  return {
-    id: row.id,
-    kind: row.kind as LegalEntityKind,
-    status: typeof row.status === "string" ? row.status : "active",
-    nip: typeof row.nip_normalized === "string" ? row.nip_normalized : "",
-    regon: typeof row.regon_normalized === "string" ? row.regon_normalized : null,
-    krs: typeof row.krs_normalized === "string" ? row.krs_normalized : null,
-    shortName: typeof row.short_name === "string" ? row.short_name : "",
-    legalName: typeof row.legal_name === "string" ? row.legal_name : "",
-    city: typeof row.city === "string" ? row.city : "",
-    postalCode: typeof row.postal_code === "string" ? row.postal_code : "",
-    seatFullAddress: typeof row.seat_full_address === "string" ? row.seat_full_address : "",
-    verificationStatus,
-    verificationReason,
+  return mapLegalEntityRow(entity.data);
+}
+
+const LEGAL_ENTITY_SELECT =
+  "id, short_name, legal_name, nip_normalized, kind, status, regon_normalized, krs_normalized, city, postal_code, seat_full_address, verification_status, verification_reason";
+
+export async function listOrgEnrolledLegalEntities(orgId: string): Promise<LegalEntityPublic[]> {
+  const enrollDb = supabase as unknown as {
+    from: (relation: string) => {
+      select: (columns: string) => {
+        eq: (column: string, value: string) => {
+          eq: (column: string, value: string) => Promise<{
+            data: Array<{ legal_entity_id: string }> | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
   };
+
+  const { data: enrollments, error: enrollError } = await enrollDb
+    .from("org_legal_entity_enrollments")
+    .select("legal_entity_id")
+    .eq("org_id", orgId)
+    .eq("status", "active");
+
+  if (enrollError) {
+    console.error("[legalEntityApi] listOrgEnrolledLegalEntities enrollments:", enrollError);
+    throw new LegalEntityApiError(enrollError.message || "RPC_FAILED");
+  }
+
+  const ids = [...new Set((enrollments ?? []).map((row) => row.legal_entity_id).filter(Boolean))];
+  if (ids.length === 0) return [];
+
+  const entityDb = supabase as unknown as {
+    from: (relation: string) => {
+      select: (columns: string) => {
+        in: (column: string, values: string[]) => Promise<{
+          data: Record<string, unknown>[] | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  };
+
+  const { data: rows, error: entityError } = await entityDb
+    .from("legal_entities")
+    .select(LEGAL_ENTITY_SELECT)
+    .in("id", ids);
+
+  if (entityError) {
+    console.error("[legalEntityApi] listOrgEnrolledLegalEntities entities:", entityError);
+    throw new LegalEntityApiError(entityError.message || "RPC_FAILED");
+  }
+
+  const mapped = (rows ?? [])
+    .map((row) => mapLegalEntityRow(row))
+    .filter((row): row is LegalEntityPublic => row !== null);
+
+  mapped.sort((a, b) => {
+    const left = (a.shortName || a.legalName).localeCompare(b.shortName || b.legalName, "pl");
+    return left !== 0 ? left : a.nip.localeCompare(b.nip);
+  });
+  return mapped;
 }
 
 export async function attachLegalEntityToBuilding(args: {

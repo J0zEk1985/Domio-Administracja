@@ -117,8 +117,9 @@ export function AddBuildingDialog({
         <DialogHeader>
           <DialogTitle>Dodaj budynek</DialogTitle>
           <DialogDescription>
-            Adres jest wymagany. Dopięcie Wspólnoty lub firmy jest rekomendowane, ale
-            nieobowiązkowe (np. kamienica osoby prywatnej).
+            Adres jest wymagany. Wspólnotę lub firmę wybierz z listy organizacji albo
+            dodaj po NIP. Dopięcie jest rekomendowane, ale nieobowiązkowe (np. kamienica
+            osoby prywatnej).
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

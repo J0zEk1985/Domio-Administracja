@@ -17,6 +17,8 @@ import {
   enrollLegalEntity,
   lookupLegalEntity,
   LegalEntityApiError,
+  ORG_LEGAL_ENTITIES_ROOT,
+  VERIFICATION_ALERTS_ROOT,
   type GusPreview,
   type LegalEntityKind,
   type LegalEntityPublic,
@@ -25,9 +27,10 @@ import {
   LEGAL_ENTITY_KIND_LABELS,
   legalEntityErrorMessage,
 } from "@/lib/legalEntityMessages";
-import { VERIFICATION_ALERTS_ROOT } from "@/lib/legalEntityApi";
 import { LegalEntityUnverifiedForm, type UnverifiedFormValues } from "@/components/legal-entity/LegalEntityUnverifiedForm";
+import { OrgLegalEntitySelect } from "@/components/legal-entity/OrgLegalEntitySelect";
 import { VerificationNeededBadge } from "@/components/legal-entity/VerificationNeededBadge";
+import { orgLegalEntitiesKey } from "@/hooks/useOrgEnrolledLegalEntities";
 
 export type LegalEntityModuleFlags = {
   isCleaning?: boolean;
@@ -106,11 +109,24 @@ export function LegalEntityNipField({
     }
   }, [value]);
 
+  const invalidateOrgEntities = () => {
+    void queryClient.invalidateQueries({ queryKey: orgLegalEntitiesKey(orgId) });
+    void queryClient.invalidateQueries({ queryKey: [ORG_LEGAL_ENTITIES_ROOT] });
+  };
+
   const clearSelection = () => {
     onChange(null);
     setGus(null);
     setUnverifiedOpen(false);
     setMessage(null);
+  };
+
+  const handleSelectExisting = (entity: LegalEntityPublic | null) => {
+    onChange(entity);
+    setGus(null);
+    setUnverifiedOpen(false);
+    setMessage(null);
+    if (entity) setNip(entity.nip);
   };
 
   const openUnverified = () => {
@@ -144,6 +160,7 @@ export function LegalEntityNipField({
             ...flags,
           });
           onChange(enrolled.entity);
+          invalidateOrgEntities();
         } else {
           onChange(result.entity);
         }
@@ -192,6 +209,7 @@ export function LegalEntityNipField({
       });
       onChange(created.entity);
       setGus(null);
+      invalidateOrgEntities();
     } catch (err) {
       console.error("[LegalEntityNipField] create:", err);
       const code = err instanceof LegalEntityApiError ? err.code : "RPC_FAILED";
@@ -225,6 +243,7 @@ export function LegalEntityNipField({
       });
       onChange(created.entity);
       setUnverifiedOpen(false);
+      invalidateOrgEntities();
       await queryClient.invalidateQueries({ queryKey: [VERIFICATION_ALERTS_ROOT] });
     } catch (err) {
       console.error("[LegalEntityNipField] unverified:", err);
@@ -236,8 +255,18 @@ export function LegalEntityNipField({
 
   return (
     <div className="grid gap-3">
+      <OrgLegalEntitySelect
+        orgId={orgId}
+        value={value}
+        onChange={handleSelectExisting}
+        allowedKinds={allowedKinds}
+        disabled={disabled || busy}
+        required={required}
+      />
       <div className="grid gap-2">
-        <Label htmlFor="legal-entity-nip">NIP {required ? "" : "(opcjonalnie)"}</Label>
+        <Label htmlFor="legal-entity-nip">
+          {required ? "Albo nowy NIP" : "Albo nowy NIP (opcjonalnie)"}
+        </Label>
         <div className="flex gap-2">
           <Input
             id="legal-entity-nip"
