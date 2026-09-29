@@ -2228,6 +2228,69 @@ export type Database = {
           },
         ]
       }
+      community_units: {
+        Row: {
+          building_identifier: string | null
+          community_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          location_id: string
+          normalized_unit_number: string
+          org_id: string
+          unit_number: string
+          updated_at: string
+        }
+        Insert: {
+          building_identifier?: string | null
+          community_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          location_id: string
+          org_id: string
+          unit_number: string
+          updated_at?: string
+        }
+        Update: {
+          building_identifier?: string | null
+          community_id?: string
+          kind?: string
+          label?: string | null
+          location_id?: string
+          org_id?: string
+          unit_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      community_unit_occupants: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          unit_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          unit_id: string
+          user_id?: string | null
+        }
+        Update: {
+          email?: string
+          full_name?: string
+          unit_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           accepted_terms_at: string
@@ -4076,6 +4139,16 @@ export type Database = {
         }[]
       }
       get_my_org_id_safe: { Args: never; Returns: string }
+      claim_my_resident_units: { Args: never; Returns: number }
+      import_location_residents: {
+        Args: { p_location_id: string; p_rows: Json }
+        Returns: {
+          message: string
+          row_index: number
+          status: string
+        }[]
+      }
+      remove_unit_occupant: { Args: { p_occupant_id: string }; Returns: undefined }
       moderate_community_announcement: {
         Args: { p_action: string; p_community_id: string; p_post_id: string }
         Returns: Json

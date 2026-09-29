@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, ListChecks, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ListChecks, Trash2, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +29,7 @@ import { PropertyLocalInspectionsTab } from "@/components/property/PropertyLocal
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
 import { PropertyIssuesTab } from "@/components/property/PropertyIssuesTab";
 import { PropertyTeamTab } from "@/components/property/PropertyTeamTab";
+import { PropertyResidentsTab } from "@/components/property/PropertyResidentsTab";
 import { PropertyEcosystemTab } from "@/components/property/PropertyEcosystemTab";
 import { PropertyCleaningWorkScopeTab } from "@/components/property/PropertyCleaningWorkScopeTab";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
@@ -285,9 +286,15 @@ export default function PropertyDetails() {
 
       <CollapsibleSection title="Zarządzanie">
       <Tabs defaultValue="team" className="w-full">
-        <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 xl:grid-cols-8">
+        <TabsList className="grid h-auto w-full max-w-7xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-5">
           <TabsTrigger value="team" className="text-xs sm:text-sm">
             Zespół
+          </TabsTrigger>
+          <TabsTrigger value="residents" className="text-xs sm:text-sm">
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              Mieszkańcy
+            </span>
           </TabsTrigger>
           <TabsTrigger value="ecosystem" className="text-xs sm:text-sm">
             Ekosystem
@@ -323,6 +330,15 @@ export default function PropertyDetails() {
 
         <TabsContent value="team" className="mt-6">
           <PropertyTeamTab locationId={property.id} isOrgOwner={isOwner} />
+        </TabsContent>
+
+        <TabsContent value="residents" className="mt-6">
+          <PropertyResidentsTab
+            locationId={property.id}
+            orgId={property.orgId}
+            communityId={property.communityId}
+            canManage={canManageCleaningScope}
+          />
         </TabsContent>
 
         <TabsContent value="ecosystem" className="mt-6">
