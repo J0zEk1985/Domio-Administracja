@@ -106,11 +106,14 @@ function TaskSidebarSkeleton() {
 }
 
 function CommentBubble({ comment }: { comment: TaskCommentWithAuthor }) {
-  const name = comment.author?.full_name?.trim() || "Użytkownik";
+  const isBoard = comment.source === "board";
+  const name = isBoard ? "Zarząd" : comment.author?.full_name?.trim() || "Użytkownik";
   return (
     <div className="flex gap-3">
       <Avatar className="h-9 w-9 shrink-0 border border-border/60">
-        <AvatarFallback className="text-xs font-medium">{initialsFromName(comment.author?.full_name)}</AvatarFallback>
+        <AvatarFallback className="text-xs font-medium">
+          {initialsFromName(isBoard ? "Zarząd" : comment.author?.full_name)}
+        </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

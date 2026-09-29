@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,10 @@ vi.mock("@/hooks/useEBoardMessages", () => ({
     isError: false,
   }),
   useCreateEBoardMessage: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateEBoardMessage: () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
@@ -51,5 +55,16 @@ describe("CommunityAnnouncementReviewTab", () => {
   it("hides create action when the community cannot be managed", () => {
     renderTab(false);
     expect(screen.queryByRole("button", { name: "+ Nowe ogłoszenie" })).not.toBeInTheDocument();
+  });
+
+  it("shows kiosk color fields in the create dialog", async () => {
+    renderTab();
+    act(() => {
+      screen.getByRole("button", { name: "+ Nowe ogłoszenie" }).click();
+    });
+    expect(await screen.findByText("Kolory na tablicy")).toBeVisible();
+    expect(screen.getByLabelText("Kolor tła tablicy")).toBeVisible();
+    expect(screen.getByLabelText("Kolor napisów na tablicy")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Domyślne" })).toBeVisible();
   });
 });

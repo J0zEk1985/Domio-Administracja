@@ -21,10 +21,13 @@ export interface PropertyTask {
   created_at: string;
 }
 
+export type TaskCommentSource = "staff" | "board";
+
 export interface TaskComment {
   id: string;
   task_id: string;
-  author_id: string;
+  author_id: string | null;
+  source: TaskCommentSource;
   content: string;
   created_at: string;
 }

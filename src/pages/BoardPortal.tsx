@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { issuePriorityLabelPl, issueStatusLabelPl } from "@/lib/triageIssueUi";
+import { BoardPortalTaskCard } from "@/components/board-portal/BoardPortalTaskCard";
 import {
   isBoardPortalToken,
   useBoardPortal,
@@ -40,19 +41,6 @@ function msgTypeLabel(t: BoardPortalAnnouncement["msg_type"]): string {
   if (t === "advertisement") return "Reklama";
   if (t === "resident") return "Mieszkaniec";
   return t;
-}
-
-function taskStatusLabel(s: string): string {
-  if (s === "todo") return "Do zrobienia";
-  if (s === "in_progress") return "W toku";
-  return s;
-}
-
-function taskPriorityLabel(p: string): string {
-  if (p === "low") return "Niski";
-  if (p === "medium") return "Średni";
-  if (p === "urgent") return "Pilny";
-  return p;
 }
 
 export default function BoardPortal() {
@@ -199,31 +187,11 @@ export default function BoardPortal() {
               </CardHeader>
               <CardContent>
                 {data.tasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Brak zadań na tablicy.</p>
+                  <p className="text-sm text-muted-foreground">Brak zadań udostępnionych Zarządowi.</p>
                 ) : (
                   <ul className="space-y-3">
                     {data.tasks.map((task) => (
-                      <li key={task.id} className="flex flex-col gap-1 rounded-md border border-border/60 p-3">
-                        <p className="text-sm font-medium">
-                          {task.title}
-                          {task.location_name?.trim() ? (
-                            <span className="ml-2 text-xs font-normal text-muted-foreground">
-                              {task.location_name}
-                            </span>
-                          ) : null}
-                        </p>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span>{taskStatusLabel(task.status)}</span>
-                          <span>·</span>
-                          <span>{taskPriorityLabel(task.priority)}</span>
-                          {formatWhen(task.created_at) ? (
-                            <>
-                              <span>·</span>
-                              <span>{formatWhen(task.created_at)}</span>
-                            </>
-                          ) : null}
-                        </div>
-                      </li>
+                      <BoardPortalTaskCard key={task.id} token={token!} task={task} />
                     ))}
                   </ul>
                 )}

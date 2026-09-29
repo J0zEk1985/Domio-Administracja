@@ -3263,24 +3263,27 @@ export type Database = {
       }
       task_comments: {
         Row: {
-          author_id: string
+          author_id: string | null
           content: string
           created_at: string
           id: string
+          source: string
           task_id: string
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           content: string
           created_at?: string
           id?: string
+          source?: string
           task_id: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           content?: string
           created_at?: string
           id?: string
+          source?: string
           task_id?: string
         }
         Relationships: [
@@ -3848,6 +3851,10 @@ export type Database = {
       }
       get_board_portal_snapshot: {
         Args: { p_token: string }
+        Returns: Json
+      }
+      add_board_portal_task_comment: {
+        Args: { p_token: string; p_task_id: string; p_content: string }
         Returns: Json
       }
       rotate_community_board_portal_token: {

@@ -5,11 +5,7 @@ import { Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
-import {
-  EBOARD_DEFAULT_BG,
-  EBOARD_DEFAULT_TEXT,
-  isHexColor,
-} from "@/lib/eboardDisplayColors";
+import { EBoardColorSwatch } from "@/components/eboard/EBoardColorSwatch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -231,7 +227,10 @@ export function CommunityAnnouncementReviewTab({
                   return (
                     <TableRow key={row.id}>
                       <TableCell className="max-w-[220px] font-medium">
-                        <span className="line-clamp-2">{row.title}</span>
+                        <span className="flex items-start gap-2">
+                          <EBoardColorSwatch bg={row.display_bg_color} text={row.display_text_color} />
+                          <span className="line-clamp-2">{row.title}</span>
+                        </span>
                       </TableCell>
                       <TableCell>
                         <MsgTypeBadge type={row.msg_type} />
@@ -241,6 +240,23 @@ export function CommunityAnnouncementReviewTab({
                         {until && isValid(until) ? format(until, "d MMM yyyy", { locale: pl }) : "—"}
                       </TableCell>
                       <TableCell>{formatStatus(row.status)}</TableCell>
+                      {canManage ? (
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Edytuj ogłoszenie ${row.title}`}
+                            onClick={() => {
+                              setEditing(row);
+                              setCreateOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })
@@ -304,10 +320,14 @@ export function CommunityAnnouncementReviewTab({
 
       <CommunityCreateAnnouncementDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) setEditing(null);
+        }}
         communityId={communityId}
         communityName={communityName}
         buildings={buildings}
+        message={editing}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Copy, Pencil } from "lucide-react";
 
 import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
+import { EBoardColorSwatch } from "@/components/eboard/EBoardColorSwatch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,11 +27,6 @@ import {
 } from "@/components/ui/table";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEBoardMessages, type EBoardMessageListItem } from "@/hooks/useEBoardMessages";
-import {
-  EBOARD_DEFAULT_BG,
-  EBOARD_DEFAULT_TEXT,
-  isHexColor,
-} from "@/lib/eboardDisplayColors";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 
@@ -85,21 +81,6 @@ function MsgTypeBadge({ type }: { type: EboardMsgType }) {
   }
   return (
     <Badge className="border-transparent bg-slate-600 text-white hover:bg-slate-600/90">{label}</Badge>
-  );
-}
-
-function ColorSwatch({ bg, text }: { bg: string | null; text: string | null }) {
-  const background = isHexColor(bg) ? bg : EBOARD_DEFAULT_BG;
-  const foreground = isHexColor(text) ? text : EBOARD_DEFAULT_TEXT;
-  return (
-    <span
-      className="inline-flex h-5 w-8 shrink-0 overflow-hidden rounded border border-border"
-      title={`Tło ${background}, napisy ${foreground}`}
-      aria-hidden
-    >
-      <span className="h-full w-1/2" style={{ backgroundColor: background }} />
-      <span className="h-full w-1/2" style={{ backgroundColor: foreground }} />
-    </span>
   );
 }
 
@@ -244,7 +225,7 @@ export default function EBoard() {
                     <TableRow key={row.id}>
                       <TableCell className="max-w-[240px] font-medium">
                         <span className="flex items-start gap-2">
-                          <ColorSwatch bg={row.display_bg_color} text={row.display_text_color} />
+                          <EBoardColorSwatch bg={row.display_bg_color} text={row.display_text_color} />
                           <span className="line-clamp-2">{row.title}</span>
                         </span>
                       </TableCell>
