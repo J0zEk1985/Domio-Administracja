@@ -551,6 +551,7 @@ export type Database = {
           access_codes: Json
           board_email: string | null
           board_members: Json
+          board_portal_token: string
           created_at: string
           deactivated_at: string | null
           deactivated_by: string | null
@@ -569,6 +570,7 @@ export type Database = {
           access_codes?: Json
           board_email?: string | null
           board_members?: Json
+          board_portal_token?: string
           created_at?: string
           deactivated_at?: string | null
           deactivated_by?: string | null
@@ -587,6 +589,7 @@ export type Database = {
           access_codes?: Json
           board_email?: string | null
           board_members?: Json
+          board_portal_token?: string
           created_at?: string
           deactivated_at?: string | null
           deactivated_by?: string | null

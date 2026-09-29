@@ -1,11 +1,33 @@
+import { useState } from "react";
+import { format, isValid, parseISO } from "date-fns";
+import { pl } from "date-fns/locale";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  useEBoardMessagesForCommunity,
+  type EBoardMessageListItem,
+} from "@/hooks/useEBoardMessages";
+import type { CommunityLocationRow } from "@/hooks/useProperties";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
+import type { Database } from "@/types/supabase";
 
 type Hold = "uncertain" | "jev_unavailable";
+type EboardMsgType = Database["public"]["Enums"]["eboard_msg_type"];
+type EboardMsgStatus = Database["public"]["Enums"]["eboard_msg_status"];
 
 type ReviewRow = {
   id: string;
@@ -32,12 +54,52 @@ const HOLD_LABEL: Record<Hold, string> = {
 
 type Props = {
   communityId: string;
+  communityName: string;
   buildingIds: string[];
+  buildings: CommunityLocationRow[];
   canManage: boolean;
 };
 
 function isHold(value: string | null): value is Hold {
   return value === "uncertain" || value === "jev_unavailable";
+}
+
+function formatMsgType(t: EboardMsgType): string {
+  if (t === "official") return "Oficjalne";
+  if (t === "advertisement") return "Reklama";
+  if (t === "resident") return "Mieszkaniec";
+  return t;
+}
+
+function formatStatus(s: EboardMsgStatus): string {
+  if (s === "published") return "Opublikowane";
+  if (s === "pending_moderation") return "Oczekuje";
+  if (s === "archived") return "Zarchiwizowane";
+  return s;
+}
+
+function scopeLabel(row: EBoardMessageListItem): string {
+  if (row.location_id && row.cleaning_locations?.name) {
+    return row.cleaning_locations.name.trim() || "Budynek";
+  }
+  return "Cała wspólnota";
+}
+
+function MsgTypeBadge({ type }: { type: EboardMsgType }) {
+  const label = formatMsgType(type);
+  if (type === "official") {
+    return (
+      <Badge className="border-transparent bg-blue-600 text-white hover:bg-blue-600/90">{label}</Badge>
+    );
+  }
+  if (type === "advertisement") {
+    return (
+      <Badge className="border-transparent bg-violet-600 text-white hover:bg-violet-600/90">{label}</Badge>
+    );
+  }
+  return (
+    <Badge className="border-transparent bg-slate-600 text-white hover:bg-slate-600/90">{label}</Badge>
+  );
 }
 
 async function fetchPending(buildingIds: string[]): Promise<ReviewRow[]> {
@@ -71,9 +133,18 @@ async function fetchPending(buildingIds: string[]): Promise<ReviewRow[]> {
   });
 }
 
-export function CommunityAnnouncementReviewTab({ communityId, buildingIds, canManage }: Props) {
+export function CommunityAnnouncementReviewTab({
+  communityId,
+  communityName,
+  buildingIds,
+  buildings,
+  canManage,
+}: Props) {
   const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
   const queryKey = ["community-announcement-review", communityId, buildingIds.join(",")] as const;
+
+  const boardQuery = useEBoardMessagesForCommunity(communityId);
 
   const pendingQuery = useQuery({
     queryKey,
@@ -102,67 +173,134 @@ export function CommunityAnnouncementReviewTab({ communityId, buildingIds, canMa
     },
   });
 
-  if (!canManage) {
-    return <p className="text-sm text-muted-foreground">Ta wspólnota jest nieaktywna.</p>;
-  }
-
-  if (buildingIds.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Dodaj co najmniej jeden budynek, aby weryfikować ogłoszenia mieszkańców.
-      </p>
-    );
-  }
-
-  if (pendingQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Wczytywanie ogłoszeń…</p>;
-  }
-
-  if (pendingQuery.isError) {
-    return <p className="text-sm text-destructive">Nie udało się wczytać ogłoszeń do decyzji.</p>;
-  }
-
-  const rows = pendingQuery.data ?? [];
-  if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">Brak ogłoszeń oczekujących na decyzję.</p>;
-  }
+  const pendingRows = pendingQuery.data ?? [];
+  const boardRows = boardQuery.data ?? [];
 
   return (
-    <div className="space-y-3">
-      {rows.map((row) => (
-        <Card key={row.id}>
-          <CardHeader className="space-y-1 pb-2">
-            <CardTitle className="text-base">{row.title}</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {row.authorName} · {row.locationName} · {POST_TYPE_LABEL[row.post_type]} ·{" "}
-              {new Date(row.created_at).toLocaleString("pl-PL")}
-            </p>
-            <p className="text-xs text-foreground">
-              {row.moderation_hold ? HOLD_LABEL[row.moderation_hold] : HOLD_LABEL.uncertain}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="whitespace-pre-wrap text-sm text-foreground">{row.content}</p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                disabled={moderate.isPending}
-                onClick={() => moderate.mutate({ postId: row.id, action: "publish" })}
-              >
-                Publikuj
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={moderate.isPending}
-                onClick={() => moderate.mutate({ postId: row.id, action: "reject" })}
-              >
-                Odrzuć
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-foreground">Tablica ogłoszeń</h3>
+          <p className="text-xs text-muted-foreground">
+            Komunikaty widoczne dla mieszkańców tej wspólnoty.
+          </p>
+        </div>
+        {canManage ? (
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            + Nowe ogłoszenie
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">Ta wspólnota jest nieaktywna.</p>
+        )}
+      </div>
+
+      {boardQuery.isPending ? (
+        <Skeleton className="h-32 w-full rounded-lg" />
+      ) : boardQuery.isError ? (
+        <p className="text-sm text-destructive">Nie udało się wczytać ogłoszeń tablicy.</p>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tytuł</TableHead>
+                <TableHead>Typ</TableHead>
+                <TableHead>Zasięg</TableHead>
+                <TableHead>Ważne do</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {boardRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                    Brak ogłoszeń na tablicy. Dodaj pierwsze przyciskiem powyżej.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                boardRows.map((row) => {
+                  const until = row.valid_until ? parseISO(row.valid_until) : null;
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell className="max-w-[220px] font-medium">
+                        <span className="line-clamp-2">{row.title}</span>
+                      </TableCell>
+                      <TableCell>
+                        <MsgTypeBadge type={row.msg_type} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{scopeLabel(row)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {until && isValid(until) ? format(until, "d MMM yyyy", { locale: pl }) : "—"}
+                      </TableCell>
+                      <TableCell>{formatStatus(row.status)}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold text-foreground">Ogłoszenia oczekujące na decyzję</h3>
+        {!canManage ? (
+          <p className="text-sm text-muted-foreground">Ta wspólnota jest nieaktywna.</p>
+        ) : buildingIds.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Dodaj co najmniej jeden budynek, aby weryfikować ogłoszenia mieszkańców.
+          </p>
+        ) : pendingQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">Wczytywanie ogłoszeń…</p>
+        ) : pendingQuery.isError ? (
+          <p className="text-sm text-destructive">Nie udało się wczytać ogłoszeń do decyzji.</p>
+        ) : pendingRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Brak ogłoszeń oczekujących na decyzję.</p>
+        ) : (
+          pendingRows.map((row) => (
+            <Card key={row.id}>
+              <CardHeader className="space-y-1 pb-2">
+                <CardTitle className="text-base">{row.title}</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  {row.authorName} · {row.locationName} · {POST_TYPE_LABEL[row.post_type]} ·{" "}
+                  {new Date(row.created_at).toLocaleString("pl-PL")}
+                </p>
+                <p className="text-xs text-foreground">
+                  {row.moderation_hold ? HOLD_LABEL[row.moderation_hold] : HOLD_LABEL.uncertain}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="whitespace-pre-wrap text-sm text-foreground">{row.content}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    disabled={moderate.isPending}
+                    onClick={() => moderate.mutate({ postId: row.id, action: "publish" })}
+                  >
+                    Publikuj
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={moderate.isPending}
+                    onClick={() => moderate.mutate({ postId: row.id, action: "reject" })}
+                  >
+                    Odrzuć
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      <CommunityCreateAnnouncementDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        communityId={communityId}
+        communityName={communityName}
+        buildings={buildings}
+      />
     </div>
   );
 }

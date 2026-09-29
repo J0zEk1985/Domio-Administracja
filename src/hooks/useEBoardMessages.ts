@@ -14,6 +14,9 @@ export type EBoardMessageListItem = EBoardRow & {
 
 export const eBoardMessagesQueryKey = (orgId: string) => ["e-board-messages", orgId] as const;
 
+export const eBoardMessagesForCommunityQueryKey = (communityId: string) =>
+  ["e-board-messages-community", communityId] as const;
+
 export const eBoardDisplayQueryKey = (communityId: string) =>
   ["e-board-display", communityId] as const;
 
@@ -81,6 +84,34 @@ export function useEBoardMessages(orgId: string | null) {
   });
 }
 
+async function fetchEBoardMessagesForCommunity(communityId: string): Promise<EBoardMessageListItem[]> {
+  const { data, error } = await supabase
+    .from("e_board_messages")
+    .select(
+      `
+      *,
+      communities ( name ),
+      cleaning_locations ( name )
+    `,
+    )
+    .eq("community_id", communityId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[fetchEBoardMessagesForCommunity]", error);
+    throw error;
+  }
+  return (data ?? []) as EBoardMessageListItem[];
+}
+
+export function useEBoardMessagesForCommunity(communityId: string | null) {
+  return useQuery({
+    queryKey: eBoardMessagesForCommunityQueryKey(communityId ?? "__none__"),
+    queryFn: () => fetchEBoardMessagesForCommunity(communityId!),
+    enabled: Boolean(communityId && communityId.trim() !== ""),
+  });
+}
+
 export type CreateEBoardMessageInput = {
   title: string;
   content: string;
@@ -136,11 +167,13 @@ export function useCreateEBoardMessage() {
         throw error;
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, input) => {
       const { data: orgId } = await supabase.rpc("get_my_org_id_safe");
       if (orgId) {
         await qc.invalidateQueries({ queryKey: eBoardMessagesQueryKey(String(orgId)) });
       }
+      await qc.invalidateQueries({ queryKey: eBoardMessagesForCommunityQueryKey(input.community_id) });
+      await qc.invalidateQueries({ queryKey: eBoardDisplayQueryKey(input.community_id) });
       toast.success("Ogłoszenie zostało dodane.");
     },
     onError: (err: unknown) => {

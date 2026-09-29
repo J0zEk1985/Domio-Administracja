@@ -12,6 +12,7 @@ export type BoardPortalIssue = {
   priority: Database["public"]["Enums"]["issue_priority_enum"] | null;
   created_at: string | null;
   emergency_mode: boolean | null;
+  location_name: string | null;
 };
 
 export type BoardPortalTask = {
@@ -20,6 +21,7 @@ export type BoardPortalTask = {
   status: Database["public"]["Enums"]["property_task_status"];
   priority: Database["public"]["Enums"]["property_task_priority"];
   created_at: string;
+  location_name: string | null;
 };
 
 export type BoardPortalAnnouncement = {
@@ -76,6 +78,7 @@ function parseIssues(raw: unknown): BoardPortalIssue[] {
         priority: (asString(row.priority) as BoardPortalIssue["priority"]) ?? null,
         created_at: asString(row.created_at),
         emergency_mode: typeof row.emergency_mode === "boolean" ? row.emergency_mode : null,
+        location_name: asString(row.location_name),
       },
     ];
   });
@@ -89,7 +92,7 @@ function parseTasks(raw: unknown): BoardPortalTask[] {
     const priority = asString(row.priority) as BoardPortalTask["priority"] | null;
     const created_at = asString(row.created_at);
     if (!status || !priority || !created_at) return [];
-    return [{ id: row.id, title: row.title, status, priority, created_at }];
+    return [{ id: row.id, title: row.title, status, priority, created_at, location_name: asString(row.location_name) }];
   });
 }
 

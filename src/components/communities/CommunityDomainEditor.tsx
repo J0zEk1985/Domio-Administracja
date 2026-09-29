@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { Plus, Trash2, Headphones, Loader2 } from "lucide-react";
@@ -38,6 +38,8 @@ type Props = {
   community: CommunityRow;
   orgId: string;
   readOnly?: boolean;
+  coreExtra?: ReactNode;
+  homeBoard?: ReactNode;
 };
 
 function telHref(phone: string): string {
@@ -51,7 +53,13 @@ function parseOptionalNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function CommunityDomainEditor({ community, orgId, readOnly = false }: Props) {
+export function CommunityDomainEditor({
+  community,
+  orgId,
+  readOnly = false,
+  coreExtra,
+  homeBoard,
+}: Props) {
   const update = useUpdateCommunity();
 
   const defaults = useMemo((): CommunityDomainFormValues => {
@@ -139,7 +147,7 @@ export function CommunityDomainEditor({ community, orgId, readOnly = false }: Pr
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Tabs defaultValue="core" className="w-full">
-          <TabsList className="grid h-auto w-full max-w-4xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 lg:grid-cols-6">
+          <TabsList className="grid h-auto w-full max-w-5xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 lg:grid-cols-7">
             <TabsTrigger value="core" className="text-xs sm:text-sm">
               Podstawowe
             </TabsTrigger>
@@ -152,6 +160,9 @@ export function CommunityDomainEditor({ community, orgId, readOnly = false }: Pr
             <TabsTrigger value="board" className="text-xs sm:text-sm">
               Zarząd
             </TabsTrigger>
+            <TabsTrigger value="home" className="text-xs sm:text-sm">
+              Tablica Home
+            </TabsTrigger>
             <TabsTrigger value="codes" className="text-xs sm:text-sm">
               Kody
             </TabsTrigger>
@@ -160,7 +171,7 @@ export function CommunityDomainEditor({ community, orgId, readOnly = false }: Pr
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="core" className="mt-4">
+          <TabsContent value="core" className="mt-4 space-y-6">
             <Card className="border-border/60 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">Identyfikacja</CardTitle>
@@ -200,6 +211,13 @@ export function CommunityDomainEditor({ community, orgId, readOnly = false }: Pr
                 />
               </CardContent>
             </Card>
+            {coreExtra}
+          </TabsContent>
+
+          <TabsContent value="home" className="mt-4">
+            {homeBoard ?? (
+              <p className="text-sm text-muted-foreground">Brak dostępu do tablicy mieszkańca.</p>
+            )}
           </TabsContent>
 
           <TabsContent value="finance" className="mt-4">

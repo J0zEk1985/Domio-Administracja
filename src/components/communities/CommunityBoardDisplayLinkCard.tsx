@@ -4,18 +4,24 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useRotateCommunityBoardToken } from "@/hooks/useCommunities";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-type BuildingLink = {
-  id: string;
-  name: string;
-  boardPortalToken?: string;
-};
-
 type Props = {
   communityId: string;
-  buildings: BuildingLink[];
+  orgId: string;
+  boardPortalToken: string;
+  canManage?: boolean;
 };
 
 type QrTarget = {
@@ -38,7 +44,15 @@ async function copyText(label: string, text: string) {
   }
 }
 
-function LinkActions({ url, qrTitle, onShowQr }: { url: string; qrTitle: string; onShowQr: (target: QrTarget) => void }) {
+function LinkActions({
+  url,
+  qrTitle,
+  onShowQr,
+}: {
+  url: string;
+  qrTitle: string;
+  onShowQr: (target: QrTarget) => void;
+}) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void copyText("Link", url)}>
@@ -59,10 +73,15 @@ function LinkActions({ url, qrTitle, onShowQr }: { url: string; qrTitle: string;
   );
 }
 
-export function CommunityBoardDisplayLinkCard({ communityId, buildings }: Props) {
+export function CommunityBoardDisplayLinkCard({ communityId, orgId, boardPortalToken, canManage = false }: Props) {
   const [qrTarget, setQrTarget] = useState<QrTarget | null>(null);
+  const [confirmRotateOpen, setConfirmRotateOpen] = useState(false);
+  const rotate = useRotateCommunityBoardToken(communityId, orgId);
   const displayUrl = useMemo(() => `${portalBaseUrl()}/display/${communityId}`, [communityId]);
-  const portalBuildings = buildings.filter((b) => Boolean(b.boardPortalToken?.trim()));
+  const boardUrl = useMemo(
+    () => (boardPortalToken ? `${portalBaseUrl()}/portal/board/${boardPortalToken}` : ""),
+    [boardPortalToken],
+  );
 
   return (
     <>
@@ -70,7 +89,7 @@ export function CommunityBoardDisplayLinkCard({ communityId, buildings }: Props)
         <CardHeader>
           <CardTitle className="text-base">Dostęp zewnętrzny</CardTitle>
           <CardDescription>
-            Dwa osobne widoki: ekran ogłoszeń na budynku oraz strona dla zarządu z zadaniami w toku.
+            Dwa osobne widoki: ekran ogłoszeń na budynku oraz jedna strona dla zarządu całej wspólnoty.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -97,34 +116,35 @@ export function CommunityBoardDisplayLinkCard({ communityId, buildings }: Props)
               Portal Zarządu
             </h3>
             <p className="text-xs text-muted-foreground">
-              Strona dla członków zarządu wspólnoty — ogłoszenia, zgłoszenia i zadania w toku, bez logowania do panelu
-              administracyjnego. Link jest osobny dla każdego budynku.
+              Jedna strona dla członków zarządu wspólnoty — ogłoszenia, zgłoszenia i zadania w toku ze wszystkich
+              budynków, bez logowania do panelu administracyjnego.
             </p>
-            {portalBuildings.length === 0 ? (
-              <p className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
-                Przypisz budynek do wspólnoty, aby uzyskać adres Portalu Zarządu.
-              </p>
+            {boardUrl ? (
+              <>
+                <div
+                  className={cn(
+                    "rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-foreground",
+                  )}
+                >
+                  {boardUrl}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <LinkActions url={boardUrl} qrTitle="Portal Zarządu" onShowQr={setQrTarget} />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={!canManage || rotate.isPending}
+                    onClick={() => setConfirmRotateOpen(true)}
+                  >
+                    Zresetuj link
+                  </Button>
+                </div>
+              </>
             ) : (
-              <ul className="space-y-4">
-                {portalBuildings.map((building) => {
-                  const url = `${portalBaseUrl()}/portal/board/${building.boardPortalToken}`;
-                  return (
-                    <li key={building.id} className="space-y-2">
-                      {portalBuildings.length > 1 ? (
-                        <p className="text-sm font-medium text-foreground">{building.name}</p>
-                      ) : null}
-                      <div
-                        className={cn(
-                          "rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-foreground",
-                        )}
-                      >
-                        {url}
-                      </div>
-                      <LinkActions url={url} qrTitle={`Portal Zarządu — ${building.name}`} onShowQr={setQrTarget} />
-                    </li>
-                  );
-                })}
-              </ul>
+              <p className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
+                Brak tokenu portalu Zarządu. Odśwież stronę po migracji bazy lub zapisz dane wspólnoty ponownie.
+              </p>
             )}
           </section>
         </CardContent>
@@ -145,6 +165,30 @@ export function CommunityBoardDisplayLinkCard({ communityId, buildings }: Props)
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmRotateOpen} onOpenChange={(open) => !open && setConfirmRotateOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Zresetować link portalu Zarządu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Poprzedni link wspólnoty przestanie działać natychmiast. Udostępnij nowy adres członkom zarządu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rotate.isPending}>Anuluj</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={rotate.isPending}
+              onClick={() => {
+                void rotate.mutateAsync().then(() => setConfirmRotateOpen(false));
+              }}
+            >
+              {rotate.isPending ? "Zapisywanie…" : "Zresetuj"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

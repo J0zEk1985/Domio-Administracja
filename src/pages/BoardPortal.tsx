@@ -91,7 +91,7 @@ export default function BoardPortal() {
             <CardHeader>
               <CardTitle className="text-base">Link wygasł lub został zresetowany</CardTitle>
               <CardDescription>
-                Poproś administratora wspólnoty o nowy adres Portalu Zarządu z karty budynku.
+                Poproś administratora wspólnoty o nowy adres Portalu Zarządu z karty wspólnoty (zakładka Podstawowe).
               </CardDescription>
             </CardHeader>
           </Card>
@@ -102,14 +102,17 @@ export default function BoardPortal() {
                 <Building2 className="mt-0.5 h-5 w-5 text-primary" aria-hidden />
                 <div>
                   <h2 className="text-xl font-semibold leading-tight">
-                    {data.property.name?.trim() || "Budynek"}
+                    {data.property.name?.trim() || data.property.community_name?.trim() || "Wspólnota"}
                   </h2>
+                  {data.property.community_name?.trim() &&
+                  data.property.community_name.trim() !== (data.property.name ?? "").trim() ? (
+                    <p className="text-sm text-foreground/80">{data.property.community_name}</p>
+                  ) : null}
                   {data.property.address?.trim() ? (
                     <p className="text-sm text-muted-foreground">{data.property.address}</p>
-                  ) : null}
-                  {data.property.community_name?.trim() ? (
-                    <p className="mt-1 text-sm text-foreground/80">{data.property.community_name}</p>
-                  ) : null}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Widok dla całej wspólnoty</p>
+                  )}
                 </div>
               </div>
             </section>
@@ -149,7 +152,7 @@ export default function BoardPortal() {
                   <AlertTriangle className="h-4 w-4" aria-hidden />
                   Otwarte zgłoszenia
                 </CardTitle>
-                <CardDescription>Usterki i sprawy w toku dla tego budynku.</CardDescription>
+                <CardDescription>Usterki i sprawy w toku dla całej wspólnoty.</CardDescription>
               </CardHeader>
               <CardContent>
                 {data.issues.length === 0 ? (
@@ -167,6 +170,11 @@ export default function BoardPortal() {
                         </div>
                         <p className="mt-1 text-sm font-medium">
                           {issue.category?.trim() || "Zgłoszenie"}
+                          {issue.location_name?.trim() ? (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              {issue.location_name}
+                            </span>
+                          ) : null}
                         </p>
                         {issue.description.trim() ? (
                           <p className="mt-0.5 text-sm text-muted-foreground">{issue.description}</p>
@@ -196,7 +204,14 @@ export default function BoardPortal() {
                   <ul className="space-y-3">
                     {data.tasks.map((task) => (
                       <li key={task.id} className="flex flex-col gap-1 rounded-md border border-border/60 p-3">
-                        <p className="text-sm font-medium">{task.title}</p>
+                        <p className="text-sm font-medium">
+                          {task.title}
+                          {task.location_name?.trim() ? (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              {task.location_name}
+                            </span>
+                          ) : null}
+                        </p>
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                           <span>{taskStatusLabel(task.status)}</span>
                           <span>·</span>

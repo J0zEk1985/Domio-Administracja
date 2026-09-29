@@ -228,11 +228,24 @@ export default function CommunityDetails() {
       </div>
 
       <CollapsibleSection title="Podstawowe">
-        <CommunityDomainEditor community={community} orgId={orgId} readOnly={inactive} />
-        {orgId ? (
-          <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
-        ) : null}
-        <CommunityBoardDisplayLinkCard communityId={communityId} buildings={assigned} />
+        <CommunityDomainEditor
+          community={community}
+          orgId={orgId}
+          readOnly={inactive}
+          coreExtra={
+            <CommunityBoardDisplayLinkCard
+              communityId={communityId}
+              orgId={orgId}
+              boardPortalToken={community.board_portal_token ?? ""}
+              canManage={!inactive}
+            />
+          }
+          homeBoard={
+            orgId ? (
+              <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
+            ) : null
+          }
+        />
 
         <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -364,7 +377,9 @@ export default function CommunityDetails() {
           <TabsContent value="announcements" className="mt-4">
             <CommunityAnnouncementReviewTab
               communityId={communityId!}
+              communityName={community.name}
               buildingIds={buildingIds}
+              buildings={assigned}
               canManage={!inactive}
             />
           </TabsContent>

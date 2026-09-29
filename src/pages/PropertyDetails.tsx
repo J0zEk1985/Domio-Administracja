@@ -24,7 +24,6 @@ import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
-import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
 import { PropertyAutomationsTab } from "@/components/property/PropertyAutomationsTab";
 import { PropertyLocalInspectionsTab } from "@/components/property/PropertyLocalInspectionsTab";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
@@ -184,11 +183,6 @@ export default function PropertyDetails() {
         <TabsContent value="general" className="mt-6 space-y-6">
           <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
           <PropertySerwisQrAccessCard
-            property={property}
-            canManage={portalAccessQuery.data === true}
-            accessPending={portalAccessQuery.isLoading}
-          />
-          <PropertyExternalAccessCard
             property={property}
             canManage={portalAccessQuery.data === true}
             accessPending={portalAccessQuery.isLoading}

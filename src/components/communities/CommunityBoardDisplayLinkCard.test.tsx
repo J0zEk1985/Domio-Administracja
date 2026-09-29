@@ -1,16 +1,26 @@
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
 import { CommunityBoardDisplayLinkCard } from "@/components/communities/CommunityBoardDisplayLinkCard";
 
-describe("CommunityBoardDisplayLinkCard", () => {
-  it("keeps the announcement display and the board portal as two separate views", () => {
-    render(
+function renderCard() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
       <CommunityBoardDisplayLinkCard
         communityId="community-1"
-        buildings={[{ id: "building-1", name: "Pienista 51", boardPortalToken: "portal-token-1" }]}
-      />,
-    );
+        orgId="org-1"
+        boardPortalToken="portal-token-1"
+        canManage
+      />
+    </QueryClientProvider>,
+  );
+}
+
+describe("CommunityBoardDisplayLinkCard", () => {
+  it("keeps the announcement display and a single community board portal as two separate views", () => {
+    renderCard();
 
     const displayUrl = screen.getByText(/\/display\/community-1$/);
     const portalUrl = screen.getByText(/\/portal\/board\/portal-token-1$/);
@@ -21,5 +31,6 @@ describe("CommunityBoardDisplayLinkCard", () => {
     expect(portalUrl).toBeVisible();
     expect(displayUrl.textContent).not.toContain("/portal/board/");
     expect(portalUrl.textContent).not.toContain("/display/");
+    expect(screen.queryByText(/Pienista/)).not.toBeInTheDocument();
   });
 });

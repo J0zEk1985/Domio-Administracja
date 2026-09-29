@@ -118,6 +118,43 @@ export function useDeactivateCommunity() {
   });
 }
 
+export function useRotateCommunityBoardToken(communityId: string | undefined, orgId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!communityId?.trim() || !orgId?.trim()) {
+        throw new Error("Brak identyfikatora wspólnoty.");
+      }
+      const next = crypto.randomUUID();
+      const { error } = await supabase
+        .from("communities")
+        .update({ board_portal_token: next })
+        .eq("id", communityId)
+        .eq("org_id", orgId);
+
+      if (error) {
+        console.error("[useRotateCommunityBoardToken] update:", error);
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      if (communityId) {
+        await queryClient.invalidateQueries({ queryKey: communityQueryKeys.detail(communityId) });
+      }
+      if (orgId) {
+        await queryClient.invalidateQueries({ queryKey: communityQueryKeys.list(orgId) });
+      }
+      toast.success("Wygenerowano nowy link portalu Zarządu.");
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Nie udało się zresetować linku.";
+      toast.error(msg);
+      console.error("[useRotateCommunityBoardToken]", err);
+    },
+  });
+}
+
 export function useUpdateCommunity() {
   const queryClient = useQueryClient();
 
