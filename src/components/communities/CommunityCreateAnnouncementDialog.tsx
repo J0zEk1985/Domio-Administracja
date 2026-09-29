@@ -1,13 +1,11 @@
 import { useEffect } from "react";
 import { format, isValid, parseISO } from "date-fns";
-import { pl } from "date-fns/locale";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { z } from "zod";
+import { Loader2 } from "lucide-react";
 
+import { EBoardMessageFormFields } from "@/components/eboard/EBoardMessageFormFields";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -16,260 +14,189 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Form } from "@/components/ui/form";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+  useCreateEBoardMessage,
+  useUpdateEBoardMessage,
+  type EBoardMessageListItem,
+} from "@/hooks/useEBoardMessages";
+import { useLocationsByCommunity, type CommunityLocationRow } from "@/hooks/useProperties";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useCreateEBoardMessage } from "@/hooks/useEBoardMessages";
-import type { CommunityLocationRow } from "@/hooks/useProperties";
-import { cn } from "@/lib/utils";
+  EBOARD_DEFAULT_BG,
+  EBOARD_DEFAULT_TEXT,
+  isHexColor,
+} from "@/lib/eboardDisplayColors";
+import {
+  eboardMessageFormDefaults,
+  eboardMessageFormSchema,
+  storedDisplayColor,
+  type EboardMessageFormValues,
+} from "@/lib/eboardMessageForm";
 
-const schema = z.object({
-  title: z.string().min(3, "Minimum 3 znaki."),
-  content: z.string().min(10, "Minimum 10 znaków."),
-  msg_type: z.enum(["official", "advertisement", "resident"]),
-  location_id: z.string().optional(),
-  valid_until: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
+type CommunityOption = { id: string; name: string };
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  communityId: string;
-  communityName: string;
-  buildings: CommunityLocationRow[];
+  communityId?: string;
+  communityName?: string;
+  communities?: CommunityOption[];
+  buildings?: CommunityLocationRow[];
+  message?: EBoardMessageListItem | null;
 };
+
+function dateInputFromIso(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  try {
+    const d = parseISO(iso);
+    if (!isValid(d)) return "";
+    return format(d, "yyyy-MM-dd");
+  } catch {
+    return "";
+  }
+}
+
+function valuesFromMessage(
+  message: EBoardMessageListItem | null | undefined,
+  fallbackCommunityId: string,
+): EboardMessageFormValues {
+  if (!message) {
+    return { ...eboardMessageFormDefaults, community_id: fallbackCommunityId };
+  }
+  return {
+    title: message.title,
+    content: message.content,
+    msg_type: message.msg_type,
+    community_id: message.community_id ?? fallbackCommunityId,
+    location_id: message.location_id ?? "",
+    valid_until: dateInputFromIso(message.valid_until),
+    display_bg_color: isHexColor(message.display_bg_color)
+      ? message.display_bg_color
+      : EBOARD_DEFAULT_BG,
+    display_text_color: isHexColor(message.display_text_color)
+      ? message.display_text_color
+      : EBOARD_DEFAULT_TEXT,
+  };
+}
 
 export function CommunityCreateAnnouncementDialog({
   open,
   onOpenChange,
   communityId,
   communityName,
-  buildings,
+  communities,
+  buildings: buildingsProp,
+  message,
 }: Props) {
   const createMut = useCreateEBoardMessage();
+  const updateMut = useUpdateEBoardMessage();
+  const isEdit = Boolean(message?.id);
+  const pending = createMut.isPending || updateMut.isPending;
+  const lockedCommunityId = communityId?.trim() || "";
+  const showCommunitySelect = !lockedCommunityId && (communities?.length ?? 0) > 0;
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      title: "",
-      content: "",
-      msg_type: "official",
-      location_id: "",
-      valid_until: "",
-    },
+  const form = useForm<EboardMessageFormValues>({
+    resolver: zodResolver(eboardMessageFormSchema),
+    defaultValues: valuesFromMessage(message, lockedCommunityId),
   });
 
-  useEffect(() => {
-    if (!open) {
-      form.reset({
-        title: "",
-        content: "",
-        msg_type: "official",
-        location_id: "",
-        valid_until: "",
-      });
-    }
-  }, [open, form]);
+  const watchedCommunityId = form.watch("community_id");
+  const fetchCommunityId = lockedCommunityId || watchedCommunityId;
 
-  function onSubmit(values: FormValues) {
+  const { data: fetchedBuildings = [], isLoading: buildingsLoading } = useLocationsByCommunity(
+    fetchCommunityId || undefined,
+    { enabled: open && Boolean(fetchCommunityId) && !buildingsProp },
+  );
+  const buildings = buildingsProp ?? fetchedBuildings;
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset(valuesFromMessage(message, lockedCommunityId));
+  }, [open, message, lockedCommunityId, form]);
+
+  useEffect(() => {
+    if (lockedCommunityId || isEdit) return;
+    form.setValue("location_id", "");
+  }, [watchedCommunityId, lockedCommunityId, isEdit, form]);
+
+  function onSubmit(values: EboardMessageFormValues) {
+    const resolvedCommunityId = lockedCommunityId || values.community_id;
     const locationId =
       values.location_id && values.location_id.trim() !== "" ? values.location_id.trim() : null;
     const validUntil =
       values.valid_until && values.valid_until.trim() !== "" ? values.valid_until.trim() : null;
+    const display_bg_color = storedDisplayColor(values.display_bg_color);
+    const display_text_color = storedDisplayColor(values.display_text_color);
+
+    if (isEdit && message) {
+      updateMut.mutate(
+        {
+          id: message.id,
+          community_id: resolvedCommunityId,
+          updates: {
+            title: values.title.trim(),
+            content: values.content.trim(),
+            msg_type: values.msg_type,
+            community_id: resolvedCommunityId,
+            location_id: locationId,
+            valid_until: validUntil,
+            display_bg_color,
+            display_text_color,
+          },
+        },
+        { onSuccess: () => onOpenChange(false) },
+      );
+      return;
+    }
+
     createMut.mutate(
       {
         title: values.title,
         content: values.content,
         msg_type: values.msg_type,
-        community_id: communityId,
+        community_id: resolvedCommunityId,
         location_id: locationId,
         valid_until: validUntil,
+        display_bg_color,
+        display_text_color,
       },
-      {
-        onSuccess: () => onOpenChange(false),
-      },
+      { onSuccess: () => onOpenChange(false) },
     );
   }
+
+  const description = isEdit
+    ? "Zmiany będą widoczne na tablicy ogłoszeń budynku."
+    : communityName
+      ? `Ogłoszenie dla wspólnoty ${communityName}. Budynek jest opcjonalny — bez niego komunikat obejmuje całą wspólnotę.`
+      : "Uzupełnij treść i zasięg. Budynek jest opcjonalny — bez niego komunikat obejmuje całą wspólnotę.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nowe ogłoszenie</DialogTitle>
-          <DialogDescription>
-            Ogłoszenie dla wspólnoty {communityName}. Budynek jest opcjonalny — bez niego komunikat
-            obejmuje całą wspólnotę.
-          </DialogDescription>
+          <DialogTitle>{isEdit ? "Edytuj ogłoszenie" : "Nowe ogłoszenie"}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tytuł</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Krótki nagłówek" disabled={createMut.isPending} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="content"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Treść</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      rows={6}
-                      placeholder="Treść ogłoszenia…"
-                      disabled={createMut.isPending}
-                      className="resize-none"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="msg_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Typ ogłoszenia</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={createMut.isPending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="official">Oficjalne</SelectItem>
-                      <SelectItem value="advertisement">Reklama</SelectItem>
-                      <SelectItem value="resident">Mieszkaniec</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="location_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Budynek (opcjonalnie)</FormLabel>
-                  <Select
-                    onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                    value={field.value && field.value !== "" ? field.value : "__none__"}
-                    disabled={createMut.isPending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Cała wspólnota" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="__none__">Cała wspólnota (bez budynku)</SelectItem>
-                      {buildings.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.name} — {b.address}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="valid_until"
-              render={({ field }) => {
-                const parsed = field.value ? parseISO(field.value) : undefined;
-                const selected = parsed && isValid(parsed) ? parsed : undefined;
-                return (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Ważne do (opcjonalnie)</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={createMut.isPending}
-                            className={cn(
-                              "h-10 w-full justify-start pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground",
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
-                            {selected
-                              ? format(selected, "d MMM yyyy", { locale: pl })
-                              : "Wybierz datę"}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selected}
-                          onSelect={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
-                          locale={pl}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+            <EBoardMessageFormFields
+              form={form}
+              pending={pending}
+              showCommunitySelect={showCommunitySelect}
+              communities={communities ?? []}
+              fetchCommunityId={fetchCommunityId}
+              buildings={buildings}
+              buildingsLoading={!buildingsProp && buildingsLoading}
             />
 
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={createMut.isPending}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
                 Anuluj
               </Button>
-              <Button type="submit" disabled={createMut.isPending}>
-                {createMut.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                ) : null}
-                Opublikuj
+              <Button type="submit" disabled={pending}>
+                {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
+                {isEdit ? "Zapisz" : "Opublikuj"}
               </Button>
             </DialogFooter>
           </form>

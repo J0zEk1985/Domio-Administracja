@@ -76,12 +76,24 @@ function LinkActions({
 export function CommunityBoardDisplayLinkCard({ communityId, orgId, boardPortalToken, canManage = false }: Props) {
   const [qrTarget, setQrTarget] = useState<QrTarget | null>(null);
   const [confirmRotateOpen, setConfirmRotateOpen] = useState(false);
+  const [tokenOverride, setTokenOverride] = useState<string | null>(null);
   const rotate = useRotateCommunityBoardToken(communityId, orgId);
+  const token = (tokenOverride ?? boardPortalToken).trim();
   const displayUrl = useMemo(() => `${portalBaseUrl()}/display/${communityId}`, [communityId]);
   const boardUrl = useMemo(
-    () => (boardPortalToken ? `${portalBaseUrl()}/portal/board/${boardPortalToken}` : ""),
-    [boardPortalToken],
+    () => (token ? `${portalBaseUrl()}/portal/board/${token}` : ""),
+    [token],
   );
+
+  async function onRotate() {
+    try {
+      const next = await rotate.mutateAsync();
+      setTokenOverride(next);
+      setConfirmRotateOpen(false);
+    } catch {
+      /* toast w hooku */
+    }
+  }
 
   return (
     <>
@@ -142,9 +154,20 @@ export function CommunityBoardDisplayLinkCard({ communityId, orgId, boardPortalT
                 </div>
               </>
             ) : (
-              <p className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
-                Brak tokenu portalu Zarządu. Odśwież stronę po migracji bazy lub zapisz dane wspólnoty ponownie.
-              </p>
+              <>
+                <p className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
+                  Brak linku portalu Zarządu. Wygeneruj go, aby uzyskać te same akcje co przy tablicy ogłoszeń (kopiowanie,
+                  kod QR, otwarcie strony).
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canManage || rotate.isPending}
+                  onClick={() => void onRotate()}
+                >
+                  {rotate.isPending ? "Zapisywanie…" : "Wygeneruj link"}
+                </Button>
+              </>
             )}
           </section>
         </CardContent>
@@ -180,9 +203,7 @@ export function CommunityBoardDisplayLinkCard({ communityId, orgId, boardPortalT
               type="button"
               variant="destructive"
               disabled={rotate.isPending}
-              onClick={() => {
-                void rotate.mutateAsync().then(() => setConfirmRotateOpen(false));
-              }}
+              onClick={() => void onRotate()}
             >
               {rotate.isPending ? "Zapisywanie…" : "Zresetuj"}
             </Button>

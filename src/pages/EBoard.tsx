@@ -1,34 +1,12 @@
 import { useEffect, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarIcon, Copy, Loader2 } from "lucide-react";
-import { z } from "zod";
+import { Copy, Pencil } from "lucide-react";
 
-import { supabase } from "@/lib/supabase";
-import { useCommunities } from "@/hooks/useCommunities";
-import {
-  useCreateEBoardMessage,
-  useEBoardMessages,
-  type EBoardMessageListItem,
-} from "@/hooks/useEBoardMessages";
-import { useLocationsByCommunity } from "@/hooks/useProperties";
-import type { Database } from "@/types/supabase";
+import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -36,15 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/sonner";
 import {
   Table,
   TableBody,
@@ -53,9 +24,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { toast } from "@/components/ui/sonner";
+import { useCommunities } from "@/hooks/useCommunities";
+import { useEBoardMessages, type EBoardMessageListItem } from "@/hooks/useEBoardMessages";
+import {
+  EBOARD_DEFAULT_BG,
+  EBOARD_DEFAULT_TEXT,
+  isHexColor,
+} from "@/lib/eboardDisplayColors";
+import { supabase } from "@/lib/supabase";
+import type { Database } from "@/types/supabase";
 
 type EboardMsgType = Database["public"]["Enums"]["eboard_msg_type"];
 type EboardMsgStatus = Database["public"]["Enums"]["eboard_msg_status"];
@@ -111,16 +88,20 @@ function MsgTypeBadge({ type }: { type: EboardMsgType }) {
   );
 }
 
-const newMessageSchema = z.object({
-  title: z.string().min(3, "Minimum 3 znaki."),
-  content: z.string().min(10, "Minimum 10 znaków."),
-  msg_type: z.enum(["official", "advertisement", "resident"]),
-  community_id: z.string().uuid("Wybierz wspólnotę."),
-  location_id: z.string().optional(),
-  valid_until: z.string().optional(),
-});
-
-type NewMessageFormValues = z.infer<typeof newMessageSchema>;
+function ColorSwatch({ bg, text }: { bg: string | null; text: string | null }) {
+  const background = isHexColor(bg) ? bg : EBOARD_DEFAULT_BG;
+  const foreground = isHexColor(text) ? text : EBOARD_DEFAULT_TEXT;
+  return (
+    <span
+      className="inline-flex h-5 w-8 shrink-0 overflow-hidden rounded border border-border"
+      title={`Tło ${background}, napisy ${foreground}`}
+      aria-hidden
+    >
+      <span className="h-full w-1/2" style={{ backgroundColor: background }} />
+      <span className="h-full w-1/2" style={{ backgroundColor: foreground }} />
+    </span>
+  );
+}
 
 export default function EBoard() {
   const { data: orgId, isLoading: orgLoading } = useQuery({
@@ -130,33 +111,10 @@ export default function EBoard() {
 
   const { data: rows, isPending, isError } = useEBoardMessages(orgId ?? null);
   const { data: communities = [] } = useCommunities(orgId ?? null);
-  const createMut = useCreateEBoardMessage();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<EBoardMessageListItem | null>(null);
   const [displayLinkCommunityId, setDisplayLinkCommunityId] = useState("");
-
-  const form = useForm<NewMessageFormValues>({
-    resolver: zodResolver(newMessageSchema),
-    defaultValues: {
-      title: "",
-      content: "",
-      msg_type: "official",
-      community_id: "",
-      location_id: "",
-      valid_until: "",
-    },
-  });
-
-  const communityId = form.watch("community_id");
-
-  const { data: communityBuildings = [], isLoading: buildingsLoading } = useLocationsByCommunity(
-    communityId || undefined,
-    { enabled: dialogOpen && Boolean(communityId) },
-  );
-
-  useEffect(() => {
-    form.setValue("location_id", "");
-  }, [communityId, form]);
 
   useEffect(() => {
     if (communities.length > 0 && !displayLinkCommunityId) {
@@ -164,53 +122,14 @@ export default function EBoard() {
     }
   }, [communities, displayLinkCommunityId]);
 
-  useEffect(() => {
-    if (!dialogOpen) {
-      form.reset({
-        title: "",
-        content: "",
-        msg_type: "official",
-        community_id: "",
-        location_id: "",
-        valid_until: "",
-      });
-    }
-  }, [dialogOpen, form]);
-
-  function onSubmit(values: NewMessageFormValues) {
-    if (!orgId) return;
-    const locationId =
-      values.location_id && values.location_id.trim() !== "" ? values.location_id.trim() : null;
-    const validUntil =
-      values.valid_until && values.valid_until.trim() !== "" ? values.valid_until.trim() : null;
-    createMut.mutate(
-      {
-        title: values.title,
-        content: values.content,
-        msg_type: values.msg_type,
-        community_id: values.community_id,
-        location_id: locationId,
-        valid_until: validUntil,
-      },
-      {
-        onSuccess: () => setDialogOpen(false),
-      },
-    );
+  function openCreate() {
+    setEditing(null);
+    setDialogOpen(true);
   }
 
-  if (orgLoading) {
-    return (
-      <div className="flex-1 space-y-4 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
-  }
-
-  if (!orgId) {
-    return (
-      <div className="flex-1 p-6 text-sm text-muted-foreground">Brak kontekstu organizacji.</div>
-    );
+  function openEdit(row: EBoardMessageListItem) {
+    setEditing(row);
+    setDialogOpen(true);
   }
 
   function copyDisplayUrlToClipboard() {
@@ -229,6 +148,21 @@ export default function EBoard() {
         console.error("[EBoard] clipboard:", e);
         toast.error("Nie udało się skopiować linku.");
       });
+  }
+
+  if (orgLoading) {
+    return (
+      <div className="flex-1 space-y-4 p-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (!orgId) {
+    return (
+      <div className="flex-1 p-6 text-sm text-muted-foreground">Brak kontekstu organizacji.</div>
+    );
   }
 
   return (
@@ -270,7 +204,7 @@ export default function EBoard() {
               </Button>
             </div>
           ) : null}
-          <Button type="button" onClick={() => setDialogOpen(true)}>
+          <Button type="button" onClick={openCreate}>
             + Nowe ogłoszenie
           </Button>
         </div>
@@ -295,31 +229,47 @@ export default function EBoard() {
                   <TableHead>Zasięg</TableHead>
                   <TableHead>Ważne do</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-[72px] text-right">Akcje</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(rows ?? []).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                       Brak ogłoszeń.
                     </TableCell>
                   </TableRow>
                 ) : (
                   (rows ?? []).map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="max-w-[220px] font-medium">
-                        <span className="line-clamp-2">{row.title}</span>
+                      <TableCell className="max-w-[240px] font-medium">
+                        <span className="flex items-start gap-2">
+                          <ColorSwatch bg={row.display_bg_color} text={row.display_text_color} />
+                          <span className="line-clamp-2">{row.title}</span>
+                        </span>
                       </TableCell>
                       <TableCell>
                         <MsgTypeBadge type={row.msg_type} />
                       </TableCell>
                       <TableCell className="text-muted-foreground">{scopeLabel(row)}</TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {row.valid_until
+                        {row.valid_until && isValid(parseISO(row.valid_until))
                           ? format(parseISO(row.valid_until), "d MMM yyyy", { locale: pl })
                           : "—"}
                       </TableCell>
                       <TableCell>{formatStatus(row.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`Edytuj ogłoszenie ${row.title}`}
+                          onClick={() => openEdit(row)}
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -329,209 +279,15 @@ export default function EBoard() {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nowe ogłoszenie</DialogTitle>
-            <DialogDescription>
-              Uzupełnij treść i zasięg. Budynek jest opcjonalny — bez niego komunikat obejmuje całą wspólnotę.
-            </DialogDescription>
-          </DialogHeader>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tytuł</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Krótki nagłówek" disabled={createMut.isPending} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Treść</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        rows={6}
-                        placeholder="Treść ogłoszenia…"
-                        disabled={createMut.isPending}
-                        className="resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="msg_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Typ ogłoszenia</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={createMut.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="official">Oficjalne</SelectItem>
-                        <SelectItem value="advertisement">Reklama</SelectItem>
-                        <SelectItem value="resident">Mieszkaniec</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="community_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Wspólnota</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value || undefined}
-                      disabled={createMut.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Wybierz wspólnotę" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {communities.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Budynek (opcjonalnie)</FormLabel>
-                    <Select
-                      onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                      value={field.value && field.value !== "" ? field.value : "__none__"}
-                      disabled={createMut.isPending || !communityId || buildingsLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              !communityId
-                                ? "Najpierw wybierz wspólnotę"
-                                : buildingsLoading
-                                  ? "Wczytywanie…"
-                                  : "Cała wspólnota"
-                            }
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">Cała wspólnota (bez budynku)</SelectItem>
-                        {communityBuildings.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name} — {b.address}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="valid_until"
-                render={({ field }) => {
-                  const parsed = field.value ? parseISO(field.value) : undefined;
-                  const selected = parsed && isValid(parsed) ? parsed : undefined;
-                  return (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Ważne do (opcjonalnie)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={createMut.isPending}
-                              className={cn(
-                                "h-10 w-full justify-start pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
-                              {selected
-                                ? format(selected, "d MMM yyyy", { locale: pl })
-                                : "Wybierz datę"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={selected}
-                            onSelect={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
-                            locale={pl}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                  disabled={createMut.isPending}
-                >
-                  Anuluj
-                </Button>
-                <Button type="submit" disabled={createMut.isPending}>
-                  {createMut.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
-                  Opublikuj
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      <CommunityCreateAnnouncementDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditing(null);
+        }}
+        communities={communities.map((c) => ({ id: c.id, name: c.name }))}
+        message={editing}
+      />
     </div>
   );
 }

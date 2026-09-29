@@ -6,6 +6,7 @@ import { Moon, Sun } from "lucide-react";
 
 import { useEBoardMessagesForDisplay, type EBoardDisplayItem } from "@/hooks/useEBoardMessages";
 import { Button } from "@/components/ui/button";
+import { isDarkHex, resolveEBoardDisplayColors } from "@/lib/eboardDisplayColors";
 import { cn } from "@/lib/utils";
 
 const SLIDE_MS = 10_000;
@@ -49,16 +50,29 @@ export default function EBoardDisplay() {
   }, [list.length]);
 
   const current = list[index];
-
-  const shell = theme === "dark" ? "bg-zinc-950 text-zinc-50" : "bg-zinc-50 text-zinc-950";
+  const colors = resolveEBoardDisplayColors(
+    current?.display_bg_color,
+    current?.display_text_color,
+    theme,
+  );
+  const darkSlide = isDarkHex(colors.bg);
+  const accent = darkSlide ? "text-emerald-400/90" : "text-emerald-700";
+  const hasSlide = Boolean(current) && !isPending && !isError;
 
   return (
     <div
-      className={cn(
-        "relative flex min-h-dvh min-h-screen flex-col transition-colors duration-500",
-        shell,
-      )}
+      className="relative flex min-h-dvh min-h-screen flex-col transition-colors duration-500"
+      style={hasSlide ? { backgroundColor: colors.bg, color: colors.text } : undefined}
     >
+      {!hasSlide ? (
+        <div
+          className={cn(
+            "absolute inset-0 -z-10",
+            theme === "dark" ? "bg-zinc-950 text-zinc-50" : "bg-zinc-50 text-zinc-950",
+          )}
+        />
+      ) : null}
+
       <div className="absolute right-4 top-4 z-20 flex gap-2">
         <Button
           type="button"
@@ -66,7 +80,9 @@ export default function EBoardDisplay() {
           variant="secondary"
           className={cn(
             "h-11 w-11 rounded-full border shadow-md backdrop-blur",
-            theme === "dark" ? "border-white/10 bg-black/30 text-zinc-100" : "border-black/10 bg-white/80",
+            darkSlide || (!hasSlide && theme === "dark")
+              ? "border-white/10 bg-black/30 text-zinc-100"
+              : "border-black/10 bg-white/80",
           )}
           onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
           aria-label={theme === "dark" ? "Włącz tryb jasny" : "Włącz tryb ciemny"}
@@ -75,7 +91,12 @@ export default function EBoardDisplay() {
         </Button>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 md:px-16">
+      <div
+        className={cn(
+          "flex flex-1 flex-col items-center justify-center px-6 py-16 md:px-16",
+          !hasSlide && (theme === "dark" ? "text-zinc-50" : "text-zinc-950"),
+        )}
+      >
         {isPending ? (
           <div className="max-w-4xl space-y-4 text-center">
             <div className="mx-auto h-3 w-48 animate-pulse rounded-full bg-white/10" />
@@ -106,29 +127,14 @@ export default function EBoardDisplay() {
             className="w-full max-w-5xl animate-in fade-in duration-700"
             aria-live="polite"
           >
-            <p
-              className={cn(
-                "mb-3 text-center text-xs font-medium uppercase tracking-[0.2em]",
-                theme === "dark" ? "text-emerald-400/90" : "text-emerald-700",
-              )}
-            >
+            <p className={cn("mb-3 text-center text-xs font-medium uppercase tracking-[0.2em]", accent)}>
               {formatMsgType(current.msg_type)}
               {formatValidUntil(current.valid_until) ? ` · ważne do ${formatValidUntil(current.valid_until)}` : ""}
             </p>
-            <h1
-              className={cn(
-                "text-center font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl",
-                theme === "dark" ? "text-white" : "text-zinc-900",
-              )}
-            >
+            <h1 className="text-center font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
               {current.title?.trim() || "Ogłoszenie"}
             </h1>
-            <div
-              className={cn(
-                "mx-auto mt-10 max-h-[min(50vh,520px)] overflow-y-auto text-pretty text-center text-xl leading-relaxed md:text-2xl md:leading-relaxed",
-                theme === "dark" ? "text-zinc-300" : "text-zinc-700",
-              )}
-            >
+            <div className="mx-auto mt-10 max-h-[min(50vh,520px)] overflow-y-auto text-pretty text-center text-xl leading-relaxed opacity-85 md:text-2xl md:leading-relaxed">
               {current.content?.trim().split("\n").map((para, i) => (
                 <p key={i} className={i > 0 ? "mt-6" : ""}>
                   {para}
@@ -141,15 +147,17 @@ export default function EBoardDisplay() {
 
       {list.length > 1 ? (
         <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2">
-          {list.map((_, i) => (
+          {list.map((item, i) => (
             <button
-              key={i}
+              key={item.id}
               type="button"
               aria-label={`Slajd ${i + 1} z ${list.length}`}
-              className={cn(
-                "h-2.5 rounded-full transition-all",
-                i === index ? "w-10 bg-emerald-500" : "w-2.5 bg-white/25 hover:bg-white/40",
-              )}
+              className="h-2.5 rounded-full transition-all"
+              style={{
+                width: i === index ? 40 : 10,
+                backgroundColor: colors.text,
+                opacity: i === index ? 0.9 : 0.28,
+              }}
               onClick={() => setIndex(i)}
             />
           ))}
@@ -157,12 +165,16 @@ export default function EBoardDisplay() {
       ) : null}
 
       <footer
-        className={cn(
-          "pointer-events-none py-4 text-center text-[11px] tabular-nums",
-          theme === "dark" ? "text-white/35" : "text-zinc-500",
-        )}
+        className="pointer-events-none py-4 text-center text-[11px] tabular-nums"
+        style={hasSlide ? { color: colors.text, opacity: 0.4 } : undefined}
       >
-        {new Date().toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" })}
+        <span
+          className={cn(
+            hasSlide ? "" : theme === "dark" ? "text-white/35" : "text-zinc-500",
+          )}
+        >
+          {new Date().toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" })}
+        </span>
       </footer>
     </div>
   );

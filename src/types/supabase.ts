@@ -908,7 +908,9 @@ export type Database = {
           content: string
           created_at: string | null
           created_by: string | null
+          display_bg_color: string | null
           display_from: string | null
+          display_text_color: string | null
           display_until: string | null
           id: string
           is_active: boolean | null
@@ -926,7 +928,9 @@ export type Database = {
           content: string
           created_at?: string | null
           created_by?: string | null
+          display_bg_color?: string | null
           display_from?: string | null
+          display_text_color?: string | null
           display_until?: string | null
           id?: string
           is_active?: boolean | null
@@ -944,7 +948,9 @@ export type Database = {
           content?: string
           created_at?: string | null
           created_by?: string | null
+          display_bg_color?: string | null
           display_from?: string | null
+          display_text_color?: string | null
           display_until?: string | null
           id?: string
           is_active?: boolean | null
@@ -3844,6 +3850,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      rotate_community_board_portal_token: {
+        Args: { p_community_id: string }
+        Returns: string
+      }
       get_community_estate: {
         Args: { p_community_id: string }
         Returns: {
@@ -4078,7 +4088,9 @@ export type Database = {
         Returns: {
           content: string
           created_at: string
+          display_bg_color: string | null
           display_from: string
+          display_text_color: string | null
           display_until: string
           id: string
           msg_type: Database["public"]["Enums"]["eboard_msg_type"]

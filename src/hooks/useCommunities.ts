@@ -122,21 +122,22 @@ export function useRotateCommunityBoardToken(communityId: string | undefined, or
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<string> => {
       if (!communityId?.trim() || !orgId?.trim()) {
         throw new Error("Brak identyfikatora wspólnoty.");
       }
-      const next = crypto.randomUUID();
-      const { error } = await supabase
-        .from("communities")
-        .update({ board_portal_token: next })
-        .eq("id", communityId)
-        .eq("org_id", orgId);
-
+      const { data, error } = await supabase.rpc("rotate_community_board_portal_token", {
+        p_community_id: communityId,
+      });
       if (error) {
-        console.error("[useRotateCommunityBoardToken] update:", error);
+        console.error("[useRotateCommunityBoardToken] rpc:", error);
         throw error;
       }
+      const token = typeof data === "string" ? data.trim() : "";
+      if (!token) {
+        throw new Error("Serwer nie zwrócił nowego tokenu portalu Zarządu.");
+      }
+      return token;
     },
     onSuccess: async () => {
       if (communityId) {

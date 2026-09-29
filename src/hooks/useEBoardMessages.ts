@@ -22,7 +22,16 @@ export const eBoardDisplayQueryKey = (communityId: string) =>
 
 export type EBoardDisplayItem = Pick<
   EBoardRow,
-  "id" | "title" | "content" | "msg_type" | "valid_until" | "display_from" | "display_until" | "created_at"
+  | "id"
+  | "title"
+  | "content"
+  | "msg_type"
+  | "valid_until"
+  | "display_from"
+  | "display_until"
+  | "created_at"
+  | "display_bg_color"
+  | "display_text_color"
 >;
 
 /** Public kiosk: published messages for one community via token-scoped RPC. */
@@ -119,6 +128,8 @@ export type CreateEBoardMessageInput = {
   community_id: string;
   location_id: string | null;
   valid_until: string | null;
+  display_bg_color: string;
+  display_text_color: string;
 };
 
 export function useCreateEBoardMessage() {
@@ -155,6 +166,8 @@ export function useCreateEBoardMessage() {
         community_id: input.community_id,
         location_id: input.location_id,
         valid_until: input.valid_until,
+        display_bg_color: input.display_bg_color,
+        display_text_color: input.display_text_color,
         status: "published",
         is_active: true,
         created_by: user.id,
@@ -185,6 +198,7 @@ export function useCreateEBoardMessage() {
 
 export type UpdateEBoardMessageInput = {
   id: string;
+  community_id: string;
   updates: Pick<
     EBoardUpdate,
     | "title"
@@ -195,6 +209,8 @@ export type UpdateEBoardMessageInput = {
     | "valid_until"
     | "status"
     | "is_active"
+    | "display_bg_color"
+    | "display_text_color"
   >;
 };
 
@@ -223,11 +239,13 @@ export function useUpdateEBoardMessage() {
         throw error;
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, input) => {
       const { data: orgId } = await supabase.rpc("get_my_org_id_safe");
       if (orgId) {
         await qc.invalidateQueries({ queryKey: eBoardMessagesQueryKey(String(orgId)) });
       }
+      await qc.invalidateQueries({ queryKey: eBoardMessagesForCommunityQueryKey(input.community_id) });
+      await qc.invalidateQueries({ queryKey: eBoardDisplayQueryKey(input.community_id) });
       toast.success("Zapisano zmiany.");
     },
     onError: (err: unknown) => {

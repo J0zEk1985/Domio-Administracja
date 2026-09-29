@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
+import { Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
+import {
+  EBOARD_DEFAULT_BG,
+  EBOARD_DEFAULT_TEXT,
+  isHexColor,
+} from "@/lib/eboardDisplayColors";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,6 +148,7 @@ export function CommunityAnnouncementReviewTab({
 }: Props) {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<EBoardMessageListItem | null>(null);
   const queryKey = ["community-announcement-review", communityId, buildingIds.join(",")] as const;
 
   const boardQuery = useEBoardMessagesForCommunity(communityId);
@@ -208,12 +215,13 @@ export function CommunityAnnouncementReviewTab({
                 <TableHead>Zasięg</TableHead>
                 <TableHead>Ważne do</TableHead>
                 <TableHead>Status</TableHead>
+                {canManage ? <TableHead className="w-[72px] text-right">Akcje</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
               {boardRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={canManage ? 6 : 5} className="text-center text-sm text-muted-foreground">
                     Brak ogłoszeń na tablicy. Dodaj pierwsze przyciskiem powyżej.
                   </TableCell>
                 </TableRow>
