@@ -21,6 +21,7 @@ import {
 } from "@/hooks/useProperties";
 import { usePropertyTasksCanEdit } from "@/hooks/usePropertyTasks";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyExternalAccessCard } from "@/components/property/PropertyExternalAccessCard";
@@ -169,46 +170,14 @@ export default function PropertyDetails() {
         <p className="text-sm text-muted-foreground mt-1">{property.address}</p>
       </div>
 
+      <CollapsibleSection title="Podstawowe">
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10">
+        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1">
           <TabsTrigger value="general" className="text-xs sm:text-sm">
             Informacje ogólne
           </TabsTrigger>
           <TabsTrigger value="admins" className="text-xs sm:text-sm">
             Administratorzy
-          </TabsTrigger>
-          <TabsTrigger value="team" className="text-xs sm:text-sm">
-            Zespół
-          </TabsTrigger>
-          <TabsTrigger value="ecosystem" className="text-xs sm:text-sm">
-            Ekosystem
-          </TabsTrigger>
-          <TabsTrigger value="cleaning-scope" className="text-xs sm:text-sm leading-tight">
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              Zakres sprzątania
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="issues" className="text-xs sm:text-sm">
-            Zadania
-          </TabsTrigger>
-          <TabsTrigger value="property-issues" className="text-xs sm:text-sm leading-tight">
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600/90" aria-hidden />
-              Zgłoszenia
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="contracts" className="text-xs sm:text-sm leading-tight">
-            Umowy i Przeglądy
-          </TabsTrigger>
-          <TabsTrigger value="automations" className="text-xs sm:text-sm leading-tight">
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <Zap className="h-3.5 w-3.5 shrink-0 text-amber-600/90" aria-hidden />
-              Automatyzacje
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="local-inspections" className="text-xs sm:text-sm leading-tight">
-            Przeglądy lokalowe
           </TabsTrigger>
         </TabsList>
 
@@ -318,6 +287,46 @@ export default function PropertyDetails() {
             </CardContent>
           </Card>
         </TabsContent>
+      </Tabs>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Zarządzanie">
+      <Tabs defaultValue="team" className="w-full">
+        <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 xl:grid-cols-8">
+          <TabsTrigger value="team" className="text-xs sm:text-sm">
+            Zespół
+          </TabsTrigger>
+          <TabsTrigger value="ecosystem" className="text-xs sm:text-sm">
+            Ekosystem
+          </TabsTrigger>
+          <TabsTrigger value="cleaning-scope" className="text-xs sm:text-sm leading-tight">
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              Zakres sprzątania
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="issues" className="text-xs sm:text-sm">
+            Zadania
+          </TabsTrigger>
+          <TabsTrigger value="property-issues" className="text-xs sm:text-sm leading-tight">
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600/90" aria-hidden />
+              Zgłoszenia
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="contracts" className="text-xs sm:text-sm leading-tight">
+            Umowy i Przeglądy
+          </TabsTrigger>
+          <TabsTrigger value="automations" className="text-xs sm:text-sm leading-tight">
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 shrink-0 text-amber-600/90" aria-hidden />
+              Automatyzacje
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="local-inspections" className="text-xs sm:text-sm leading-tight">
+            Przeglądy lokalowe
+          </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="team" className="mt-6">
           <PropertyTeamTab locationId={property.id} isOrgOwner={isOwner} />
@@ -378,6 +387,7 @@ export default function PropertyDetails() {
           <PropertyLocalInspectionsTab locationId={property.id} />
         </TabsContent>
       </Tabs>
+      </CollapsibleSection>
     </div>
   );
 }

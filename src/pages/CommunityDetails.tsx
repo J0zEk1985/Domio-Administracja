@@ -34,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { CommunityDomainEditor } from "@/components/communities/CommunityDomainEditor";
 import { CommunityContactBoardCard } from "@/components/communities/CommunityContactBoardCard";
 import { CommunityTeamTab } from "@/components/communities/CommunityTeamTab";
@@ -223,16 +224,17 @@ export default function CommunityDetails() {
             </AlertDescription>
           </Alert>
         ) : null}
+      </div>
 
+      <CollapsibleSection title="Podstawowe">
         <CommunityDomainEditor community={community} orgId={orgId} readOnly={inactive} />
         {orgId ? (
           <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
         ) : null}
-      </div>
 
-      <section className="space-y-4">
+        <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-semibold text-foreground">Budynki przypisane do wspólnoty</h2>
+          <h3 className="text-base font-semibold text-foreground">Budynki przypisane do wspólnoty</h3>
           {inactive ? null : (
             <Button type="button" className="gap-1.5 shrink-0" onClick={() => setAssignOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
@@ -281,10 +283,10 @@ export default function CommunityDetails() {
             </Table>
           </div>
         )}
-      </section>
+        </section>
+      </CollapsibleSection>
 
-      <section className="space-y-4">
-        <h2 className="text-base font-semibold text-foreground">Zarządzanie wspólnotą</h2>
+      <CollapsibleSection title="Zarządzanie">
         <Tabs defaultValue="contracts-policies" className="w-full">
           <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 xl:grid-cols-8">
             <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
@@ -373,7 +375,7 @@ export default function CommunityDetails() {
             <CommunitySuccessionTab orgId={orgId} communityId={communityId!} canManage={!inactive} />
           </TabsContent>
         </Tabs>
-      </section>
+      </CollapsibleSection>
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="sm:max-w-lg">
