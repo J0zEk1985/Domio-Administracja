@@ -64,9 +64,7 @@ export function MemberBuildingsTab({ member, canEdit = true }: Props) {
         <div className="space-y-1.5">
           <CardTitle className="text-base">Przypisane budynki</CardTitle>
           <CardDescription>
-            Nieruchomości z <code className="text-xs">is_admin_active</code>. Przypisania w tabeli{" "}
-            <code className="text-xs">location_access</code> (<code className="text-xs">access_type: administration</code>
-            ).
+            Budynki, do których ten pracownik ma dostęp administracyjny.
           </CardDescription>
         </div>
         {canEdit ? (
@@ -160,8 +158,7 @@ export function MemberBuildingsTab({ member, canEdit = true }: Props) {
             <DialogHeader className="border-b px-4 py-3 text-left">
               <DialogTitle className="text-base">Przypisz budynek</DialogTitle>
               <DialogDescription className="text-xs">
-                Wyszukaj po nazwie lub adresie i wybierz nieruchomość. Zostanie dodany wpis w{" "}
-                <code className="text-[11px]">location_access</code>.
+                Wyszukaj po nazwie lub adresie i wybierz nieruchomość do przypisania.
               </DialogDescription>
             </DialogHeader>
             <Command className="rounded-none border-0 shadow-none">

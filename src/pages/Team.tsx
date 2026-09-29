@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { AddTeamMemberDialog } from "@/components/team/AddTeamMemberDialog";
+import { RemoveTeamMemberButton } from "@/components/team/RemoveTeamMemberButton";
 import { cn } from "@/lib/utils";
 
 type SortKey = "fullName" | "roleLabelPl";
@@ -186,6 +187,7 @@ export default function Team() {
 
   const listEmpty = !data || data.length === 0;
   const searchNoHits = !listEmpty && filteredSorted.length === 0;
+  const ownerCount = data?.filter((r) => r.roleCode.trim().toLowerCase() === "owner").length ?? 0;
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -288,7 +290,7 @@ export default function Team() {
                       direction={sort?.dir ?? "asc"}
                       onSort={handleSortColumn}
                     />
-                    <TableHead className="w-[220px] text-right px-2 py-3">Akcje</TableHead>
+                    <TableHead className="w-[280px] text-right px-2 py-3">Akcje</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -302,22 +304,29 @@ export default function Team() {
                       <TableCell className="text-muted-foreground">{row.email}</TableCell>
                       <TableCell>{row.roleLabelPl}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "text-xs border-border/80",
-                            "hover:bg-accent/40 hover:border-accent/70 hover:text-accent-foreground",
-                            "transition-colors",
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/team/${row.membershipId}`);
-                          }}
-                        >
-                          Edytuj / Przypisz budynki
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "text-xs border-border/80",
+                              "hover:bg-accent/40 hover:border-accent/70 hover:text-accent-foreground",
+                              "transition-colors",
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/team/${row.membershipId}`);
+                            }}
+                          >
+                            Edytuj / Przypisz budynki
+                          </Button>
+                          <RemoveTeamMemberButton
+                            row={row}
+                            currentUserId={ownerAccess?.userId ?? null}
+                            ownerCount={ownerCount}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

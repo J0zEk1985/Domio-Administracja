@@ -5,6 +5,7 @@ export type OrgOwnerAccess = {
   isOwner: boolean;
   /** Raw `memberships.role` for current org, if found */
   membershipRole: string | null;
+  userId: string | null;
 };
 
 async function fetchOrgOwnerAccess(): Promise<OrgOwnerAccess> {
@@ -12,7 +13,7 @@ async function fetchOrgOwnerAccess(): Promise<OrgOwnerAccess> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { isOwner: false, membershipRole: null };
+    return { isOwner: false, membershipRole: null, userId: null };
   }
 
   const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
@@ -21,7 +22,7 @@ async function fetchOrgOwnerAccess(): Promise<OrgOwnerAccess> {
     throw orgErr;
   }
   if (!orgId || String(orgId).trim() === "") {
-    return { isOwner: false, membershipRole: null };
+    return { isOwner: false, membershipRole: null, userId: user.id };
   }
 
   const { data: rows, error: memErr } = await supabase
@@ -42,6 +43,7 @@ async function fetchOrgOwnerAccess(): Promise<OrgOwnerAccess> {
   return {
     isOwner: ownerRow != null,
     membershipRole: primaryRole,
+    userId: user.id,
   };
 }
 

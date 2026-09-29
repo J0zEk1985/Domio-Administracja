@@ -113,7 +113,7 @@ export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
               placeholder="np. +48 …"
               className={!canEdit ? "bg-muted/40" : undefined}
             />
-            <p className="text-[11px] text-muted-foreground">Przechowywany w tabeli profiles (pole phone).</p>
+            <p className="text-[11px] text-muted-foreground">Numer kontaktowy widoczny dla zespołu.</p>
           </div>
 
           <div className="space-y-2">

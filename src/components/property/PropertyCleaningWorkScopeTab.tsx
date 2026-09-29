@@ -120,7 +120,7 @@ export function PropertyCleaningWorkScopeTab({
                 </div>
                 {document?.source === "none" ? (
                   <p className="text-sm text-muted-foreground">
-                    Brak skanu w bazie umów. Dodaj dokument w zakładce Umowy i Przeglądy.
+                    Brak skanu umowy. Dodaj dokument w zakładce Umowy i Przeglądy.
                   </p>
                 ) : (
                   <div className="space-y-1 text-sm">

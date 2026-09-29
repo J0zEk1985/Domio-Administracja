@@ -170,7 +170,7 @@ export default function PropertyDetails() {
         <p className="text-sm text-muted-foreground mt-1">{property.address}</p>
       </div>
 
-      <CollapsibleSection title="Podstawowe">
+      <CollapsibleSection title="Podstawowe" defaultOpen>
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1">
           <TabsTrigger value="general" className="text-xs sm:text-sm">
@@ -200,8 +200,7 @@ export default function PropertyDetails() {
             <CardHeader>
               <CardTitle className="text-base">Administratorzy budynku</CardTitle>
               <CardDescription>
-                Pracownicy biura z dostępem administracyjnym (<code className="text-xs">location_access</code>,{" "}
-                <code className="text-xs">access_type: administration</code>). Kliknij wiersz, aby otworzyć profil w
+                Pracownicy biura z dostępem administracyjnym do tego budynku. Kliknij wiersz, aby otworzyć profil w
                 Zespole.
               </CardDescription>
             </CardHeader>

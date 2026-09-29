@@ -108,9 +108,7 @@ export function MemberLeaveTab({ member }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Zgłoś urlop</CardTitle>
           <CardDescription>
-            Zakres dat oraz identyfikator zastępcy zapisywane są w polu <code className="text-xs">description</code>{" "}
-            (format <code className="text-xs">DOMIO_ADMIN_LEAVE_V1</code>) oraz{" "}
-            <code className="text-xs">holiday_date</code> ustawiane na datę rozpoczęcia.
+            Podaj okres urlopu i osobę zastępującą w tym czasie.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -22,8 +22,7 @@ export default function InspectionsPage() {
       <div className="space-y-1">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Globalny Rejestr Przeglądów</h1>
         <p className="text-sm text-muted-foreground">
-          Centrum compliance: wszystkie protokoły z dostępnych nieruchomości, posortowane wg ważności. Dane ograniczane są
-          przez RLS w bazie.
+          Centrum compliance: wszystkie protokoły z dostępnych nieruchomości, posortowane wg ważności.
         </p>
       </div>
 

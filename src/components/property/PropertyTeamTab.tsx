@@ -76,9 +76,7 @@ export function PropertyTeamTab({ locationId, isOrgOwner }: PropertyTeamTabProps
             Zespół przy budynku
           </CardTitle>
           <CardDescription>
-            Członkowie organizacji z dostępem administracyjnym do tej nieruchomości (
-            <code className="text-xs">location_access</code>, <code className="text-xs">administration</code>
-            ).
+            Członkowie organizacji z dostępem administracyjnym do tej nieruchomości.
           </CardDescription>
         </div>
         {isOrgOwner ? (
@@ -149,7 +147,7 @@ export function PropertyTeamTab({ locationId, isOrgOwner }: PropertyTeamTabProps
         {admins.length === 0 ? (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
             Nikt z zespołu nie ma jeszcze dostępu administracyjnego do tego budynku.
-            {isOrgOwner ? " Użyj „Przypisz pracownika”, aby dodać wpis w location_access." : null}
+            {isOrgOwner ? " Użyj „Przypisz pracownika”, aby nadać dostęp." : null}
           </p>
         ) : (
           <div className="rounded-md border">

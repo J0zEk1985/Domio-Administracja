@@ -37,6 +37,7 @@ import {
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { CommunityDomainEditor } from "@/components/communities/CommunityDomainEditor";
 import { CommunityContactBoardCard } from "@/components/communities/CommunityContactBoardCard";
+import { CommunityBoardDisplayLinkCard } from "@/components/communities/CommunityBoardDisplayLinkCard";
 import { CommunityTeamTab } from "@/components/communities/CommunityTeamTab";
 import { CommunitySuccessionTab } from "@/components/communities/CommunitySuccessionTab";
 import { CommunityEstateTab } from "@/components/communities/CommunityEstateTab";
@@ -226,11 +227,12 @@ export default function CommunityDetails() {
         ) : null}
       </div>
 
-      <CollapsibleSection title="Podstawowe">
+      <CollapsibleSection title="Podstawowe" defaultOpen>
         <CommunityDomainEditor community={community} orgId={orgId} readOnly={inactive} />
         {orgId ? (
           <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
         ) : null}
+        <CommunityBoardDisplayLinkCard communityId={communityId} />
 
         <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

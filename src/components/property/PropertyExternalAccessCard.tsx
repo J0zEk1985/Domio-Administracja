@@ -40,15 +40,23 @@ async function copyText(label: string, text: string) {
   }
 }
 
+type QrKind = "board" | "display";
+
 export function PropertyExternalAccessCard({ property, canManage, accessPending }: Props) {
   const rotate = useRotateLocationToken(property.id);
-  const [qrOpen, setQrOpen] = useState(false);
+  const [qrKind, setQrKind] = useState<QrKind | null>(null);
   const [confirmRotateOpen, setConfirmRotateOpen] = useState(false);
 
   const boardUrl = useMemo(
     () => `${portalBaseUrl()}/portal/board/${property.boardPortalToken}`,
     [property.boardPortalToken],
   );
+  const displayUrl = useMemo(
+    () => (property.communityId ? `${portalBaseUrl()}/display/${property.communityId}` : ""),
+    [property.communityId],
+  );
+  const qrUrl = qrKind === "display" ? displayUrl : boardUrl;
+  const qrTitle = qrKind === "display" ? "Ekran tablicy ogłoszeń" : "Portal Zarządu";
 
   async function confirmRotateAction() {
     try {
@@ -102,7 +110,7 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
                 <Copy className="h-3.5 w-3.5" aria-hidden />
                 Kopiuj link
               </Button>
-              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setQrOpen(true)}>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setQrKind("board")}>
                 <QrCode className="h-3.5 w-3.5" aria-hidden />
                 Pokaż kod QR
               </Button>
@@ -118,6 +126,52 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
             </div>
           </section>
 
+          <section className="space-y-3" aria-labelledby="portal-display-heading">
+            <h3 id="portal-display-heading" className="text-sm font-medium text-foreground">
+              Link strony tablicy (Zarząd / TV)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Publiczny ekran ogłoszeń wspólnoty — ten sam adres, który kopiujesz w module Tablica ogłoszeń.
+            </p>
+            {displayUrl ? (
+              <>
+                <div
+                  className={cn(
+                    "rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-foreground",
+                  )}
+                >
+                  {displayUrl}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => void copyText("Link", displayUrl)}
+                  >
+                    <Copy className="h-3.5 w-3.5" aria-hidden />
+                    Kopiuj link
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setQrKind("display")}
+                  >
+                    <QrCode className="h-3.5 w-3.5" aria-hidden />
+                    Pokaż kod QR
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
+                Przypisz budynek do wspólnoty, aby uzyskać stały adres ekranu tablicy.
+              </p>
+            )}
+          </section>
+
           {!canManage && !accessPending && (
             <p className="text-xs text-muted-foreground">
               Tylko właściciel organizacji lub administrator przypisany do budynku może zresetować linki.
@@ -126,16 +180,16 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
         </CardContent>
       </Card>
 
-      <Dialog open={qrOpen} onOpenChange={(o) => !o && setQrOpen(false)}>
+      <Dialog open={qrKind != null} onOpenChange={(o) => !o && setQrKind(null)}>
         <DialogContent className="sm:max-w-md print:border-0 print:shadow-none">
           <DialogHeader>
-            <DialogTitle>Kod QR — Portal Zarządu</DialogTitle>
-            <DialogDescription className="font-mono text-xs break-all">{boardUrl}</DialogDescription>
+            <DialogTitle>Kod QR — {qrTitle}</DialogTitle>
+            <DialogDescription className="font-mono text-xs break-all">{qrUrl}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-2 print:py-4">
-            {boardUrl ? (
+            {qrUrl ? (
               <div className="rounded-lg border border-border bg-white p-4 print:border-0">
-                <QRCodeSVG value={boardUrl} size={220} level="M" includeMargin />
+                <QRCodeSVG value={qrUrl} size={220} level="M" includeMargin />
               </div>
             ) : null}
           </div>
@@ -151,7 +205,7 @@ export function PropertyExternalAccessCard({ property, canManage, accessPending 
               <Printer className="h-4 w-4" aria-hidden />
               Drukuj / zapisz jako PDF
             </Button>
-            <Button type="button" variant="secondary" className="print:hidden" onClick={() => setQrOpen(false)}>
+            <Button type="button" variant="secondary" className="print:hidden" onClick={() => setQrKind(null)}>
               Zamknij
             </Button>
           </DialogFooter>

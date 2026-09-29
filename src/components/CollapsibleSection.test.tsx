@@ -21,4 +21,14 @@ describe("CollapsibleSection", () => {
     expect(screen.getByText("Pełna nazwa prawna")).not.toBeVisible();
     expect(screen.getByRole("button", { name: "Podstawowe" })).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("shows content immediately when defaultOpen is set", () => {
+    render(
+      <CollapsibleSection title="Podstawowe" defaultOpen>
+        <p>Portal Zarządu</p>
+      </CollapsibleSection>,
+    );
+    expect(screen.getByText("Portal Zarządu")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Podstawowe" })).toHaveAttribute("aria-expanded", "true");
+  });
 });

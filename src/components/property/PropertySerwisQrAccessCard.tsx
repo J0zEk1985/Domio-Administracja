@@ -85,8 +85,7 @@ export function PropertySerwisQrAccessCard({ property, canManage, accessPending 
         <CardHeader>
           <CardTitle className="text-base">Dostęp Zewnętrzny i Kody QR</CardTitle>
           <CardDescription>
-            Link publiczny do formularza zgłoszeń usterek w module DOMIO Serwis (pole{" "}
-            <code className="text-xs">cleaning_locations.issue_qr_token</code>). Zarządzanie wyłącznie z tego panelu.
+            Link publiczny do formularza zgłoszeń usterek w module DOMIO Serwis. Zarządzanie wyłącznie z tego panelu.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -112,8 +111,7 @@ export function PropertySerwisQrAccessCard({ property, canManage, accessPending 
               </div>
               {legacyOnly ? (
                 <p className="text-xs text-amber-700 dark:text-amber-500">
-                  Używany jest starszy token (<code className="text-[11px]">qr_code_token</code>). Wygeneruj nowy kod,
-                  aby zapisać go w <code className="text-[11px]">issue_qr_token</code>.
+                  Używany jest starszy kod QR. Wygeneruj nowy, aby zaktualizować link zgłoszeń.
                 </p>
               ) : null}
 
@@ -232,7 +230,7 @@ export function PropertySerwisQrAccessCard({ property, canManage, accessPending 
             <AlertDialogDescription>
               {issueUrl
                 ? "Poprzedni link i kody QR przestaną działać natychmiast. Udostępnij nowy adres wyłącznie osobom uprawnionym."
-                : "Zostanie utworzony nowy token w bazie (pole issue_qr_token) i publiczny adres pod DOMIO Serwis."}
+                : "Zostanie utworzony nowy publiczny adres zgłoszeń w module DOMIO Serwis."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

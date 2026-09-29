@@ -54,12 +54,24 @@ export async function linkAdminTeamMember(
 
   const { data: existingMember } = await supabase
     .from("memberships")
-    .select("id")
+    .select("id, is_active")
     .eq("user_id", userData.id)
     .eq("org_id", orgId)
     .maybeSingle();
 
   if (existingMember) {
+    if (existingMember.is_active === false) {
+      const { error: reactivateErr } = await supabase
+        .from("memberships")
+        .update({ is_active: true, role })
+        .eq("id", existingMember.id)
+        .eq("org_id", orgId);
+      if (reactivateErr) {
+        console.error("[linkAdminTeamMember] reactivate:", reactivateErr);
+        throw reactivateErr;
+      }
+      return;
+    }
     throw new Error("Ten użytkownik jest już przypisany do tej organizacji.");
   }
 
