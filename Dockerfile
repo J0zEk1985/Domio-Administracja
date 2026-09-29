@@ -25,8 +25,10 @@ ENV VITE_CKOB_SYNC_WEBHOOK_URL=$VITE_CKOB_SYNC_WEBHOOK_URL
 
 RUN npm run build
 
-FROM nginx:1.27-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-RUN printf 'server {\n  listen 3000;\n  server_name _;\n  root /usr/share/nginx/html;\n  index index.html;\n  location / {\n    try_files $$uri $$uri/ /index.html;\n  }\n}\n' > /etc/nginx/conf.d/default.conf
+FROM node:22-alpine
+WORKDIR /app
+RUN npm install -g serve@14
+COPY --from=build /app/dist ./dist
+ENV PORT=3000
 EXPOSE 3000
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["sh", "-c", "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}"]
