@@ -1,36 +1,34 @@
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import { z } from "zod";
 
-const EMAIL_PATTERN = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i;
+import {
+  canonicalResidentHeader,
+  isValidExtractedUnit,
+  isValidResidentEmail,
+  mapResidentSourceFields,
+} from "@/lib/residentImportMapping";
 
-const headerAliases: Record<string, "email" | "full_name" | "unit_number"> = {
-  email: "email",
-  "e-mail": "email",
-  mail: "email",
-  full_name: "full_name",
-  fullname: "full_name",
-  name: "full_name",
-  "imie i nazwisko": "full_name",
-  "imię i nazwisko": "full_name",
-  unit_number: "unit_number",
-  lokal: "unit_number",
-  numer: "unit_number",
-  "numer lokalu": "unit_number",
-};
+const REQUIRED_FIELDS = ["email", "full_name", "unit_number"] as const;
+
+const MISSING_COLUMNS_MESSAGE =
+  "Plik musi mieć kolumny: Osoba, Lokale oraz Adresy e-mail do emisji dokumentów na datę (albo email, full_name, unit_number).";
 
 const rowSchema = z.object({
   email: z
     .string()
-    .trim()
-    .min(1, "Podaj adres e-mail.")
+    .min(1, "Adres e-mail jest pusty.")
     .max(320, "Adres e-mail jest za długi.")
-    .refine((value) => EMAIL_PATTERN.test(value), "Niepoprawny format e-mail."),
+    .refine((value) => isValidResidentEmail(value), "Niepoprawny format e-mail."),
   full_name: z
     .string()
-    .trim()
     .min(1, "Podaj imię i nazwisko.")
     .max(200, "Imię i nazwisko może mieć najwyżej 200 znaków."),
-  unit_number: z.string().trim().min(1, "Podaj numer lokalu.").max(80, "Numer lokalu jest za długi."),
+  unit_number: z
+    .string()
+    .min(1, "Podaj numer lokalu.")
+    .max(80, "Numer lokalu jest za długi.")
+    .refine((value) => isValidExtractedUnit(value), "Lokal nie ma poprawnej struktury."),
 });
 
 export type CsvPreviewRow = {
@@ -58,71 +56,64 @@ export function normalizeUnitNumber(value: string | null | undefined): string | 
   return stripped.length > 0 ? stripped : null;
 }
 
-function canonicalHeader(header: string): "email" | "full_name" | "unit_number" | null {
-  const key = header.trim().toLowerCase().replace(/\s+/g, " ");
-  return headerAliases[key] ?? null;
+function previewErrorRow(
+  rowIndex: number,
+  candidate: { email: string; full_name: string; unit_number: string },
+  error: string
+): CsvPreviewRow {
+  return {
+    rowIndex,
+    email: candidate.email,
+    fullName: candidate.full_name,
+    unitNumber: candidate.unit_number,
+    normalizedUnit: normalizeUnitNumber(candidate.unit_number),
+    willCreateUnit: false,
+    error,
+  };
 }
 
-export function parseResidentCsv(text: string, existingNormalized: ReadonlySet<string>): CsvParseResult {
-  const parsed = Papa.parse<Record<string, string>>(text, {
-    header: true,
-    skipEmptyLines: "greedy",
-    transformHeader: (header) => canonicalHeader(header) ?? header.trim(),
-  });
+function isBlankSourceRow(raw: Record<string, string>): boolean {
+  return !(raw.email ?? "").trim() && !(raw.full_name ?? "").trim() && !(raw.unit_number ?? "").trim();
+}
 
-  const fields = (parsed.meta.fields ?? []).filter((field) => field.length > 0);
-  const missing = (["email", "full_name", "unit_number"] as const).filter((name) => !fields.includes(name));
-  if (missing.length > 0) {
-    return {
-      rows: [],
-      fileError: "Plik CSV musi mieć kolumny: email, full_name, unit_number.",
-    };
-  }
+export function parseResidentRecords(
+  records: Array<{ rowIndex: number; raw: Record<string, string> }>,
+  existingNormalized: ReadonlySet<string>
+): CsvPreviewRow[] {
+  const rows: CsvPreviewRow[] = [];
 
-  const rows: CsvPreviewRow[] = parsed.data.map((raw, index) => {
-    const rowIndex = index + 2;
-    const candidate = {
-      email: raw.email ?? "",
-      full_name: raw.full_name ?? "",
-      unit_number: raw.unit_number ?? "",
-    };
+  for (const record of records) {
+    if (isBlankSourceRow(record.raw)) continue;
+
+    const candidate = mapResidentSourceFields(record.raw);
+    if (candidate.unitError) {
+      rows.push(previewErrorRow(record.rowIndex, candidate, candidate.unitError));
+      continue;
+    }
+
     const checked = rowSchema.safeParse(candidate);
     if (!checked.success) {
       const issue = checked.error.issues[0]?.message ?? "Niepoprawny wiersz.";
-      return {
-        rowIndex,
-        email: candidate.email.trim(),
-        fullName: candidate.full_name.trim(),
-        unitNumber: candidate.unit_number.trim(),
-        normalizedUnit: normalizeUnitNumber(candidate.unit_number),
-        willCreateUnit: false,
-        error: issue,
-      };
+      rows.push(previewErrorRow(record.rowIndex, candidate, issue));
+      continue;
     }
 
     const normalizedUnit = normalizeUnitNumber(checked.data.unit_number);
     if (!normalizedUnit) {
-      return {
-        rowIndex,
-        email: checked.data.email,
-        fullName: checked.data.full_name,
-        unitNumber: checked.data.unit_number,
-        normalizedUnit: null,
-        willCreateUnit: false,
-        error: "Podaj numer lokalu.",
-      };
+      rows.push(previewErrorRow(record.rowIndex, checked.data, "Podaj numer lokalu."));
+      continue;
     }
 
-    return {
-      rowIndex,
-      email: checked.data.email.trim().toLowerCase(),
-      fullName: checked.data.full_name.trim(),
-      unitNumber: checked.data.unit_number.trim(),
+    rows.push({
+      rowIndex: record.rowIndex,
+      email: checked.data.email,
+      fullName: checked.data.full_name,
+      unitNumber: checked.data.unit_number,
       normalizedUnit,
       willCreateUnit: !existingNormalized.has(normalizedUnit),
       error: null,
-    };
-  });
+    });
+  }
 
   const seen = new Set<string>();
   for (const row of rows) {
@@ -136,7 +127,96 @@ export function parseResidentCsv(text: string, existingNormalized: ReadonlySet<s
     }
   }
 
-  return { rows, fileError: null };
+  return rows;
 }
 
-export const RESIDENT_CSV_TEMPLATE = "email,full_name,unit_number\njan.kowalski@example.com,Jan Kowalski,12\n";
+function parseMappedTable(
+  fields: string[],
+  records: Array<{ rowIndex: number; raw: Record<string, string> }>,
+  existingNormalized: ReadonlySet<string>
+): CsvParseResult {
+  const mapped = fields.map((field) => canonicalResidentHeader(field) ?? field.trim());
+  const missing = REQUIRED_FIELDS.filter((name) => !mapped.includes(name));
+  if (missing.length > 0) {
+    return { rows: [], fileError: MISSING_COLUMNS_MESSAGE };
+  }
+  return { rows: parseResidentRecords(records, existingNormalized), fileError: null };
+}
+
+export function parseResidentCsv(text: string, existingNormalized: ReadonlySet<string>): CsvParseResult {
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: "greedy",
+    transformHeader: (header) => canonicalResidentHeader(header) ?? header.trim(),
+  });
+
+  const fields = (parsed.meta.fields ?? []).filter((field) => field.length > 0);
+  const records = parsed.data.map((raw, index) => ({
+    rowIndex: index + 2,
+    raw: {
+      email: raw.email ?? "",
+      full_name: raw.full_name ?? "",
+      unit_number: raw.unit_number ?? "",
+    },
+  }));
+
+  return parseMappedTable(fields, records, existingNormalized);
+}
+
+function cellToString(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return String(value);
+}
+
+export function parseResidentWorkbook(
+  data: ArrayBuffer,
+  existingNormalized: ReadonlySet<string>
+): CsvParseResult {
+  const workbook = XLSX.read(new Uint8Array(data), { type: "array", cellDates: false });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) {
+    return { rows: [], fileError: "Plik Excel nie zawiera arkusza." };
+  }
+
+  const sheet = workbook.Sheets[sheetName];
+  const table = XLSX.utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+    blankrows: true,
+  });
+
+  if (table.length === 0) {
+    return { rows: [], fileError: MISSING_COLUMNS_MESSAGE };
+  }
+
+  const headerRow = (table[0] ?? []).map((cell) => cellToString(cell));
+  const fields = headerRow.map((header) => canonicalResidentHeader(header) ?? header.trim());
+  const records: Array<{ rowIndex: number; raw: Record<string, string> }> = [];
+
+  for (let index = 1; index < table.length; index += 1) {
+    const line = table[index] ?? [];
+    const raw: Record<string, string> = {};
+    for (let col = 0; col < headerRow.length; col += 1) {
+      const key = fields[col];
+      if (!key) continue;
+      raw[key] = cellToString(line[col]);
+    }
+    records.push({ rowIndex: index + 1, raw });
+  }
+
+  return parseMappedTable(fields, records, existingNormalized);
+}
+
+export function isResidentImportSpreadsheet(fileName: string): boolean {
+  return /\.xlsx?$/i.test(fileName);
+}
+
+export function isResidentImportFile(fileName: string): boolean {
+  return /\.(csv|xlsx|xls)$/i.test(fileName);
+}
+
+export const RESIDENT_CSV_TEMPLATE =
+  "Osoba,Lokale,Adresy e-mail do emisji dokumentów na datę\nJan Kowalski,ul. Czechosłowacka 40/1,jan.kowalski@example.com\n";

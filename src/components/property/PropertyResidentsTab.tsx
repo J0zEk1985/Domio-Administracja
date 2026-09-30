@@ -90,7 +90,7 @@ export function PropertyResidentsTab({
       {!communityId ? (
         <Alert>
           <AlertDescription>
-            Ten budynek nie ma przypisanej wspólnoty. Import CSV i pomieszczenia techniczne wymagają wspólnoty.
+            Ten budynek nie ma przypisanej wspólnoty. Import mieszkańców i pomieszczenia techniczne wymagają wspólnoty.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -107,7 +107,7 @@ export function PropertyResidentsTab({
           {canManage ? (
             <Button type="button" onClick={() => setImportOpen(true)} disabled={!communityId}>
               <Upload className="mr-2 h-4 w-4" />
-              Import CSV
+              Import mieszkańców
             </Button>
           ) : null}
         </CardHeader>

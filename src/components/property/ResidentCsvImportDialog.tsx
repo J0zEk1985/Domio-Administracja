@@ -20,7 +20,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useImportPropertyResidents } from "@/hooks/usePropertyResidents";
-import { parseResidentCsv, RESIDENT_CSV_TEMPLATE, type CsvPreviewRow } from "@/lib/residentCsv";
+import {
+  isResidentImportFile,
+  isResidentImportSpreadsheet,
+  parseResidentCsv,
+  parseResidentWorkbook,
+  RESIDENT_CSV_TEMPLATE,
+  type CsvPreviewRow,
+} from "@/lib/residentCsv";
 import { cn } from "@/lib/utils";
 
 type ResidentCsvImportDialogProps = {
@@ -64,18 +71,28 @@ export function ResidentCsvImportDialog({
   };
 
   const readFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setFileError("Wybierz plik z rozszerzeniem .csv.");
+    if (!isResidentImportFile(file.name)) {
+      setFileError("Wybierz plik z rozszerzeniem .xlsx, .xls albo .csv.");
       setRows([]);
       setFileName(file.name);
       return;
     }
-    const text = await file.text();
-    const parsed = parseResidentCsv(text, existingNormalized);
-    setFileName(file.name);
-    setFileError(parsed.fileError);
-    setRows(parsed.rows);
-    setServerNotes({});
+
+    try {
+      const parsed = isResidentImportSpreadsheet(file.name)
+        ? parseResidentWorkbook(await file.arrayBuffer(), existingNormalized)
+        : parseResidentCsv(await file.text(), existingNormalized);
+      setFileName(file.name);
+      setFileError(parsed.fileError);
+      setRows(parsed.rows);
+      setServerNotes({});
+    } catch (error) {
+      console.error("[ResidentCsvImportDialog] parse", error);
+      setFileName(file.name);
+      setFileError("Nie udało się odczytać pliku. Sprawdź, czy to poprawny Excel lub CSV.");
+      setRows([]);
+      setServerNotes({});
+    }
   };
 
   const onSave = () => {
@@ -121,10 +138,12 @@ export function ResidentCsvImportDialog({
     >
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import mieszkańców z CSV</DialogTitle>
+          <DialogTitle>Import mieszkańców</DialogTitle>
           <DialogDescription>
-            Kolumny: email, full_name, unit_number. Brakujący lokal mieszkalny zostanie utworzony.
-            Osoba bez konta poczeka na pierwsze logowanie w DOMIO Home.
+            Plik Excel (.xlsx, .xls) albo CSV. Kolumny: Osoba, Lokale, Adresy e-mail do emisji
+            dokumentów na datę. Z adresu lokalu (np. ul. Czechosłowacka 40/1) bierzemy numer lokalu po
+            ukośniku. Brakujący lokal zostanie utworzony. Istniejące konto dostaje dostęp do budynku,
+            nowy e-mail czeka na pierwsze logowanie w DOMIO Home.
           </DialogDescription>
         </DialogHeader>
 
@@ -152,11 +171,11 @@ export function ResidentCsvImportDialog({
           }}
         >
           <FileUp className="h-5 w-5 text-muted-foreground" aria-hidden />
-          <span>Upuść plik CSV albo wybierz go z dysku</span>
+          <span>Upuść plik .xlsx, .xls albo .csv albo wybierz go z dysku</span>
           {fileName ? <span className="text-muted-foreground">{fileName}</span> : null}
           <input
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0];
