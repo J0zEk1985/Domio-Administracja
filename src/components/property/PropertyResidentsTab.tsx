@@ -1,12 +1,21 @@
 import { useMemo, useState } from "react";
-import { Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { Loader2, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 import { ResidentCsvImportDialog } from "@/components/property/ResidentCsvImportDialog";
+import { PropertyUnitRegistryCard } from "@/components/property/PropertyUnitRegistryCard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,10 +28,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  useCreateTechnicalUnit,
-  useDeletePropertyUnit,
   usePropertyResidents,
   useRemoveUnitOccupant,
+  useUpdateUnitOccupant,
+  type PropertyOccupantRow,
 } from "@/hooks/usePropertyResidents";
 
 type PropertyResidentsTabProps = {
@@ -39,38 +48,38 @@ export function PropertyResidentsTab({
   canManage,
 }: PropertyResidentsTabProps) {
   const residentsQuery = usePropertyResidents(locationId);
-  const createTechnical = useCreateTechnicalUnit(locationId);
-  const deleteUnit = useDeletePropertyUnit(locationId);
   const removeOccupant = useRemoveUnitOccupant(locationId);
+  const updateOccupant = useUpdateUnitOccupant(locationId);
   const [importOpen, setImportOpen] = useState(false);
-  const [technicalName, setTechnicalName] = useState("");
+  const [editing, setEditing] = useState<PropertyOccupantRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
 
   const units = residentsQuery.data?.units ?? [];
   const occupants = residentsQuery.data?.occupants ?? [];
   const unitById = useMemo(() => new Map(units.map((unit) => [unit.id, unit])), [units]);
-  const occupantCountByUnit = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const occupant of occupants) {
-      counts.set(occupant.unitId, (counts.get(occupant.unitId) ?? 0) + 1);
-    }
-    return counts;
-  }, [occupants]);
   const existingNormalized = useMemo(
     () => new Set(units.map((unit) => unit.normalizedUnitNumber)),
     [units]
   );
 
-  const onAddTechnical = () => {
-    if (!communityId) return;
-    createTechnical.mutate(
-      { orgId, communityId, label: technicalName },
+  const openEdit = (occupant: PropertyOccupantRow) => {
+    setEditing(occupant);
+    setEditName(occupant.fullName);
+    setEditEmail(occupant.email);
+  };
+
+  const onSaveOccupant = () => {
+    if (!editing) return;
+    updateOccupant.mutate(
+      { occupantId: editing.id, fullName: editName, email: editEmail },
       {
         onSuccess: () => {
-          setTechnicalName("");
-          toast.success("Dodano pomieszczenie techniczne.");
+          setEditing(null);
+          toast.success("Zapisano dane mieszkańca.");
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : "Nie udało się dodać pomieszczenia.");
+          toast.error(error instanceof Error ? error.message : "Nie udało się zapisać mieszkańca.");
         },
       }
     );
@@ -91,7 +100,8 @@ export function PropertyResidentsTab({
           <div>
             <CardTitle>Mieszkańcy</CardTitle>
             <CardDescription>
-              Import z CSV zakłada brakujące lokale mieszkalne. Konto bez użytkownika czeka na logowanie w DOMIO Home.
+              Zmiana e-maila odbiera dostęp do Home poprzedniemu kontu. Nowy adres czeka na logowanie albo
+              od razu dostaje dostęp, jeśli konto już istnieje.
             </CardDescription>
           </div>
           {canManage ? (
@@ -105,7 +115,11 @@ export function PropertyResidentsTab({
           {residentsQuery.isLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : residentsQuery.isError ? (
-            <p className="text-sm text-destructive">Nie udało się wczytać mieszkańców.</p>
+            <p className="text-sm text-destructive">
+              {residentsQuery.error instanceof Error
+                ? residentsQuery.error.message
+                : "Nie udało się wczytać mieszkańców."}
+            </p>
           ) : occupants.length === 0 ? (
             <p className="text-sm text-muted-foreground">Brak przypisanych mieszkańców.</p>
           ) : (
@@ -117,7 +131,7 @@ export function PropertyResidentsTab({
                     <TableHead>E-mail</TableHead>
                     <TableHead>Lokal</TableHead>
                     <TableHead>Status</TableHead>
-                    {canManage ? <TableHead className="w-16 text-right">Akcje</TableHead> : null}
+                    {canManage ? <TableHead className="w-24 text-right">Akcje</TableHead> : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -137,6 +151,15 @@ export function PropertyResidentsTab({
                         </TableCell>
                         {canManage ? (
                           <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Edytuj ${occupant.fullName}`}
+                              onClick={() => openEdit(occupant)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button
                               type="button"
                               size="icon"
@@ -167,98 +190,55 @@ export function PropertyResidentsTab({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Rejestr lokali</CardTitle>
-          <CardDescription>
-            Lokale mieszkalne powstają przy imporcie. Tutaj dodasz pomieszczenie techniczne albo usuniesz pusty wpis.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {canManage && communityId ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="technical-room">Pomieszczenie techniczne</Label>
-                <Input
-                  id="technical-room"
-                  value={technicalName}
-                  placeholder="np. Węzeł cieplny"
-                  onChange={(event) => setTechnicalName(event.target.value)}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={createTechnical.isPending || technicalName.trim().length === 0}
-                onClick={onAddTechnical}
-              >
-                {createTechnical.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Dodaj
-              </Button>
-            </div>
-          ) : null}
+      <PropertyUnitRegistryCard
+        locationId={locationId}
+        orgId={orgId}
+        communityId={communityId}
+        canManage={canManage}
+      />
 
-          {residentsQuery.isLoading ? (
-            <Skeleton className="h-24 w-full" />
-          ) : units.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Rejestr jest pusty. Wgraj plik CSV z mieszkańcami.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Numer / nazwa</TableHead>
-                    <TableHead>Rodzaj</TableHead>
-                    <TableHead>Mieszkańcy</TableHead>
-                    {canManage ? <TableHead className="w-16 text-right">Akcje</TableHead> : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {units.map((unit) => {
-                    const count = occupantCountByUnit.get(unit.id) ?? 0;
-                    const title = unit.kind === "technical" ? unit.label || unit.unitNumber : unit.unitNumber;
-                    return (
-                      <TableRow key={unit.id}>
-                        <TableCell className="font-medium">{title}</TableCell>
-                        <TableCell>
-                          {unit.kind === "technical" ? "Pomieszczenie techniczne" : "Lokal mieszkalny"}
-                        </TableCell>
-                        <TableCell className="tabular-nums">{count}</TableCell>
-                        {canManage ? (
-                          <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Usuń ${title}`}
-                              disabled={count > 0 || deleteUnit.isPending}
-                              onClick={() =>
-                                deleteUnit.mutate(unit.id, {
-                                  onSuccess: () => toast.success("Usunięto lokal z rejestru."),
-                                  onError: (error) =>
-                                    toast.error(
-                                      error instanceof Error ? error.message : "Nie udało się usunąć lokalu."
-                                    ),
-                                })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        ) : null}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edytuj mieszkańca</DialogTitle>
+            <DialogDescription>
+              Zmiana e-maila odcina poprzednie konto od tego lokalu w DOMIO Home.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="occupant-name">Imię i nazwisko</Label>
+              <Input
+                id="occupant-name"
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+              />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="space-y-1">
+              <Label htmlFor="occupant-email">E-mail</Label>
+              <Input
+                id="occupant-email"
+                type="email"
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+              Anuluj
+            </Button>
+            <Button
+              type="button"
+              disabled={updateOccupant.isPending || editName.trim().length === 0 || editEmail.trim().length === 0}
+              onClick={onSaveOccupant}
+            >
+              {updateOccupant.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Zapisz
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ResidentCsvImportDialog
         open={importOpen}

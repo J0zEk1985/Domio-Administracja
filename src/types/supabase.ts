@@ -4149,6 +4149,10 @@ export type Database = {
         }[]
       }
       remove_unit_occupant: { Args: { p_occupant_id: string }; Returns: undefined }
+      update_unit_occupant: {
+        Args: { p_occupant_id: string; p_full_name: string; p_email: string }
+        Returns: undefined
+      }
       moderate_community_announcement: {
         Args: { p_action: string; p_community_id: string; p_post_id: string }
         Returns: Json

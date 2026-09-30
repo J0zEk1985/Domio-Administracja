@@ -35,6 +35,18 @@ function asKind(value: string): CommunityUnitKind {
   return value === "technical" ? "technical" : "residential";
 }
 
+function throwQueryError(
+  scope: string,
+  error: { message: string; code?: string },
+  duplicateMessage?: string
+): never {
+  console.error(scope, error);
+  if (error.code === "23505" && duplicateMessage) {
+    throw new Error(duplicateMessage);
+  }
+  throw new Error(error.message);
+}
+
 async function fetchPropertyResidents(locationId: string): Promise<{
   units: PropertyUnitRow[];
   occupants: PropertyOccupantRow[];
@@ -49,8 +61,7 @@ async function fetchPropertyResidents(locationId: string): Promise<{
     .order("normalized_unit_number", { ascending: true });
 
   if (unitError) {
-    console.error("[usePropertyResidents] community_units:", unitError);
-    throw unitError;
+    throwQueryError("[usePropertyResidents] community_units:", unitError);
   }
 
   const unitRows: PropertyUnitRow[] = (units ?? []).map((row) => ({
@@ -78,8 +89,7 @@ async function fetchPropertyResidents(locationId: string): Promise<{
     .order("full_name", { ascending: true });
 
   if (occupantError) {
-    console.error("[usePropertyResidents] community_unit_occupants:", occupantError);
-    throw occupantError;
+    throwQueryError("[usePropertyResidents] community_unit_occupants:", occupantError);
   }
 
   return {
@@ -113,8 +123,7 @@ export function useImportPropertyResidents(locationId: string) {
         p_rows: rows,
       });
       if (error) {
-        console.error("[useImportPropertyResidents]", error);
-        throw error;
+        throwQueryError("[useImportPropertyResidents]", error);
       }
       return (data ?? []).map((row) => ({
         rowIndex: row.row_index,
@@ -128,28 +137,92 @@ export function useImportPropertyResidents(locationId: string) {
   });
 }
 
-export function useCreateTechnicalUnit(locationId: string) {
+async function insertCommunityUnit(input: {
+  locationId: string;
+  orgId: string;
+  communityId: string;
+  unitNumber: string;
+  kind: CommunityUnitKind;
+}) {
+  const unitNumber = input.unitNumber.trim();
+  if (!unitNumber) {
+    throw new Error(input.kind === "technical" ? "Podaj nazwę pomieszczenia." : "Podaj numer lokalu.");
+  }
+  const { error } = await supabase.from("community_units").insert({
+    org_id: input.orgId,
+    community_id: input.communityId,
+    location_id: input.locationId,
+    unit_number: unitNumber,
+    kind: input.kind,
+    label: input.kind === "technical" ? unitNumber : null,
+  });
+  if (error) {
+    throwQueryError(
+      "[insertCommunityUnit]",
+      error,
+      input.kind === "technical"
+        ? "Pomieszczenie o tej nazwie już jest w rejestrze."
+        : "Lokal o tym numerze już jest w rejestrze."
+    );
+  }
+}
+
+function useInsertCommunityUnit(locationId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { orgId: string; communityId: string; label: string }) => {
-      const label = input.label.trim();
-      if (!label) {
-        throw new Error("Podaj nazwę pomieszczenia.");
+    mutationFn: (input: { orgId: string; communityId: string; unitNumber: string; kind: CommunityUnitKind }) =>
+      insertCommunityUnit({ ...input, locationId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: propertyResidentsQueryKey(locationId) });
+    },
+  });
+}
+
+export function useCreateTechnicalUnit(locationId: string) {
+  const insert = useInsertCommunityUnit(locationId);
+  return {
+    ...insert,
+    mutate: (
+      input: { orgId: string; communityId: string; label: string },
+      options?: Parameters<typeof insert.mutate>[1]
+    ) =>
+      insert.mutate(
+        { orgId: input.orgId, communityId: input.communityId, unitNumber: input.label, kind: "technical" },
+        options
+      ),
+  };
+}
+
+export function useCreateResidentialUnit(locationId: string) {
+  const insert = useInsertCommunityUnit(locationId);
+  return {
+    ...insert,
+    mutate: (
+      input: { orgId: string; communityId: string; unitNumber: string },
+      options?: Parameters<typeof insert.mutate>[1]
+    ) =>
+      insert.mutate({ ...input, kind: "residential" }, options),
+  };
+}
+
+export function useUpdatePropertyUnit(locationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { unitId: string; unitNumber: string; kind: CommunityUnitKind }) => {
+      const unitNumber = input.unitNumber.trim();
+      if (!unitNumber) {
+        throw new Error(input.kind === "technical" ? "Podaj nazwę pomieszczenia." : "Podaj numer lokalu.");
       }
-      const { error } = await supabase.from("community_units").insert({
-        org_id: input.orgId,
-        community_id: input.communityId,
-        location_id: locationId,
-        unit_number: label,
-        kind: "technical",
-        label,
-      });
+      const { error } = await supabase
+        .from("community_units")
+        .update({
+          unit_number: unitNumber,
+          label: input.kind === "technical" ? unitNumber : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.unitId);
       if (error) {
-        console.error("[useCreateTechnicalUnit]", error);
-        if (error.code === "23505") {
-          throw new Error("Pomieszczenie o tej nazwie już jest w rejestrze.");
-        }
-        throw error;
+        throwQueryError("[useUpdatePropertyUnit]", error, "Lokal o tym numerze już jest w rejestrze.");
       }
     },
     onSuccess: async () => {
@@ -164,8 +237,26 @@ export function useDeletePropertyUnit(locationId: string) {
     mutationFn: async (unitId: string) => {
       const { error } = await supabase.from("community_units").delete().eq("id", unitId);
       if (error) {
-        console.error("[useDeletePropertyUnit]", error);
-        throw error;
+        throwQueryError("[useDeletePropertyUnit]", error);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: propertyResidentsQueryKey(locationId) });
+    },
+  });
+}
+
+export function useUpdateUnitOccupant(locationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { occupantId: string; fullName: string; email: string }) => {
+      const { error } = await supabase.rpc("update_unit_occupant", {
+        p_occupant_id: input.occupantId,
+        p_full_name: input.fullName,
+        p_email: input.email,
+      });
+      if (error) {
+        throwQueryError("[useUpdateUnitOccupant]", error, "Ten e-mail jest już przypisany do tego lokalu.");
       }
     },
     onSuccess: async () => {
@@ -182,8 +273,7 @@ export function useRemoveUnitOccupant(locationId: string) {
         p_occupant_id: occupantId,
       });
       if (error) {
-        console.error("[useRemoveUnitOccupant]", error);
-        throw error;
+        throwQueryError("[useRemoveUnitOccupant]", error);
       }
     },
     onSuccess: async () => {
