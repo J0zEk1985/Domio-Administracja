@@ -17,9 +17,21 @@ const GC_MS = 60_000;
 
 export const TRIAGE_ISSUES_QUERY_ROOT = "triage-issues" as const;
 
-export function triageIssuesQueryKey(): readonly [typeof TRIAGE_ISSUES_QUERY_ROOT] {
+export function triageIssuesQueryKey(
+  locationIds?: readonly string[],
+): readonly [typeof TRIAGE_ISSUES_QUERY_ROOT] | readonly [typeof TRIAGE_ISSUES_QUERY_ROOT, "locations", string] {
+  if (locationIds && locationIds.length > 0) {
+    const scope = [...locationIds].sort().join(",");
+    return [TRIAGE_ISSUES_QUERY_ROOT, "locations", scope];
+  }
   return [TRIAGE_ISSUES_QUERY_ROOT];
 }
+
+export type UseTriageIssuesOptions = {
+  enabled?: boolean;
+  /** When set, fetch only these buildings (no org-wide 6-month / 300 row cap). */
+  locationIds?: string[];
+};
 
 type PropertyIssueRow = Database["public"]["Tables"]["property_issues"]["Row"];
 
@@ -34,42 +46,7 @@ export type TriageIssue = Omit<PropertyIssueRow, "status"> &
     assigned_staff: { full_name: string | null } | null;
   };
 
-async function fetchTriageIssues(): Promise<TriageIssue[]> {
-  const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
-  if (orgErr) {
-    console.error("[useTriageIssues] get_my_org_id_safe:", orgErr);
-    throw orgErr;
-  }
-  if (!orgId || String(orgId).trim() === "") {
-    return [];
-  }
-
-  const since = subMonths(new Date(), HISTORY_MONTHS);
-
-  const { data, error } = await supabase
-    .from("property_issues")
-    .select(
-      `
-      *,
-      location:cleaning_locations!inner(name, address),
-      reporter:profiles!property_issues_reporter_id_fkey(full_name),
-      organization:organizations!property_issues_org_id_fkey(name),
-      delegated_vendor:vendor_partners!property_issues_delegated_vendor_id_fkey(name),
-      assigned_staff:profiles!property_issues_assigned_staff_id_fkey(full_name)
-    `,
-    )
-    .eq("org_id", String(orgId))
-    .eq("location.is_admin_active", true)
-    .or(ADMIN_VISIBLE_ISSUES_OR)
-    .gte("created_at", since.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(MAX_TRIAGE_ISSUES);
-
-  if (error) {
-    console.error("[useTriageIssues] property_issues:", error);
-    throw error;
-  }
-
+function mapTriageRows(data: unknown[] | null): TriageIssue[] {
   return ((data ?? []) as unknown as TriageIssue[]).map((row) => {
     const protocol = parseProtocolFields(row as unknown as Record<string, unknown>);
     return {
@@ -106,11 +83,69 @@ async function fetchTriageIssues(): Promise<TriageIssue[]> {
   });
 }
 
-export function useTriageIssues(enabled: boolean = true) {
+async function fetchTriageIssues(locationIds?: readonly string[]): Promise<TriageIssue[]> {
+  const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
+  if (orgErr) {
+    console.error("[useTriageIssues] get_my_org_id_safe:", orgErr);
+    throw orgErr;
+  }
+  if (!orgId || String(orgId).trim() === "") {
+    return [];
+  }
+  if (locationIds && locationIds.length === 0) {
+    return [];
+  }
+
+  const since = subMonths(new Date(), HISTORY_MONTHS);
+  const scoped = Boolean(locationIds && locationIds.length > 0);
+
+  let query = supabase
+    .from("property_issues")
+    .select(
+      `
+      *,
+      location:cleaning_locations!inner(name, address),
+      reporter:profiles!property_issues_reporter_id_fkey(full_name),
+      organization:organizations!property_issues_org_id_fkey(name),
+      delegated_vendor:vendor_partners!property_issues_delegated_vendor_id_fkey(name),
+      assigned_staff:profiles!property_issues_assigned_staff_id_fkey(full_name)
+    `,
+    )
+    .eq("org_id", String(orgId))
+    .eq("location.is_admin_active", true)
+    .or(ADMIN_VISIBLE_ISSUES_OR);
+
+  if (scoped) {
+    query = query.in("location_id", [...locationIds!]);
+  } else {
+    query = query.gte("created_at", since.toISOString());
+  }
+
+  query = query.order("created_at", { ascending: false });
+  if (!scoped) {
+    query = query.limit(MAX_TRIAGE_ISSUES);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("[useTriageIssues] property_issues:", error);
+    throw error;
+  }
+
+  return mapTriageRows(data as unknown[] | null);
+}
+
+export function useTriageIssues(options: boolean | UseTriageIssuesOptions = true) {
+  const enabled = typeof options === "boolean" ? options : (options.enabled ?? true);
+  const locationIds = typeof options === "boolean" ? undefined : options.locationIds;
+  const hasScope = locationIds != null;
+  const scopeReady = !hasScope || locationIds.length > 0;
+
   return useQuery({
-    queryKey: triageIssuesQueryKey(),
-    queryFn: fetchTriageIssues,
-    enabled,
+    queryKey: triageIssuesQueryKey(locationIds),
+    queryFn: () => fetchTriageIssues(locationIds),
+    enabled: enabled && scopeReady,
     staleTime: STALE_MS,
     gcTime: GC_MS,
     refetchOnMount: "always",

@@ -54,6 +54,8 @@ export type TriageIssueListPanelProps = {
   onSelectId: (id: string) => void;
   filters: TriageInboxFiltersState;
   onFiltersChange: (next: TriageInboxFiltersState) => void;
+  createIssueDefaultLocationId?: string;
+  emptyListMessage?: string;
 };
 
 function BuildingFilterCombobox({
@@ -241,6 +243,8 @@ export function TriageIssueListPanel({
   onSelectId,
   filters,
   onFiltersChange,
+  createIssueDefaultLocationId,
+  emptyListMessage = "Brak zgłoszeń w wczytanym okresie (ostatnie 6 miesięcy, maks. 300 pozycji).",
 }: TriageIssueListPanelProps) {
   const list = issues ?? [];
   const filtered = useMemo(() => applyTriageInboxFilters(list, filters), [list, filters]);
@@ -311,7 +315,11 @@ export function TriageIssueListPanel({
         ) : null}
       </div>
 
-      <CreateIssueDialog open={newIssueOpen} onOpenChange={setNewIssueOpen} />
+      <CreateIssueDialog
+        open={newIssueOpen}
+        onOpenChange={setNewIssueOpen}
+        defaultLocationId={createIssueDefaultLocationId}
+      />
 
       <ScrollArea className="min-h-0 flex-1 pr-2">
         <div className="flex flex-col gap-2 pb-4">
@@ -326,9 +334,7 @@ export function TriageIssueListPanel({
               Nie udało się wczytać zgłoszeń. Odśwież stronę i spróbuj ponownie.
             </p>
           ) : list.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Brak zgłoszeń w wczytanym okresie (ostatnie 6 miesięcy, maks. 300 pozycji).
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{emptyListMessage}</p>
           ) : filtered.length === 0 ? (
             <div className="rounded-lg py-10 text-center">
               <p className="text-sm text-muted-foreground">Brak zgłoszeń pasujących do filtrów.</p>

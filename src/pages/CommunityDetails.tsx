@@ -43,16 +43,19 @@ import { CommunitySuccessionTab } from "@/components/communities/CommunitySucces
 import { CommunityEstateTab } from "@/components/communities/CommunityEstateTab";
 import { CommunityOrdersTab } from "@/components/communities/CommunityOrdersTab";
 import { CommunityAnnouncementReviewTab } from "@/components/communities/CommunityAnnouncementReviewTab";
+import { CommunityIssuesTab } from "@/components/communities/CommunityIssuesTab";
 import {
   VerificationNeededBadge,
   rowNeedsVerification,
 } from "@/components/legal-entity/VerificationNeededBadge";
 import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
+import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { formatCommunityStatus, isCommunityInactive } from "@/lib/communityStatus";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -75,6 +78,8 @@ export default function CommunityDetails() {
     queryKey: ["my-org-id"],
     queryFn: fetchMyOrgId,
   });
+  const { data: ownerAccess } = useIsOrgOwner();
+  const isOrgOwner = ownerAccess?.isOwner === true;
 
   const communityQuery = useCommunity(communityId, orgId ?? null);
   const { data: verificationAlerts } = useOrgVerificationAlerts(orgId ?? null);
@@ -227,91 +232,23 @@ export default function CommunityDetails() {
         ) : null}
       </div>
 
-      <CollapsibleSection title="Podstawowe">
-        <CommunityDomainEditor
-          community={community}
-          orgId={orgId}
-          readOnly={inactive}
-          coreExtra={
-            <CommunityBoardDisplayLinkCard
-              communityId={communityId}
-              orgId={orgId}
-              boardPortalToken={community.board_portal_token ?? ""}
-              canManage={!inactive}
-            />
-          }
-          homeBoard={
-            orgId ? (
-              <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
-            ) : null
-          }
-        />
-
-        <section className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-base font-semibold text-foreground">Budynki przypisane do wspólnoty</h3>
-          {inactive ? null : (
-            <Button type="button" className="gap-1.5 shrink-0" onClick={() => setAssignOpen(true)}>
-              <Plus className="h-4 w-4" aria-hidden />
-              Przypisz budynek
-            </Button>
-          )}
-        </div>
-
-        {locationsQuery.isLoading ? (
-          <Skeleton className="h-40 w-full rounded-lg" />
-        ) : locationsQuery.isError ? (
-          <p className="text-sm text-destructive">Nie udało się wczytać budynków.</p>
-        ) : assigned.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            {inactive
-              ? "Brak budynków w archiwum tej wspólnoty."
-              : "Brak przypisanych budynków. Użyj przycisku powyżej, aby dodać pierwszy."}
-          </p>
-        ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nazwa</TableHead>
-                  <TableHead>Adres</TableHead>
-                  <TableHead className="w-[120px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assigned.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{row.address}</TableCell>
-                    <TableCell>
-                      {inactive ? (
-                        <span className="text-xs text-muted-foreground">Archiwum</span>
-                      ) : (
-                        <Button variant="link" className="h-auto p-0 text-sm" asChild>
-                          <Link to={`/properties/${row.id}`}>Szczegóły</Link>
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-        </section>
-      </CollapsibleSection>
-
       <CollapsibleSection title="Zarządzanie">
         <Tabs defaultValue="contracts-policies" className="w-full">
-          <TabsList className="grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4 xl:grid-cols-8">
+          <TabsList
+            className={cn(
+              "grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4",
+              isOrgOwner ? "xl:grid-cols-9" : "xl:grid-cols-8",
+            )}
+          >
             <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
             <TabsTrigger value="tasks">Zadania</TabsTrigger>
             <TabsTrigger value="inspections">Przeglądy</TabsTrigger>
             <TabsTrigger value="team">Zespół</TabsTrigger>
             <TabsTrigger value="orders">Zamówienia</TabsTrigger>
             <TabsTrigger value="announcements">Ogłoszenia</TabsTrigger>
+            <TabsTrigger value="issues">Zgłoszenia</TabsTrigger>
             <TabsTrigger value="estate">Osiedle</TabsTrigger>
-            <TabsTrigger value="succession">Sukcesja</TabsTrigger>
+            {isOrgOwner ? <TabsTrigger value="succession">Sukcesja</TabsTrigger> : null}
           </TabsList>
 
           <TabsContent value="contracts-policies" className="mt-4">
@@ -384,14 +321,94 @@ export default function CommunityDetails() {
             />
           </TabsContent>
 
+          <TabsContent value="issues" className="mt-4">
+            <CommunityIssuesTab buildingIds={buildingIds} />
+          </TabsContent>
+
           <TabsContent value="estate" className="mt-4">
             <CommunityEstateTab communityId={communityId!} communityName={community.name} />
           </TabsContent>
 
-          <TabsContent value="succession" className="mt-4">
-            <CommunitySuccessionTab orgId={orgId} communityId={communityId!} canManage={!inactive} />
-          </TabsContent>
+          {isOrgOwner ? (
+            <TabsContent value="succession" className="mt-4">
+              <CommunitySuccessionTab orgId={orgId} communityId={communityId!} canManage={!inactive} />
+            </TabsContent>
+          ) : null}
         </Tabs>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Podstawowe">
+        <CommunityDomainEditor
+          community={community}
+          orgId={orgId}
+          readOnly={inactive}
+          coreExtra={
+            <CommunityBoardDisplayLinkCard
+              communityId={communityId}
+              orgId={orgId}
+              boardPortalToken={community.board_portal_token ?? ""}
+              canManage={!inactive}
+            />
+          }
+          homeBoard={
+            orgId ? (
+              <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
+            ) : null
+          }
+        />
+
+        <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-base font-semibold text-foreground">Budynki przypisane do wspólnoty</h3>
+          {inactive ? null : (
+            <Button type="button" className="gap-1.5 shrink-0" onClick={() => setAssignOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Przypisz budynek
+            </Button>
+          )}
+        </div>
+
+        {locationsQuery.isLoading ? (
+          <Skeleton className="h-40 w-full rounded-lg" />
+        ) : locationsQuery.isError ? (
+          <p className="text-sm text-destructive">Nie udało się wczytać budynków.</p>
+        ) : assigned.length === 0 ? (
+          <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            {inactive
+              ? "Brak budynków w archiwum tej wspólnoty."
+              : "Brak przypisanych budynków. Użyj przycisku powyżej, aby dodać pierwszy."}
+          </p>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nazwa</TableHead>
+                  <TableHead>Adres</TableHead>
+                  <TableHead className="w-[120px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assigned.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{row.address}</TableCell>
+                    <TableCell>
+                      {inactive ? (
+                        <span className="text-xs text-muted-foreground">Archiwum</span>
+                      ) : (
+                        <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                          <Link to={`/properties/${row.id}`}>Szczegóły</Link>
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        </section>
       </CollapsibleSection>
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Pencil } from "lucide-react";
@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
 import { EBoardColorSwatch } from "@/components/eboard/EBoardColorSwatch";
+import { EBoardMessagesToolbar } from "@/components/eboard/EBoardMessagesToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import {
 } from "@/hooks/useEBoardMessages";
 import type { CommunityLocationRow } from "@/hooks/useProperties";
 import { toast } from "@/components/ui/sonner";
+import { applyEBoardMessageList, type EBoardSortKey } from "@/lib/eboardMessageList";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 
@@ -145,6 +147,8 @@ export function CommunityAnnouncementReviewTab({
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<EBoardMessageListItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<EBoardSortKey>("created_desc");
   const queryKey = ["community-announcement-review", communityId, buildingIds.join(",")] as const;
 
   const boardQuery = useEBoardMessagesForCommunity(communityId);
@@ -178,6 +182,10 @@ export function CommunityAnnouncementReviewTab({
 
   const pendingRows = pendingQuery.data ?? [];
   const boardRows = boardQuery.data ?? [];
+  const visibleBoardRows = useMemo(
+    () => applyEBoardMessageList(boardRows, searchQuery, sortKey),
+    [boardRows, searchQuery, sortKey],
+  );
 
   return (
     <div className="space-y-6">
@@ -202,6 +210,13 @@ export function CommunityAnnouncementReviewTab({
       ) : boardQuery.isError ? (
         <p className="text-sm text-destructive">Nie udało się wczytać ogłoszeń tablicy.</p>
       ) : (
+        <div className="space-y-3">
+          <EBoardMessagesToolbar
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            sortKey={sortKey}
+            onSortKeyChange={setSortKey}
+          />
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -221,8 +236,14 @@ export function CommunityAnnouncementReviewTab({
                     Brak ogłoszeń na tablicy. Dodaj pierwsze przyciskiem powyżej.
                   </TableCell>
                 </TableRow>
+              ) : visibleBoardRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={canManage ? 6 : 5} className="text-center text-sm text-muted-foreground">
+                    Brak wyników dla „{searchQuery.trim()}”.
+                  </TableCell>
+                </TableRow>
               ) : (
-                boardRows.map((row) => {
+                visibleBoardRows.map((row) => {
                   const until = row.valid_until ? parseISO(row.valid_until) : null;
                   return (
                     <TableRow key={row.id}>
@@ -263,6 +284,7 @@ export function CommunityAnnouncementReviewTab({
               )}
             </TableBody>
           </Table>
+        </div>
         </div>
       )}
 

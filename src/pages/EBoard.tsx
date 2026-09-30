@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { Copy, Pencil } from "lucide-react";
 
 import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
 import { EBoardColorSwatch } from "@/components/eboard/EBoardColorSwatch";
+import { EBoardMessagesToolbar } from "@/components/eboard/EBoardMessagesToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEBoardMessages, type EBoardMessageListItem } from "@/hooks/useEBoardMessages";
+import { applyEBoardMessageList, type EBoardSortKey } from "@/lib/eboardMessageList";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 
@@ -96,6 +98,13 @@ export default function EBoard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EBoardMessageListItem | null>(null);
   const [displayLinkCommunityId, setDisplayLinkCommunityId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<EBoardSortKey>("created_desc");
+
+  const visibleRows = useMemo(
+    () => applyEBoardMessageList(rows ?? [], searchQuery, sortKey),
+    [rows, searchQuery, sortKey],
+  );
 
   useEffect(() => {
     if (communities.length > 0 && !displayLinkCommunityId) {
@@ -191,6 +200,13 @@ export default function EBoard() {
         </div>
       </div>
 
+      <div className="space-y-3">
+        <EBoardMessagesToolbar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          sortKey={sortKey}
+          onSortKeyChange={setSortKey}
+        />
       <div className="rounded-md border">
         {isPending ? (
           <div className="space-y-2 p-6">
@@ -220,8 +236,14 @@ export default function EBoard() {
                       Brak ogłoszeń.
                     </TableCell>
                   </TableRow>
+                ) : visibleRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                      Brak wyników dla „{searchQuery.trim()}”.
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  (rows ?? []).map((row) => (
+                  visibleRows.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="max-w-[240px] font-medium">
                         <span className="flex items-start gap-2">
@@ -258,6 +280,7 @@ export default function EBoard() {
             </Table>
           </div>
         )}
+      </div>
       </div>
 
       <CommunityCreateAnnouncementDialog

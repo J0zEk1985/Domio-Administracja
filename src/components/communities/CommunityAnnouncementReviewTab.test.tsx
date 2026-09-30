@@ -49,6 +49,8 @@ describe("CommunityAnnouncementReviewTab", () => {
     renderTab();
     expect(screen.getByRole("heading", { name: "Tablica ogłoszeń" })).toBeVisible();
     expect(screen.getByRole("button", { name: "+ Nowe ogłoszenie" })).toBeVisible();
+    expect(screen.getByLabelText("Szukaj ogłoszeń")).toBeVisible();
+    expect(screen.getByLabelText("Sortuj ogłoszenia")).toBeVisible();
     expect(screen.getByText("Brak ogłoszeń na tablicy. Dodaj pierwsze przyciskiem powyżej.")).toBeVisible();
   });
 
