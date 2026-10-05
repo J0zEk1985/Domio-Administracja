@@ -59,25 +59,13 @@ function OrderEvents({ orderId }: { orderId: string }) {
   );
 }
 
-function OpenOrderRow({
-  order,
-  defaultCompanyId,
-}: {
-  order: ResidentOrder;
-  defaultCompanyId: string;
-}) {
+function OpenOrderRow({ order }: { order: ResidentOrder }) {
   const { stock, offline, company, dispatch } = useResidentOrderActions(order.communityId);
-  const [companyId, setCompanyId] = useState(order.fulfillmentCompanyId || defaultCompanyId);
+  const [companyId, setCompanyId] = useState(order.fulfillmentCompanyId ?? "");
 
   useEffect(() => {
-    if (order.fulfillmentCompanyId) {
-      setCompanyId(order.fulfillmentCompanyId);
-      return;
-    }
-    if (defaultCompanyId && companyId === "") {
-      setCompanyId(defaultCompanyId);
-    }
-  }, [order.fulfillmentCompanyId, defaultCompanyId, companyId]);
+    setCompanyId(order.fulfillmentCompanyId ?? "");
+  }, [order.fulfillmentCompanyId]);
   const [showEvents, setShowEvents] = useState(false);
   const canAct = order.status === "pending" || order.status === "dispatch_failed";
   const busy = stock.isPending || offline.isPending || dispatch.isPending || company.isPending;
@@ -133,10 +121,9 @@ function OpenOrderRow({
 
 type Props = {
   communityId: string;
-  defaultCompanyId: string;
 };
 
-export function CommunityOrdersInboxCard({ communityId, defaultCompanyId }: Props) {
+export function CommunityOrdersInboxCard({ communityId }: Props) {
   const ordersQuery = useCommunityResidentOrders(communityId);
   const orders = ordersQuery.data ?? [];
 
@@ -168,7 +155,7 @@ export function CommunityOrdersInboxCard({ communityId, defaultCompanyId }: Prop
               ) : (
                 <ul className="space-y-3">
                   {open.map((order) => (
-                    <OpenOrderRow key={order.id} order={order} defaultCompanyId={defaultCompanyId} />
+                    <OpenOrderRow key={order.id} order={order} />
                   ))}
                 </ul>
               )}

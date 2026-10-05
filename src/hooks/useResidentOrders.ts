@@ -3,13 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/sonner";
 import {
   deleteResidentOrderCatalogItem,
-  ensureResidentOrderSettings,
   listCommunityResidentOrders,
   listResidentOrderCatalog,
   listResidentOrderEvents,
   markResidentOrderOffline,
   queueResidentOrderDispatch,
-  saveResidentOrderSettings,
   setResidentOrderCompany,
   setResidentOrderStockDelivery,
   upsertResidentOrderCatalogItem,
@@ -18,9 +16,6 @@ import {
 
 export const residentOrderCatalogKey = (communityId: string) =>
   ["resident-order-catalog", communityId] as const;
-
-export const residentOrderSettingsKey = (communityId: string) =>
-  ["resident-order-settings", communityId] as const;
 
 export const residentOrdersKey = (communityId: string) =>
   ["resident-orders", communityId] as const;
@@ -32,14 +27,6 @@ export function useResidentOrderCatalog(communityId: string | null) {
   return useQuery({
     queryKey: residentOrderCatalogKey(communityId ?? ""),
     queryFn: () => listResidentOrderCatalog(communityId!),
-    enabled: Boolean(communityId),
-  });
-}
-
-export function useResidentOrderSettings(communityId: string | null) {
-  return useQuery({
-    queryKey: residentOrderSettingsKey(communityId ?? ""),
-    queryFn: () => ensureResidentOrderSettings(communityId!),
     enabled: Boolean(communityId),
   });
 }
@@ -64,7 +51,6 @@ function invalidateOrders(qc: ReturnType<typeof useQueryClient>, communityId: st
   if (!communityId) return;
   void qc.invalidateQueries({ queryKey: residentOrdersKey(communityId) });
   void qc.invalidateQueries({ queryKey: residentOrderCatalogKey(communityId) });
-  void qc.invalidateQueries({ queryKey: residentOrderSettingsKey(communityId) });
 }
 
 export function useUpsertResidentOrderCatalogItem(communityId: string | null) {
@@ -91,20 +77,6 @@ export function useDeleteResidentOrderCatalogItem(communityId: string | null) {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Nie udało się usunąć pozycji.");
-    },
-  });
-}
-
-export function useSaveResidentOrderSettings(communityId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: saveResidentOrderSettings,
-    onSuccess: () => {
-      toast.success("Zapisano ustawienia zamówień.");
-      if (communityId) void qc.invalidateQueries({ queryKey: residentOrderSettingsKey(communityId) });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Nie udało się zapisać ustawień.");
     },
   });
 }

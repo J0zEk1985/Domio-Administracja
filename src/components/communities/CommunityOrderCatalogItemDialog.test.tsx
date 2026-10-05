@@ -1,47 +1,61 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CommunityOrderSettingsCard } from "@/components/communities/CommunityOrderSettingsCard";
+import { CommunityOrderCatalogItemDialog } from "@/components/communities/CommunityOrderCatalogItemDialog";
 import {
   RESIDENT_ORDER_FACTORY_BODY,
   RESIDENT_ORDER_FACTORY_SUBJECT,
 } from "@/lib/residentOrderTemplateTokens";
-
-const mutate = vi.hoisted(() => vi.fn());
-const settings = vi.hoisted(() => ({
-  communityId: "community-1",
-  orgId: "org-1",
-  defaultCompanyId: null as string | null,
-  emailSubjectTemplate: "",
-  emailBodyTemplate: "",
-  updatedAt: "2026-09-29T00:00:00Z",
-  updatedBy: null as string | null,
-}));
-
-vi.mock("@/hooks/useResidentOrders", () => ({
-  useResidentOrderSettings: () => ({
-    isLoading: false,
-    isError: false,
-    data: settings,
-  }),
-  useSaveResidentOrderSettings: () => ({
-    isPending: false,
-    mutate,
-  }),
-}));
+import type { ResidentOrderCatalogItem } from "@/types/residentOrders";
 
 vi.mock("@/components/companies/CompanyComboBox", () => ({
-  CompanyComboBox: () => <div>Wybór firmy</div>,
+  CompanyComboBox: ({ onChange }: { onChange: (id: string) => void }) => (
+    <button type="button" onClick={() => onChange("company-1")}>
+      Wybierz firmę
+    </button>
+  ),
 }));
 
-describe("CommunityOrderSettingsCard", () => {
+const item: ResidentOrderCatalogItem = {
+  id: "item-1",
+  orgId: "org-1",
+  communityId: "community-1",
+  name: "Brelok do domofonu",
+  description: null,
+  priceAmount: 15,
+  priceKind: "exact",
+  imageUrl: null,
+  isActive: true,
+  sortOrder: 0,
+  locationIds: [],
+  companyId: "company-1",
+  companyName: "Serwis",
+  emailSubjectTemplate: RESIDENT_ORDER_FACTORY_SUBJECT,
+  emailBodyTemplate: RESIDENT_ORDER_FACTORY_BODY,
+  createdAt: "2026-09-29T00:00:00Z",
+  updatedAt: "2026-09-29T00:00:00Z",
+};
+
+describe("CommunityOrderCatalogItemDialog", () => {
   beforeEach(() => {
-    settings.emailSubjectTemplate = RESIDENT_ORDER_FACTORY_SUBJECT;
-    settings.emailBodyTemplate = RESIDENT_ORDER_FACTORY_BODY;
+    global.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
   });
 
   it("shows Polish field names and hides the technical token list", () => {
-    render(<CommunityOrderSettingsCard communityId="community-1" />);
+    render(
+      <CommunityOrderCatalogItemDialog
+        open
+        item={item}
+        buildings={[]}
+        pending={false}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
 
     expect(screen.getByLabelText("Temat wiadomości")).toHaveValue(
       "Zamówienie: #nazwa_pozycji — #adres_budynku, lokal #numer_lokalu",
@@ -55,9 +69,18 @@ describe("CommunityOrderSettingsCard", () => {
     expect(screen.queryByText(/\{\{org\.name\}\}/)).not.toBeInTheDocument();
   });
 
-  it("inserts a field at the cursor and saves the technical form", () => {
-    mutate.mockClear();
-    render(<CommunityOrderSettingsCard communityId="community-1" />);
+  it("inserts a field at the cursor and submits the technical form", () => {
+    const onSubmit = vi.fn();
+    render(
+      <CommunityOrderCatalogItemDialog
+        open
+        item={item}
+        buildings={[]}
+        pending={false}
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
 
     const body = screen.getByLabelText("Treść wiadomości") as HTMLTextAreaElement;
     fireEvent.focus(body);
@@ -70,9 +93,15 @@ describe("CommunityOrderSettingsCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /^#cena\b/ }));
     expect(body.value.startsWith("#cena ")).toBe(true);
 
-    fireEvent.click(screen.getByRole("button", { name: "Zapisz ustawienia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wybierz firmę" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zapisz" }));
 
-    const saved = mutate.mock.calls[0]?.[0] as { emailSubjectTemplate: string; emailBodyTemplate: string };
+    const saved = onSubmit.mock.calls[0]?.[0] as {
+      companyId: string;
+      emailSubjectTemplate: string;
+      emailBodyTemplate: string;
+    };
+    expect(saved.companyId).toBe("company-1");
     expect(saved.emailSubjectTemplate).toContain("{{item.name}}");
     expect(saved.emailSubjectTemplate).not.toContain("#");
     expect(saved.emailBodyTemplate).toContain("{{org.name}}");

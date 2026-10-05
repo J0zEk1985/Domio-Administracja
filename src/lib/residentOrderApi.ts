@@ -6,9 +6,15 @@ import type {
   ResidentOrderEvent,
   ResidentOrderEventType,
   ResidentOrderPriceKind,
-  ResidentOrderSettings,
   ResidentOrderStatus,
 } from "@/types/residentOrders";
+
+type FulfillmentEmbed = {
+  company_id: string | null;
+  email_subject_template: string;
+  email_body_template: string;
+  companies?: { name: string | null } | { name: string | null }[] | null;
+};
 
 type CatalogItemRow = {
   id: string;
@@ -23,16 +29,7 @@ type CatalogItemRow = {
   sort_order: number;
   created_at: string;
   updated_at: string;
-};
-
-type SettingsRow = {
-  community_id: string;
-  org_id: string;
-  default_company_id: string | null;
-  email_subject_template: string;
-  email_body_template: string;
-  updated_at: string;
-  updated_by: string | null;
+  resident_order_catalog_item_fulfillment?: FulfillmentEmbed | FulfillmentEmbed[] | null;
 };
 
 type OrderRow = {
@@ -98,6 +95,8 @@ function embedOne<T>(value: T | T[] | null | undefined): T | null {
 }
 
 function mapCatalogItem(row: CatalogItemRow, locationIds: string[]): ResidentOrderCatalogItem {
+  const fulfillment = embedOne(row.resident_order_catalog_item_fulfillment);
+  const company = embedOne(fulfillment?.companies);
   return {
     id: row.id,
     orgId: row.org_id,
@@ -110,20 +109,12 @@ function mapCatalogItem(row: CatalogItemRow, locationIds: string[]): ResidentOrd
     isActive: row.is_active,
     sortOrder: row.sort_order,
     locationIds,
+    companyId: fulfillment?.company_id ?? null,
+    companyName: company?.name ?? null,
+    emailSubjectTemplate: fulfillment?.email_subject_template ?? "",
+    emailBodyTemplate: fulfillment?.email_body_template ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
-}
-
-function mapSettings(row: SettingsRow): ResidentOrderSettings {
-  return {
-    communityId: row.community_id,
-    orgId: row.org_id,
-    defaultCompanyId: row.default_company_id,
-    emailSubjectTemplate: row.email_subject_template,
-    emailBodyTemplate: row.email_body_template,
-    updatedAt: row.updated_at,
-    updatedBy: row.updated_by,
   };
 }
 
@@ -192,7 +183,7 @@ async function invokeRpc(fn: string, args: Record<string, unknown> = {}): Promis
 export async function listResidentOrderCatalog(communityId: string): Promise<ResidentOrderCatalogItem[]> {
   const { data, error } = await fromTable("resident_order_catalog_items")
     .select(
-      "id, org_id, community_id, name, description, price_amount, price_kind, image_url, is_active, sort_order, created_at, updated_at",
+      "id, org_id, community_id, name, description, price_amount, price_kind, image_url, is_active, sort_order, created_at, updated_at, resident_order_catalog_item_fulfillment(company_id, email_subject_template, email_body_template, companies(name))",
     )
     .eq("community_id", communityId)
     .order("sort_order", { ascending: true })
@@ -223,84 +214,40 @@ export async function listResidentOrderCatalog(communityId: string): Promise<Res
 
 export type UpsertCatalogItemInput = {
   communityId: string;
-  orgId: string;
   name: string;
   description: string | null;
   priceAmount: number | null;
   priceKind: ResidentOrderPriceKind | null;
   isActive: boolean;
   locationIds: string[];
+  companyId: string;
+  emailSubjectTemplate: string;
+  emailBodyTemplate: string;
   itemId?: string;
 };
 
 export async function upsertResidentOrderCatalogItem(
   input: UpsertCatalogItemInput,
 ): Promise<string> {
-  const payload = {
-    community_id: input.communityId,
-    org_id: input.orgId,
-    name: input.name.trim(),
-    description: input.description?.trim() ? input.description.trim() : null,
-    price_amount: input.priceAmount,
-    price_kind: input.priceKind,
-    is_active: input.isActive,
-  };
-
-  let itemId = input.itemId ?? null;
-  if (itemId) {
-    const { error } = await fromTable("resident_order_catalog_items")
-      .update(payload)
-      .eq("id", itemId);
-    if (error) rpcError("upsertResidentOrderCatalogItem update", error);
-  } else {
-    const { data, error } = await fromTable("resident_order_catalog_items")
-      .insert(payload)
-      .select("id")
-      .single();
-    if (error) rpcError("upsertResidentOrderCatalogItem insert", error);
-    itemId = String((data as { id: string }).id);
-  }
-
-  const { error: delErr } = await fromTable("resident_order_catalog_item_locations")
-    .delete()
-    .eq("item_id", itemId);
-  if (delErr) rpcError("upsertResidentOrderCatalogItem clear locations", delErr);
-
-  if (input.locationIds.length > 0) {
-    const { error: insErr } = await fromTable("resident_order_catalog_item_locations").insert(
-      input.locationIds.map((locationId) => ({ item_id: itemId, location_id: locationId })),
-    );
-    if (insErr) rpcError("upsertResidentOrderCatalogItem locations", insErr);
-  }
-
-  return itemId;
+  const data = await invokeRpc("upsert_resident_order_catalog_item", {
+    p_community_id: input.communityId,
+    p_item_id: input.itemId ?? null,
+    p_name: input.name,
+    p_description: input.description,
+    p_price_amount: input.priceAmount,
+    p_price_kind: input.priceKind,
+    p_is_active: input.isActive,
+    p_location_ids: input.locationIds,
+    p_company_id: input.companyId,
+    p_email_subject_template: input.emailSubjectTemplate,
+    p_email_body_template: input.emailBodyTemplate,
+  });
+  return String(data);
 }
 
 export async function deleteResidentOrderCatalogItem(itemId: string): Promise<void> {
   const { error } = await fromTable("resident_order_catalog_items").delete().eq("id", itemId);
   if (error) rpcError("deleteResidentOrderCatalogItem", error);
-}
-
-export async function ensureResidentOrderSettings(communityId: string): Promise<ResidentOrderSettings> {
-  const data = await invokeRpc("ensure_resident_order_settings", {
-    p_community_id: communityId,
-  });
-  return mapSettings(data as SettingsRow);
-}
-
-export async function saveResidentOrderSettings(input: {
-  communityId: string;
-  defaultCompanyId: string | null;
-  emailSubjectTemplate: string;
-  emailBodyTemplate: string;
-}): Promise<ResidentOrderSettings> {
-  const data = await invokeRpc("save_resident_order_settings", {
-    p_community_id: input.communityId,
-    p_default_company_id: input.defaultCompanyId,
-    p_email_subject_template: input.emailSubjectTemplate,
-    p_email_body_template: input.emailBodyTemplate,
-  });
-  return mapSettings(data as SettingsRow);
 }
 
 const ORDER_SELECT =

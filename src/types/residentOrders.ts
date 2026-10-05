@@ -38,18 +38,12 @@ export interface ResidentOrderCatalogItem {
   isActive: boolean;
   sortOrder: number;
   locationIds: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ResidentOrderSettings {
-  communityId: string;
-  orgId: string;
-  defaultCompanyId: string | null;
+  companyId: string | null;
+  companyName: string | null;
   emailSubjectTemplate: string;
   emailBodyTemplate: string;
+  createdAt: string;
   updatedAt: string;
-  updatedBy: string | null;
 }
 
 export interface ResidentOrder {

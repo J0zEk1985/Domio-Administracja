@@ -89,25 +89,25 @@ export function AiTriagePanel({ enabled }: { enabled: boolean }) {
         name: p.name,
         community_id: p.communityId ?? "",
       }));
-      const { data, error } = await supabase.functions.invoke<TriageIssueResponse>("triage-issue", {
+      const { data, error } = await supabase.functions.invoke<TriageIssueResponse>("triage-ai-logic", {
         body: { text: aiText.trim(), locations },
       });
 
       if (error) {
-        console.error("[AiTriagePanel] triage-issue invoke:", error);
+        console.error("[AiTriagePanel] triage-ai-logic invoke:", error);
         toast.error(errMessage(error));
         return;
       }
 
       if (!data || typeof data !== "object") {
-        console.error("[AiTriagePanel] triage-issue empty data:", data);
+        console.error("[AiTriagePanel] triage-ai-logic empty data:", data);
         toast.error("Brak odpowiedzi z serwera analizy.");
         return;
       }
 
       if ("error" in data && typeof (data as { error?: string }).error === "string") {
         const msg = (data as { error: string }).error;
-        console.error("[AiTriagePanel] triage-issue body error:", msg);
+        console.error("[AiTriagePanel] triage-ai-logic body error:", msg);
         toast.error(msg);
         return;
       }

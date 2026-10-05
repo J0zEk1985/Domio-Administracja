@@ -309,7 +309,7 @@ export default function CommunityDetails() {
           </TabsContent>
 
           <TabsContent value="orders" className="mt-4">
-            <CommunityOrdersTab orgId={orgId} communityId={communityId!} buildings={assigned} />
+            <CommunityOrdersTab communityId={communityId!} buildings={assigned} />
           </TabsContent>
 
           <TabsContent value="announcements" className="mt-4">
