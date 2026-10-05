@@ -86,12 +86,12 @@ export function CompanyComboBox({ value, onChange, disabled = false }: CompanyCo
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="h-10 w-full justify-between font-normal"
+          className="h-10 w-full min-w-0 justify-between overflow-hidden font-normal"
         >
           {showTriggerSkeleton ? (
             <Skeleton className="h-4 w-[min(100%,12rem)]" />
           ) : (
-            <span className="truncate text-left">
+            <span className="min-w-0 flex-1 truncate text-left">
               {selectedCompany?.name ?? "Wybierz firmę…"}
             </span>
           )}

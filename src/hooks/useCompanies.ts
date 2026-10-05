@@ -13,8 +13,8 @@ export const COMPANIES_STALE_MS = 5 * 60 * 1000;
 
 export const companiesQueryKey = (searchQuery?: string) => ["companies", searchQuery] as const;
 
-/** Insurers and contractors (B2B partners) — matches labels „Ubezpieczyciel” / „Wykonawca” in UI. */
-export const POLICY_INSURER_CATEGORIES: readonly CompanyCategory[] = ["insurer", "contractor"];
+/** Policy insurer picker — only firms categorized as insurers. */
+export const POLICY_INSURER_CATEGORIES: readonly CompanyCategory[] = ["insurer"];
 
 export const policyInsurerCompaniesQueryKey = (searchQuery?: string) =>
   ["companies", "policyInsurers", searchQuery] as const;

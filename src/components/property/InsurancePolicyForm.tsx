@@ -106,7 +106,7 @@ export function InsurancePolicyForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="w-[calc(100vw-2rem)] min-w-0 sm:max-w-xl">
         <DialogHeader className="space-y-1">
           <DialogTitle className="text-lg font-semibold tracking-tight">Nowa polisa</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
@@ -242,7 +242,9 @@ export function InsurancePolicyForm({
                 name="document_url"
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
-                    <FormLabel className="text-xs font-medium text-muted-foreground">PDF (opcjonalnie)</FormLabel>
+                    <FormLabel className="text-xs font-medium text-muted-foreground">
+                      Link do PDF polisy (opcjonalnie)
+                    </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -254,6 +256,9 @@ export function InsurancePolicyForm({
                         placeholder="https://…"
                       />
                     </FormControl>
+                    <p className="text-[11px] leading-snug text-muted-foreground">
+                      Adres URL skanu lub pliku polisy. Pole nie służy do wgrania pliku z dysku.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -383,7 +383,6 @@ export default function CommunityDetails() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nazwa</TableHead>
                   <TableHead>Adres</TableHead>
                   <TableHead className="w-[120px]" />
                 </TableRow>
@@ -391,8 +390,7 @@ export default function CommunityDetails() {
               <TableBody>
                 {assigned.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{row.address}</TableCell>
+                    <TableCell className="font-medium">{row.address}</TableCell>
                     <TableCell>
                       {inactive ? (
                         <span className="text-xs text-muted-foreground">Archiwum</span>

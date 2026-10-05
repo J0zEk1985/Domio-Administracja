@@ -162,8 +162,8 @@ export function ContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] w-[calc(100vw-2rem)] min-w-0 flex-col overflow-y-auto overflow-x-hidden sm:max-w-lg">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? "Edytuj umowę" : "Nowa umowa"}</DialogTitle>
           <DialogDescription>
             {isEdit
@@ -172,7 +172,11 @@ export function ContractDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="flex min-h-0 min-w-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1">
             {!isEdit && communityAssignOption ? (
               <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
                 <Checkbox
@@ -196,7 +200,7 @@ export function ContractDialog({
               control={form.control}
               name="company_id"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0">
                   <FormLabel>Firma</FormLabel>
                   <FormControl>
                     <CompanyComboBox
@@ -273,15 +277,15 @@ export function ContractDialog({
               )}
             />
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="start_date"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-0">
                     <FormLabel>Data rozpoczęcia</FormLabel>
                     <FormControl>
-                      <Input {...field} type="date" disabled={isPending} />
+                      <Input {...field} type="date" className="min-w-0" disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -291,13 +295,14 @@ export function ContractDialog({
                 control={form.control}
                 name="end_date"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-0">
                     <FormLabel>Data zakończenia</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         value={field.value ?? ""}
                         type="date"
+                        className="min-w-0"
                         disabled={isPending}
                       />
                     </FormControl>
@@ -307,21 +312,21 @@ export function ContractDialog({
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
                 name="net_value"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-0">
                     <FormLabel>Kwota netto (PLN)</FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div className="relative min-w-0">
                         <Input
                           type="number"
                           inputMode="decimal"
                           min={0}
                           step="0.01"
-                          className="pr-14"
+                          className="min-w-0 pr-14"
                           disabled={isPending}
                           name={field.name}
                           onBlur={field.onBlur}
@@ -348,7 +353,7 @@ export function ContractDialog({
                 render={({ field }) => {
                   const displayValue = field.value === 0 ? zeroVatVariant : String(field.value);
                   return (
-                    <FormItem>
+                    <FormItem className="min-w-0">
                       <FormLabel>Stawka VAT</FormLabel>
                       <Select
                         value={displayValue}
@@ -385,16 +390,16 @@ export function ContractDialog({
                 control={form.control}
                 name="gross_value"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-0">
                     <FormLabel>Kwota brutto (PLN)</FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div className="relative min-w-0">
                         <Input
                           type="number"
                           inputMode="decimal"
                           readOnly
                           tabIndex={-1}
-                          className="cursor-default bg-muted/40 pr-14"
+                          className="min-w-0 cursor-default bg-muted/40 pr-14"
                           name={field.name}
                           ref={field.ref}
                           value={field.value}
@@ -442,7 +447,8 @@ export function ContractDialog({
               )}
             />
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            </div>
+            <DialogFooter className="mt-4 shrink-0 gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="ghost"

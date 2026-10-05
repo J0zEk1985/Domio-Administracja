@@ -50,7 +50,7 @@ function apiErrorMessage(err: unknown): string {
     const m = (err as { message: unknown }).message;
     if (typeof m === "string" && m.length > 0) return m;
   }
-  return "Nie udaĹ‚o siÄ™ zapisaÄ‡ firmy.";
+  return "Nie udało się zapisać firmy.";
 }
 
 export interface CompanyDialogProps {
@@ -59,6 +59,9 @@ export interface CompanyDialogProps {
   mode?: "create" | "edit";
   company?: Company | null;
   initialSearchQuery?: string;
+  /** Used when creating from a context that already knows the catalog role. */
+  defaultCategory?: CompanyCategory;
+  lockCategory?: boolean;
   onSuccess: (companyId: string) => void;
 }
 
@@ -67,13 +70,15 @@ export function CompanyDialog({
   onOpenChange,
   mode = "create",
   company,
+  defaultCategory = "contractor",
+  lockCategory = false,
   onSuccess,
 }: CompanyDialogProps) {
   const update = useUpdateCompany();
   const isEdit = mode === "edit" && Boolean(company?.id);
   const [createOrgId, setCreateOrgId] = useState<string | null>(null);
   const [createEntity, setCreateEntity] = useState<LegalEntityPublic | null>(null);
-  const [createCategory, setCreateCategory] = useState<CompanyCategory>("contractor");
+  const [createCategory, setCreateCategory] = useState<CompanyCategory>(defaultCategory);
   const [creating, setCreating] = useState(false);
   const saving = update.isPending || creating;
 
@@ -91,14 +96,14 @@ export function CompanyDialog({
       return;
     }
     setCreateEntity(null);
-    setCreateCategory("contractor");
+    setCreateCategory(defaultCategory);
     void getOrgAndActor()
       .then(({ orgId }) => setCreateOrgId(orgId))
       .catch((err) => {
         console.error("[CompanyDialog] org:", err);
         toast.error("Brak kontekstu organizacji.");
       });
-  }, [open, reset, isEdit, company]);
+  }, [open, reset, isEdit, company, defaultCategory]);
 
   async function handleEdit(values: CompanyFormValues) {
     if (!isEdit || !company?.id) return;
@@ -123,7 +128,7 @@ export function CompanyDialog({
 
   async function handleCreate() {
     if (!createEntity) {
-      toast.error("SprawdĹş NIP w GUS i dodaj firmÄ™ do Domio.");
+      toast.error("Sprawdź NIP w GUS i dodaj firmę do Domio.");
       return;
     }
     setCreating(true);
@@ -135,7 +140,7 @@ export function CompanyDialog({
         .maybeSingle();
       if (error) throw error;
       if (!row?.id) {
-        throw new Error("Firma powstaĹ‚a w rejestrze, ale nie pojawiĹ‚a siÄ™ w katalogu. OdĹ›wieĹĽ listÄ™.");
+        throw new Error("Firma powstała w rejestrze, ale nie pojawiła się w katalogu. Odśwież listę.");
       }
       const updated = await update.mutateAsync({
         id: row.id,
@@ -160,20 +165,26 @@ export function CompanyDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="pointer-events-auto sm:max-w-lg"
+        className="pointer-events-auto flex max-h-[90dvh] w-[calc(100vw-2rem)] min-w-0 flex-col overflow-y-auto overflow-x-hidden sm:max-w-lg"
         onCloseAutoFocus={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.stopPropagation()}
+        onInteractOutside={(e) => e.stopPropagation()}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? "Edycja firmy" : "Nowa firma"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Kategoria i kontakt sÄ… lokalne. NIP naleĹĽy do globalnego rejestru DOMIO."
+              ? "Kategoria i kontakt są lokalne. NIP należy do globalnego rejestru DOMIO."
               : "Zacznij od NIP. Dane rejestrowe pobieramy z GUS."}
           </DialogDescription>
         </DialogHeader>
         {isEdit ? (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit(handleEdit)}
+              className="flex min-h-0 min-w-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1">
               <FormField
                 control={form.control}
                 name="name"
@@ -263,18 +274,20 @@ export function CompanyDialog({
                   </FormItem>
                 )}
               />
-              <DialogFooter className="gap-2 sm:gap-0">
+              </div>
+              <DialogFooter className="mt-4 shrink-0 gap-2 sm:gap-0">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
                   Anuluj
                 </Button>
                 <Button type="submit" disabled={saving}>
-                  {saving ? "Zapisywanieâ€¦" : "Zapisz zmiany"}
+                  {saving ? "Zapisywanie…" : "Zapisz zmiany"}
                 </Button>
               </DialogFooter>
             </form>
           </Form>
         ) : (
-          <div className="space-y-4">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1">
             {createOrgId ? (
               <LegalEntityNipField
                 orgId={createOrgId}
@@ -285,14 +298,14 @@ export function CompanyDialog({
                 required
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Ĺadowanie organizacjiâ€¦</p>
+              <p className="text-sm text-muted-foreground">Ładowanie organizacji…</p>
             )}
-            <div className="grid gap-2">
+            <div className="grid min-w-0 gap-2">
               <p className="text-sm font-medium">Kategoria w katalogu</p>
               <Select
                 value={createCategory}
                 onValueChange={(v) => setCreateCategory(v as CompanyCategory)}
-                disabled={saving}
+                disabled={saving || lockCategory}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -306,12 +319,13 @@ export function CompanyDialog({
                 </SelectContent>
               </Select>
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
+            </div>
+            <DialogFooter className="mt-4 shrink-0 gap-2 sm:gap-0">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
                 Anuluj
               </Button>
               <Button type="button" onClick={() => void handleCreate()} disabled={saving || !createEntity}>
-                {saving ? "Zapisywanieâ€¦" : "Zapisz firmÄ™"}
+                {saving ? "Zapisywanie…" : "Zapisz firmę"}
               </Button>
             </DialogFooter>
           </div>

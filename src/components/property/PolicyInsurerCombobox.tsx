@@ -6,7 +6,6 @@ import { CompanyDialog } from "@/components/companies/CompanyDialog";
 import { Button } from "@/components/ui/button";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
@@ -82,14 +81,14 @@ export function PolicyInsurerCombobox({ value, onChange, disabled }: PolicyInsur
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            disabled={disabled}
-            className="h-10 w-full justify-between font-normal"
-          >
-            {showTriggerSkeleton ? (
-              <Skeleton className="h-4 w-[min(100%,12rem)]" />
-            ) : (
-              <span className="truncate text-left">{selectedCompany?.name ?? "Wybierz…"}</span>
-            )}
+          disabled={disabled}
+          className="h-10 w-full min-w-0 justify-between overflow-hidden font-normal"
+        >
+          {showTriggerSkeleton ? (
+            <Skeleton className="h-4 w-[min(100%,12rem)]" />
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-left">{selectedCompany?.name ?? "Wybierz…"}</span>
+          )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -121,38 +120,45 @@ export function PolicyInsurerCombobox({ value, onChange, disabled }: PolicyInsur
                   <Skeleton className="h-12 w-full" />
                   <Skeleton className="h-12 w-full" />
                 </div>
-              ) : companies.length > 0 ? (
-                <CommandGroup heading="Firmy">
-                  {companies.map((company) => (
-                    <PolicyInsurerListItem
-                      key={company.id}
-                      company={company}
-                      onPick={() => {
-                        onChange(company.id);
-                        setOpen(false);
-                      }}
-                    />
-                  ))}
-                </CommandGroup>
               ) : (
-                <CommandEmpty className="px-3 py-6 text-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-auto w-full justify-start gap-2 py-2 text-left font-normal pointer-events-auto"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setOpen(false);
-                      queueMicrotask(() => setShowCreateDialog(true));
-                    }}
-                  >
-                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="leading-snug">
-                      {queryLabel ? `Dodaj firmę: ${queryLabel}` : "Dodaj firmę"}
-                    </span>
-                  </Button>
-                </CommandEmpty>
+                <>
+                  {companies.length > 0 ? (
+                    <CommandGroup heading="Ubezpieczyciele">
+                      {companies.map((company) => (
+                        <PolicyInsurerListItem
+                          key={company.id}
+                          company={company}
+                          onPick={() => {
+                            onChange(company.id);
+                            setOpen(false);
+                          }}
+                        />
+                      ))}
+                    </CommandGroup>
+                  ) : (
+                    <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+                      Brak ubezpieczycieli{queryLabel ? ` dla „${queryLabel}”` : ""}.
+                    </p>
+                  )}
+                  <div className="border-t p-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto w-full justify-start gap-2 py-2 text-left font-normal pointer-events-auto"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setOpen(false);
+                        queueMicrotask(() => setShowCreateDialog(true));
+                      }}
+                    >
+                      <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="leading-snug">
+                        {queryLabel ? `Dodaj ubezpieczyciela: ${queryLabel}` : "Dodaj ubezpieczyciela"}
+                      </span>
+                    </Button>
+                  </div>
+                </>
               )}
             </CommandList>
           </Command>
@@ -162,6 +168,8 @@ export function PolicyInsurerCombobox({ value, onChange, disabled }: PolicyInsur
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         initialSearchQuery={queryLabel}
+        defaultCategory="insurer"
+        lockCategory
         onSuccess={(newCompanyId) => {
           onChange(newCompanyId);
           setShowCreateDialog(false);

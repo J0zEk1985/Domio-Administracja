@@ -254,7 +254,7 @@ export function LegalEntityNipField({
   };
 
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 gap-3">
       <OrgLegalEntitySelect
         orgId={orgId}
         value={value}
@@ -294,10 +294,10 @@ export function LegalEntityNipField({
       {value ? (
         <div className="rounded-md border bg-muted/30 p-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{value.shortName}</p>
+          <p className="font-medium break-words">{value.shortName}</p>
             {value.verificationStatus === "pending_manual" ? <VerificationNeededBadge /> : null}
           </div>
-          <p className="text-muted-foreground">{value.legalName}</p>
+          <p className="text-muted-foreground break-words">{value.legalName}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {LEGAL_ENTITY_KIND_LABELS[value.kind]} · NIP {value.nip}
           </p>
@@ -309,9 +309,9 @@ export function LegalEntityNipField({
       ) : null}
 
       {gus && !value ? (
-        <div className="grid gap-3 rounded-md border p-3">
+        <div className="grid min-w-0 gap-3 rounded-md border p-3">
           <div className="text-sm">
-            <p className="font-medium">{gus.legalName}</p>
+            <p className="font-medium break-words">{gus.legalName}</p>
             <p className="text-xs text-muted-foreground mt-1">{gus.seatFullAddress}</p>
             <p className="text-xs text-muted-foreground">REGON {gus.regon ?? "—"}</p>
           </div>
