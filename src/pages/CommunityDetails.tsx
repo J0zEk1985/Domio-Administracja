@@ -44,6 +44,7 @@ import { CommunityEstateTab } from "@/components/communities/CommunityEstateTab"
 import { CommunityOrdersTab } from "@/components/communities/CommunityOrdersTab";
 import { CommunityAnnouncementReviewTab } from "@/components/communities/CommunityAnnouncementReviewTab";
 import { CommunityIssuesTab } from "@/components/communities/CommunityIssuesTab";
+import { CommunityWarrantyTab } from "@/components/communities/CommunityWarrantyTab";
 import {
   VerificationNeededBadge,
   rowNeedsVerification,
@@ -237,7 +238,7 @@ export default function CommunityDetails() {
           <TabsList
             className={cn(
               "grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4",
-              isOrgOwner ? "xl:grid-cols-9" : "xl:grid-cols-8",
+              isOrgOwner ? "xl:grid-cols-10" : "xl:grid-cols-9",
             )}
           >
             <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
@@ -247,6 +248,7 @@ export default function CommunityDetails() {
             <TabsTrigger value="orders">Zamówienia</TabsTrigger>
             <TabsTrigger value="announcements">Ogłoszenia</TabsTrigger>
             <TabsTrigger value="issues">Zgłoszenia</TabsTrigger>
+            <TabsTrigger value="warranty">Usterki deweloperskie</TabsTrigger>
             <TabsTrigger value="estate">Osiedle</TabsTrigger>
             {isOrgOwner ? <TabsTrigger value="succession">Sukcesja</TabsTrigger> : null}
           </TabsList>
@@ -324,6 +326,21 @@ export default function CommunityDetails() {
 
           <TabsContent value="issues" className="mt-4">
             <CommunityIssuesTab buildingIds={buildingIds} />
+          </TabsContent>
+
+          <TabsContent value="warranty" className="mt-4">
+            {orgId ? (
+              <CommunityWarrantyTab
+                communityId={communityId!}
+                communityName={community.name}
+                orgId={orgId}
+                canManage={!inactive}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Ładowanie...
+              </p>
+            )}
           </TabsContent>
 
           <TabsContent value="estate" className="mt-4">

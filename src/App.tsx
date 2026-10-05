@@ -31,6 +31,10 @@ import EBoard from "./pages/EBoard.tsx";
 import EBoardDisplay from "./pages/EBoardDisplay.tsx";
 import KioskLayout from "./layouts/KioskLayout.tsx";
 import PostLoginRootRedirect from "./pages/PostLoginRootRedirect.tsx";
+import DeveloperWarranty from "./pages/DeveloperWarranty.tsx";
+import WarrantyIssueDetails from "./pages/WarrantyIssueDetails.tsx";
+import DeveloperActivation from "./pages/DeveloperActivation.tsx";
+import DeveloperPortal from "./pages/DeveloperPortal.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +59,8 @@ const App = () => (
               <Route index element={<EBoardDisplay />} />
             </Route>
             <Route path="/login" element={<Login />} />
+            <Route path="/deweloper/aktywacja/:token" element={<DeveloperActivation />} />
+            <Route path="/deweloper/:token" element={<DeveloperPortal />} />
             <Route element={<RequireAuth />}>
               <Route path="/" element={<PostLoginRootRedirect />} />
               <Route element={<DashboardLayout />}>
@@ -66,6 +72,8 @@ const App = () => (
                 <Route path="/emergency" element={<EmergencyMode />} />
                 <Route path="/quick-actions" element={<QuickActions />} />
                 <Route path="/e-board" element={<EBoard />} />
+                <Route path="/developer-warranty" element={<DeveloperWarranty />} />
+                <Route path="/developer-warranty/:issueId" element={<WarrantyIssueDetails />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/contracts" element={<ContractsPage />} />
                 <Route path="/inspections" element={<InspectionsPage />} />

@@ -1,0 +1,303 @@
+/**
+ * Create Warranty Issue Dialog
+ * Dialog do tworzenia nowej usterki deweloperskiej
+ */
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useCreateWarrantyIssue } from "@/hooks/useDeveloperWarranty";
+import { useLocationsByCommunity } from "@/hooks/useProperties";
+import { DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS } from "@/types/developer-warranty";
+import { toast } from "@/components/ui/sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PhotoUpload } from "@/components/warranty/PhotoUpload";
+
+const CATEGORIES = [
+  "Hydraulika",
+  "Elektryka",
+  "Wentylacja",
+  "Stolarka",
+  "Ślusarka",
+  "Elewacja",
+  "Dach",
+  "Instalacje",
+  "Wykończenia",
+  "Inne",
+];
+
+const formSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Tytuł jest wymagany")
+    .max(255, "Tytuł nie może przekraczać 255 znaków"),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  location_master_id: z.string().optional(),
+  location_detail: z.string().optional(),
+  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface CreateWarrantyIssueDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  communityId: string;
+  orgId: string;
+}
+
+export function CreateWarrantyIssueDialog({
+  open,
+  onOpenChange,
+  communityId,
+  orgId,
+}: CreateWarrantyIssueDialogProps) {
+  const [photos, setPhotos] = useState<string[]>([]);
+  const createMutation = useCreateWarrantyIssue();
+  
+  const { data: locations, isLoading: locationsLoading } = useLocationsByCommunity(communityId, {
+    enabled: open,
+  });
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      location_master_id: "",
+      location_detail: "",
+      priority: "normal",
+    },
+  });
+
+  const handleSubmit = async (values: FormValues) => {
+    try {
+      await createMutation.mutateAsync({
+        community_id: communityId,
+        title: values.title,
+        description: values.description || undefined,
+        category: values.category || undefined,
+        location_master_id: values.location_master_id || undefined,
+        location_detail: values.location_detail || undefined,
+        priority: values.priority,
+        photos_reported: photos.length > 0 ? photos : undefined,
+      });
+
+      toast.success("Usterka została utworzona jako szkic");
+      form.reset();
+      setPhotos([]);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Nie udało się utworzyć usterki");
+      console.error(error);
+    }
+  };
+
+  const handleClose = () => {
+    form.reset();
+    setPhotos([]);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Dodaj usterkę deweloperską</DialogTitle>
+          <DialogDescription>
+            Utwórz nową usterkę objętą rękojmią deweloperską. Usterka zostanie zapisana jako szkic.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tytuł usterki *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="np. Przeciek w instalacji c.o." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Opis</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Szczegółowy opis usterki..."
+                      rows={4}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Opisz problem tak dokładnie, jak to możliwe
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategoria</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz kategorię" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priorytet</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz priorytet" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="location_master_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Budynek</FormLabel>
+                  {locationsLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz budynek (opcjonalnie)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Nie dotyczy konkretnego budynku</SelectItem>
+                        {locations?.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <FormDescription>
+                    Wybierz budynek, jeśli usterka dotyczy konkretnej nieruchomości
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="location_detail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lokalizacja szczegółowa</FormLabel>
+                  <FormControl>
+                    <Input placeholder="np. Klatka A, parter, korytarz" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Dokładne miejsce wystąpienia usterki
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <PhotoUpload
+              photos={photos}
+              onPhotosChange={setPhotos}
+              label="Zdjęcia dokumentujące usterkę"
+              description="Dodaj zdjęcia pokazujące problem (opcjonalnie)"
+              maxPhotos={6}
+              disabled={createMutation.isPending}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Anuluj
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Tworzenie..." : "Utwórz szkic"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
