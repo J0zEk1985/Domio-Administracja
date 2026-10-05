@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  propertyDisplayName,
   useProperty,
   usePropertyAdministrators,
   useRevokePropertyLocationAccess,
@@ -153,6 +154,9 @@ export default function PropertyDetails() {
     return null;
   }
 
+  const displayName = propertyDisplayName(property.name);
+  const heading = displayName ?? property.address;
+
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
@@ -166,8 +170,8 @@ export default function PropertyDetails() {
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Wróć do listy budynków
         </Button>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{property.name}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{property.address}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{heading}</h1>
+        {displayName ? <p className="text-sm text-muted-foreground mt-1">{property.address}</p> : null}
       </div>
 
       <CollapsibleSection title="Podstawowe">

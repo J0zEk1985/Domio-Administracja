@@ -10,6 +10,7 @@ import {
 import { FileText, Search, X } from "lucide-react";
 
 import { contractsColumns } from "@/components/contracts/columns";
+import { contractPropertyDisplay } from "@/lib/contractPropertyLabel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,11 +31,11 @@ const SKELETON_ROWS = 6;
 function globalContractsFilter(row: { original: PropertyContract }, _columnId: string, filter: unknown): boolean {
   const q = String(filter ?? "")
     .trim()
-    .toLowerCase();
+    .toLocaleLowerCase("pl");
   if (!q) return true;
-  const company = row.original.company?.name?.toLowerCase() ?? "";
-  const building = row.original.location?.name?.toLowerCase() ?? "";
-  return company.includes(q) || building.includes(q);
+  const company = row.original.company?.name?.toLocaleLowerCase("pl") ?? "";
+  const property = contractPropertyDisplay(row.original).searchText;
+  return company.includes(q) || property.includes(q);
 }
 
 export function ContractsDataTable({

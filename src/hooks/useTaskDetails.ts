@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { firstProfileEmbed } from "@/lib/profileDisplayName";
 import { toast } from "@/components/ui/sonner";
 import { propertyTasksQueryKey } from "@/hooks/usePropertyTasks";
 import type { Database } from "@/types/supabase";
@@ -16,6 +17,8 @@ export const taskCommentsQueryKey = (taskId: string) => ["property-task-comments
 export type TaskProfileEmbed = {
   id: string;
   full_name: string | null;
+  email: string | null;
+  contact_email: string | null;
 };
 
 export type PropertyTaskDetails = Database["public"]["Tables"]["property_tasks"]["Row"] & {
@@ -27,10 +30,12 @@ export type TaskCommentWithAuthor = Database["public"]["Tables"]["task_comments"
   author: TaskProfileEmbed | null;
 };
 
+const PROFILE_EMBED = "id, full_name, email, contact_email";
+
 const TASK_SELECT_EMBEDS = `
   *,
-  creator:profiles!property_tasks_created_by_fkey(id, full_name),
-  assignee:profiles!property_tasks_assignee_id_fkey(id, full_name)
+  creator:profiles!property_tasks_created_by_fkey(${PROFILE_EMBED}),
+  assignee:profiles!property_tasks_assignee_id_fkey(${PROFILE_EMBED})
 `;
 
 async function fetchTaskDetails(taskId: string): Promise<PropertyTaskDetails> {
@@ -48,7 +53,15 @@ async function fetchTaskDetails(taskId: string): Promise<PropertyTaskDetails> {
     throw new Error("TASK_NOT_FOUND");
   }
 
-  return data as PropertyTaskDetails;
+  const row = data as PropertyTaskDetails & {
+    creator: TaskProfileEmbed | TaskProfileEmbed[] | null;
+    assignee: TaskProfileEmbed | TaskProfileEmbed[] | null;
+  };
+  return {
+    ...row,
+    creator: firstProfileEmbed(row.creator),
+    assignee: firstProfileEmbed(row.assignee),
+  };
 }
 
 export function useTaskDetails(taskId: string | undefined, enabled: boolean = true) {
@@ -74,7 +87,7 @@ export function useTaskDetails(taskId: string | undefined, enabled: boolean = tr
 
 const COMMENT_SELECT = `
   *,
-  author:profiles!task_comments_author_id_fkey(id, full_name)
+  author:profiles!task_comments_author_id_fkey(${PROFILE_EMBED})
 `;
 
 async function fetchTaskComments(taskId: string): Promise<TaskCommentWithAuthor[]> {
@@ -89,7 +102,13 @@ async function fetchTaskComments(taskId: string): Promise<TaskCommentWithAuthor[
     throw error;
   }
 
-  return (data as TaskCommentWithAuthor[] | null) ?? [];
+  const rows = (data as Array<
+    TaskCommentWithAuthor & { author: TaskProfileEmbed | TaskProfileEmbed[] | null }
+  > | null) ?? [];
+  return rows.map((row) => ({
+    ...row,
+    author: firstProfileEmbed(row.author),
+  }));
 }
 
 export function useTaskComments(taskId: string | undefined, enabled: boolean = true) {

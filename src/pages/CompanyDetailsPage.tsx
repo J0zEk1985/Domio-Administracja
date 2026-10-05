@@ -139,7 +139,7 @@ export default function CompanyDetailsPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight text-foreground">Umowy z tą firmą</h2>
         <p className="text-sm text-muted-foreground">
-          Lista umów powiązanych z tą firmą w nieruchomościach, do których masz dostęp (RLS).
+          Lista umów powiązanych z tą firmą w nieruchomościach, do których masz dostęp.
         </p>
         <ContractsDataTable data={contractsQuery.data ?? []} isLoading={contractsQuery.isPending} />
       </section>

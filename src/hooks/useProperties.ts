@@ -26,6 +26,13 @@ export type PropertyListRow = {
   longitude: number | null;
 };
 
+/** Buildings often have only an address; list mapping used "—" as a name placeholder. */
+export function propertyDisplayName(name: string | null | undefined): string | null {
+  const n = name?.trim();
+  if (!n || n === "—") return null;
+  return n;
+}
+
 async function fetchProperties(): Promise<PropertyListRow[]> {
   const actor = await getOrgAndActor();
   const { orgId, isOwner, userId } = actor;

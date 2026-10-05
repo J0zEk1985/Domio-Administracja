@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { PropertyDetail } from "@/hooks/useProperties";
-import { useUpdatePropertyGeneral } from "@/hooks/useProperties";
+import { propertyDisplayName, useUpdatePropertyGeneral, type PropertyDetail } from "@/hooks/useProperties";
 import { propertyLocationFormSchema } from "@/schemas/locationSchema";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -37,14 +36,14 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
   const save = useUpdatePropertyGeneral(property.id);
   const integrationsCardRef = useRef<HTMLDivElement>(null);
   const ckobInputRef = useRef<HTMLInputElement>(null);
-  const [nameDraft, setNameDraft] = useState(property.name === "—" ? "" : property.name);
+  const [nameDraft, setNameDraft] = useState(propertyDisplayName(property.name) ?? "");
   const [latDraft, setLatDraft] = useState(() => formatCoord(property.latitude));
   const [lngDraft, setLngDraft] = useState(() => formatCoord(property.longitude));
   const [ckobDraft, setCkobDraft] = useState(() => property.cKobBuildingId ?? "");
   const [communityId, setCommunityId] = useState<string | null>(property.communityId ?? null);
 
   useEffect(() => {
-    setNameDraft(property.name === "—" ? "" : property.name);
+    setNameDraft(propertyDisplayName(property.name) ?? "");
   }, [property.id, property.name]);
 
   useEffect(() => {
@@ -72,7 +71,7 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
 
   const nameDirty = useMemo(() => {
     const trimmed = nameDraft.trim();
-    const prev = property.name === "—" ? "" : property.name.trim();
+    const prev = propertyDisplayName(property.name) ?? "";
     return trimmed !== prev;
   }, [nameDraft, property.name]);
 

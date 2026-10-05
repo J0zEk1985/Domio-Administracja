@@ -6,7 +6,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { InsurancePolicyFormValues } from "@/schemas/policySchema";
+import { toDbPolicyScope, type InsurancePolicyFormValues } from "@/schemas/policySchema";
 import { supabase } from "@/lib/supabase";
 import type { PropertyPolicy } from "@/types/contracts";
 import type { Database } from "@/types/supabase";
@@ -91,7 +91,7 @@ async function insertPropertyPolicy({
       community_id: communityId ?? null,
       company_id: values.company_id,
       policy_number: values.policy_number.trim(),
-      policy_scope: values.policy_scope,
+      policy_scope: toDbPolicyScope(values.policy_scope),
       premium_amount: values.premium_amount,
       start_date: values.start_date,
       end_date: values.end_date,

@@ -20,7 +20,7 @@ import {
   SortablePropertyHead,
   type NameSortDir,
 } from "@/components/property/PropertiesTableParts";
-import { useProperties, PROPERTIES_QUERY_KEY } from "@/hooks/useProperties";
+import { useProperties, PROPERTIES_QUERY_KEY, propertyDisplayName } from "@/hooks/useProperties";
 import { communityQueryKeys } from "@/hooks/useCommunities";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
@@ -75,7 +75,9 @@ export default function Properties() {
         sensitivity: "base",
       });
       if (group !== 0) return group;
-      const cmp = a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+      const labelA = propertyDisplayName(a.name) ?? a.address;
+      const labelB = propertyDisplayName(b.name) ?? b.address;
+      const cmp = labelA.localeCompare(labelB, "pl", { sensitivity: "base" });
       return nameSort === "asc" ? cmp : -cmp;
     });
     return rows;
@@ -192,15 +194,23 @@ export default function Properties() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((row) => (
+                  {filtered.map((row) => {
+                    const title = propertyDisplayName(row.name);
+                    return (
                     <TableRow
                       key={row.id}
                       className="cursor-pointer"
                       onClick={() => navigate(`/properties/${row.id}`)}
                     >
                       <TableCell>
-                        <span className="font-medium block">{row.name}</span>
-                        <span className="text-xs text-muted-foreground block truncate max-w-[min(100vw-8rem,36rem)]">
+                        {title ? <span className="font-medium block">{title}</span> : null}
+                        <span
+                          className={
+                            title
+                              ? "text-xs text-muted-foreground block truncate max-w-[min(100vw-8rem,36rem)]"
+                              : "font-medium block truncate max-w-[min(100vw-8rem,36rem)]"
+                          }
+                        >
                           {row.address}
                         </span>
                         <span className="text-[11px] text-muted-foreground sm:hidden mt-1 block">
@@ -228,7 +238,8 @@ export default function Properties() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

@@ -45,7 +45,7 @@ function apiErrorMessage(err: unknown): string {
 const DEFAULT_VALUES: InsurancePolicyFormValues = {
   policy_number: "",
   company_id: "",
-  policy_scope: "majatkowe",
+  policy_scope: "majątkowe",
   premium_amount: 0,
   start_date: "",
   end_date: "",

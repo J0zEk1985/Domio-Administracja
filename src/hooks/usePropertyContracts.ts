@@ -32,20 +32,12 @@ function contractsScopeCacheKey(scope?: PropertyResourceScopeOptions | null): st
 export const propertyContractsQueryKey = (locationId: string, scope?: PropertyResourceScopeOptions | null) =>
   ["contracts", locationId, contractsScopeCacheKey(scope)] as const;
 
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 async function fetchPropertyContracts(
   locationId: string,
   scope?: PropertyResourceScopeOptions | null,
 ): Promise<PropertyContractWithCompany[]> {
   try {
-    const today = todayIsoDate();
-    let q = supabase
-      .from("property_contracts")
-      .select("*, company:companies(*)")
-      .or(`end_date.is.null,end_date.gte.${today}`);
+    let q = supabase.from("property_contracts").select("*, company:companies(*)");
 
     const cs = scope?.communityScope;
     if (cs && cs.communityId) {

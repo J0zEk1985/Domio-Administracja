@@ -2,32 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Link } from "react-router-dom";
-import {
-  AlertTriangle,
-  ExternalLink,
-  Headphones,
-  Mail,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, ExternalLink, Plus } from "lucide-react";
 
-import { ContractDialog } from "@/components/contracts/ContractDialog";
 import { InsurancePolicyForm } from "@/components/property/InsurancePolicyForm";
-import { contractTypeDisplayLabel } from "@/components/contracts/columns";
+import { PropertyContractsListCard } from "@/components/property/PropertyContractsListCard";
 import { AddInspectionDialog } from "@/components/inspections/AddInspectionDialog";
 import { CKobSyncButton } from "@/components/inspections/CKobSyncButton";
 import { InspectionCKobStatusCell } from "@/components/inspections/columns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -47,12 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePropertyPolicies } from "@/hooks/usePropertyPolicies";
-import {
-  useDeleteContract,
-  usePropertyContracts,
-  type PropertyResourceScopeOptions,
-} from "@/hooks/usePropertyContracts";
-import type { PropertyContractWithCompany } from "@/hooks/usePropertyContracts";
+import { usePropertyContracts, type PropertyResourceScopeOptions } from "@/hooks/usePropertyContracts";
 import {
   usePropertyInspections,
   type PropertyInspectionsScopeOptions,
@@ -77,26 +56,11 @@ const plnFormatter = new Intl.NumberFormat("pl-PL", {
   maximumFractionDigits: 2,
 });
 
-function telHref(phone: string): string {
-  const digits = phone.replace(/[^\d+]/g, "");
-  return digits ? `tel:${digits}` : "#";
-}
-
 function formatIsoDateLabel(iso: string | null | undefined): string {
   if (iso == null || String(iso).trim() === "") {
     return "—";
   }
   const s = String(iso).slice(0, 10);
-  const [y, m, d] = s.split("-").map((x) => Number(x));
-  if (!y || !m || !d) return s;
-  return new Date(y, m - 1, d).toLocaleDateString("pl-PL");
-}
-
-function formatEndDateLabel(endDate: string | null | undefined): string {
-  if (endDate == null || String(endDate).trim() === "") {
-    return "";
-  }
-  const s = String(endDate).slice(0, 10);
   const [y, m, d] = s.split("-").map((x) => Number(x));
   if (!y || !m || !d) return s;
   return new Date(y, m - 1, d).toLocaleDateString("pl-PL");
@@ -150,15 +114,6 @@ function executionDateMs(iso: string): number {
   return new Date(y, m - 1, d).getTime();
 }
 
-function apiErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err && "message" in err) {
-    const m = (err as { message: unknown }).message;
-    if (typeof m === "string" && m.length > 0) return m;
-  }
-  return "Operacja nie powiodła się.";
-}
-
 /** Calendar days from local midnight today to `validUntil` (YYYY-MM-DD). */
 function daysFromTodayToValidUntil(validUntil: string): number | null {
   const s = validUntil.slice(0, 10);
@@ -195,49 +150,6 @@ function ValidUntilCell({ validUntil }: { validUntil: string }) {
   }
 
   return <span className="tabular-nums text-foreground">{label}</span>;
-}
-
-function ContractsTableSkeleton() {
-  return (
-    <div className="overflow-x-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[8rem]">Typ umowy</TableHead>
-            <TableHead className="min-w-[10rem]">Nazwa firmy</TableHead>
-            <TableHead className="min-w-[8rem] whitespace-nowrap">Kwota brutto (PLN)</TableHead>
-            <TableHead className="min-w-[8rem]">Data zakończenia</TableHead>
-            <TableHead className="w-[120px] text-right">Akcje</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {[1, 2, 3].map((i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-40" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-28" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-0.5">
-                  <Skeleton className="h-8 w-8 rounded-md" />
-                  <Skeleton className="h-8 w-8 rounded-md" />
-                  <Skeleton className="h-8 w-8 rounded-md" />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
 }
 
 function PoliciesTableSkeleton() {
@@ -348,10 +260,8 @@ export function PropertyContractsTab({
   /** Checkbox „cała wspólnota” w formularzach dodawania (wymaga `communityId`). */
   communityAssignOption?: { communityId: string } | null;
 }) {
-  const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
-  const [editingContract, setEditingContract] = useState<PropertyContractWithCompany | null>(null);
   const [inspectionTypeFilter, setInspectionTypeFilter] = useState<"all" | InspectionType>("all");
   const [inspectionStatusFilter, setInspectionStatusFilter] = useState<"all" | InspectionStatus>("all");
   const [hideHistoricalInspections, setHideHistoricalInspections] = useState(false);
@@ -372,7 +282,6 @@ export function PropertyContractsTab({
     enabled: inspectionsListEnabled,
     scope: inspectionsScope ?? undefined,
   });
-  const deleteContract = useDeleteContract();
 
   useEffect(() => {
     if (!contractsQuery.isError || !contractsQuery.error) return;
@@ -478,170 +387,15 @@ export function PropertyContractsTab({
     return best;
   }, [inspectionRows]);
 
-  function handleContractDialogOpenChange(next: boolean) {
-    setContractDialogOpen(next);
-    if (!next) {
-      setEditingContract(null);
-    }
-  }
-
-  function openAddContract() {
-    setEditingContract(null);
-    setContractDialogOpen(true);
-  }
-
-  function openEditContract(row: PropertyContractWithCompany) {
-    setEditingContract(row);
-    setContractDialogOpen(true);
-  }
-
-  function handleDeleteContract(row: PropertyContractWithCompany) {
-    if (!window.confirm("Czy na pewno usunąć tę umowę? Tej operacji nie można cofnąć.")) {
-      return;
-    }
-    deleteContract.mutate(
-      { id: row.id, locationId },
-      {
-        onSuccess: () => toast.success("Umowa została usunięta."),
-        onError: (err) => {
-          toast.error(apiErrorMessage(err));
-          console.error("[PropertyContractsTab] delete contract:", err);
-        },
-      },
-    );
-  }
-
   return (
     <div className="space-y-6">
       {sections.contracts ? (
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="text-base">Umowy</CardTitle>
-            <CardDescription>Aktywne umowy przypisane do tej nieruchomości.</CardDescription>
-          </div>
-          <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={openAddContract}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Dodaj umowę
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <ContractDialog
-            locationId={locationId}
-            open={contractDialogOpen}
-            onOpenChange={handleContractDialogOpenChange}
-            contract={editingContract ?? undefined}
-            communityAssignOption={communityAssignOption ?? undefined}
-          />
-
-          {contractsQuery.isLoading ? (
-            <ContractsTableSkeleton />
-          ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[8rem]">Typ umowy</TableHead>
-                    <TableHead className="min-w-[10rem]">Nazwa firmy</TableHead>
-                    <TableHead className="min-w-[8rem] whitespace-nowrap">Kwota brutto (PLN)</TableHead>
-                    <TableHead className="min-w-[8rem]">Data zakończenia</TableHead>
-                    <TableHead className="w-[120px] text-right">Akcje</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contractRows.length === 0 ? (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={5} className="h-36 text-center align-middle">
-                        <p className="text-sm text-muted-foreground">Brak aktywnych umów dla tego budynku.</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    contractRows.map((row) => {
-                      const company = row.company;
-                      const name = company?.name?.trim() ?? "";
-                      const email = company?.email?.trim();
-                      const phone = company?.phone?.trim();
-                      const typeLabel = contractTypeDisplayLabel(row);
-                      const endRaw = row.end_date;
-                      const hasEnd = endRaw != null && String(endRaw).trim() !== "";
-                      const deletePending =
-                        deleteContract.isPending && deleteContract.variables?.id === row.id;
-
-                      return (
-                        <TableRow key={row.id}>
-                          <TableCell>
-                            <Badge variant="outline" className="font-normal">
-                              {typeLabel}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <CompanyNameLink companyId={row.company_id} name={name} />
-                          </TableCell>
-                          <TableCell className="tabular-nums text-foreground">
-                            {formatGrossDisplay(row.gross_value)}
-                          </TableCell>
-                          <TableCell>
-                            {hasEnd ? (
-                              <span className="tabular-nums text-foreground">{formatEndDateLabel(endRaw)}</span>
-                            ) : (
-                              <span className="text-muted-foreground">Czas nieokreślony</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-0.5">
-                              {phone ? (
-                                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                                  <a href={telHref(phone)} aria-label={`Zadzwoń: ${phone}`}>
-                                    <Headphones className="h-4 w-4" aria-hidden />
-                                  </a>
-                                </Button>
-                              ) : null}
-                              {email ? (
-                                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                                  <a href={`mailto:${email}`} aria-label={`Napisz e-mail: ${email}`}>
-                                    <Mail className="h-4 w-4" aria-hidden />
-                                  </a>
-                                </Button>
-                              ) : null}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    aria-label="Więcej akcji"
-                                    disabled={deletePending}
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" aria-hidden />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem className="gap-2" onClick={() => openEditContract(row)}>
-                                    <Pencil className="h-4 w-4" aria-hidden />
-                                    Edytuj umowę
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="gap-2 text-destructive focus:text-destructive"
-                                    onClick={() => handleDeleteContract(row)}
-                                  >
-                                    <Trash2 className="h-4 w-4" aria-hidden />
-                                    Usuń umowę
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <PropertyContractsListCard
+          locationId={locationId}
+          contractRows={contractRows}
+          isLoading={contractsQuery.isLoading}
+          communityAssignOption={communityAssignOption}
+        />
       ) : null}
 
       {sections.policies ? (
@@ -689,7 +443,7 @@ export function PropertyContractsTab({
                   ) : (
                     policyRows.map((row) => {
                       const companyName = row.company?.name?.trim() ?? "";
-                      const scopeLabel = policyScopeDisplayLabel(row.policy_scope ?? "majatkowe");
+                      const scopeLabel = policyScopeDisplayLabel(row.policy_scope ?? "majątkowe");
                       const docUrl = row.document_url?.trim();
 
                       return (

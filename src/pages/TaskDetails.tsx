@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { profileDisplayName } from "@/lib/profileDisplayName";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus, TaskVisibility } from "@/types/propertyTasks";
 
@@ -107,12 +108,12 @@ function TaskSidebarSkeleton() {
 
 function CommentBubble({ comment }: { comment: TaskCommentWithAuthor }) {
   const isBoard = comment.source === "board";
-  const name = isBoard ? "Zarząd" : comment.author?.full_name?.trim() || "Użytkownik";
+  const name = isBoard ? "Zarząd" : profileDisplayName(comment.author, "Użytkownik");
   return (
     <div className="flex gap-3">
       <Avatar className="h-9 w-9 shrink-0 border border-border/60">
         <AvatarFallback className="text-xs font-medium">
-          {initialsFromName(isBoard ? "Zarząd" : comment.author?.full_name)}
+          {initialsFromName(name)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
@@ -185,7 +186,7 @@ export default function TaskDetails() {
     console.error("[TaskDetails] canEdit:", canEditQuery.error);
   }, [canEditQuery.isError, canEditQuery.error]);
 
-  const creatorName = taskQuery.data?.creator?.full_name?.trim() || "—";
+  const creatorName = profileDisplayName(taskQuery.data?.creator, "—");
 
   const sortedComments = useMemo(() => commentsQuery.data ?? [], [commentsQuery.data]);
 

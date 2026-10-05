@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/contracts/DataTableColumnHeader";
+import { contractPropertyDisplay } from "@/lib/contractPropertyLabel";
 import { PROPERTY_CONTRACT_TYPE_LABELS } from "@/schemas/contractSchema";
 import type { PropertyContract, PropertyContractType } from "@/types/contracts";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -51,18 +52,25 @@ function statusSortValue(row: PropertyContract): number {
 export const contractsColumns: ColumnDef<PropertyContract>[] = [
   {
     id: "location",
-    accessorFn: (row) => row.location?.name?.trim() || "",
+    accessorFn: (row) => contractPropertyDisplay(row).sortKey,
     header: ({ column }) => <DataTableColumnHeader column={column} title="Nieruchomość" />,
     enableSorting: true,
     cell: ({ row }) => {
-      const name = row.original.location?.name?.trim() || "—";
-      const locationId = row.original.location_id;
-      if (!locationId) {
-        return <span className="text-muted-foreground">{name}</span>;
+      const display = contractPropertyDisplay(row.original);
+      const body = (
+        <span className="flex flex-col gap-0.5">
+          <span className={display.title === "—" ? "text-muted-foreground" : undefined}>{display.title}</span>
+          {display.subtitle ? (
+            <span className="text-xs text-muted-foreground">{display.subtitle}</span>
+          ) : null}
+        </span>
+      );
+      if (!display.href) {
+        return body;
       }
       return (
-        <Link to={`/properties/${locationId}`} className={contractNavLinkClass}>
-          {name}
+        <Link to={display.href} className={contractNavLinkClass}>
+          {body}
         </Link>
       );
     },

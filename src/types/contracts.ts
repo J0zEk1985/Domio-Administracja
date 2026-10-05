@@ -26,9 +26,14 @@ export type Company = Tables<"companies">;
  * - `notice_period_months` — termination notice length in months.
  * - `document_url` — scanned contract / Storage URL (empty until uploaded).
  */
+export type ContractLocationEmbed = Partial<Tables<"cleaning_locations">> & {
+  communities?: { id?: string | null; name?: string | null } | null;
+};
+
 export interface PropertyContract extends Tables<"property_contracts"> {
   company?: Partial<Company>;
-  location?: Partial<Tables<"cleaning_locations">>;
+  location?: ContractLocationEmbed;
+  community?: Partial<Pick<Tables<"communities">, "id" | "name">>;
 }
 
 /**
@@ -37,7 +42,7 @@ export interface PropertyContract extends Tables<"property_contracts"> {
  *
  * **Financial & date fields (AI / n8n automation):**
  * - `coverage_amount` — sum insured / coverage limit.
- * - `policy_scope` — majatkowe | oc_ogolne | oc_zarzadu (CHECK in DB).
+ * - `policy_scope` — majątkowe | oc_ogolne | oc_zarzadu (enum in DB).
  * - `premium_amount` — premium (składka); DB default 0 until filled.
  * - `start_date` / `end_date` — policy validity (both required in DB).
  * - `document_url` — policy PDF / Storage URL (empty until uploaded).

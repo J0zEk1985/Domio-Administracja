@@ -5025,7 +5025,7 @@ export type Database = {
         | "resolved"
         | "rejected"
         | "cancelled"
-      policy_scope_enum: "maj─ůtkowe" | "oc_ogolne" | "oc_zarzadu"
+      policy_scope_enum: "majątkowe" | "oc_ogolne" | "oc_zarzadu"
       priority_level: "low" | "medium" | "high" | "emergency"
       property_contract_type:
         | "cleaning"
@@ -5237,7 +5237,7 @@ export const Constants = {
         "rejected",
         "cancelled",
       ],
-      policy_scope_enum: ["maj─ůtkowe", "oc_ogolne", "oc_zarzadu"],
+      policy_scope_enum: ["majątkowe", "oc_ogolne", "oc_zarzadu"],
       priority_level: ["low", "medium", "high", "emergency"],
       property_contract_type: [
         "cleaning",

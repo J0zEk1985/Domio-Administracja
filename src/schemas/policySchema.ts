@@ -1,16 +1,25 @@
 import { compareAsc, isValid, parseISO } from "date-fns";
 import { z } from "zod";
 
-/** Matches DB CHECK `property_policies_policy_scope_check` (ASCII keys). */
-export const POLICY_SCOPE_VALUES = ["majatkowe", "oc_ogolne", "oc_zarzadu"] as const;
+/** Matches live Postgres enum `policy_scope_enum`. */
+export const POLICY_SCOPE_VALUES = ["majątkowe", "oc_ogolne", "oc_zarzadu"] as const;
 
 export type PolicyScope = (typeof POLICY_SCOPE_VALUES)[number];
 
 export const POLICY_SCOPE_LABELS: Record<PolicyScope, string> = {
-  majatkowe: "Majątkowe",
+  majątkowe: "Majątkowe",
   oc_ogolne: "OC",
   oc_zarzadu: "OC Zarządu",
 };
+
+/** Map form/legacy ASCII keys to the DB enum label. */
+export function toDbPolicyScope(raw: string): PolicyScope {
+  if (raw === "majatkowe") return "majątkowe";
+  if ((POLICY_SCOPE_VALUES as readonly string[]).includes(raw)) {
+    return raw as PolicyScope;
+  }
+  return "majątkowe";
+}
 
 const optionalUrl = z
   .string()
@@ -48,8 +57,5 @@ export const insurancePolicyFormSchema = z
 export type InsurancePolicyFormValues = z.infer<typeof insurancePolicyFormSchema>;
 
 export function policyScopeDisplayLabel(raw: string): string {
-  if (POLICY_SCOPE_VALUES.includes(raw as PolicyScope)) {
-    return POLICY_SCOPE_LABELS[raw as PolicyScope];
-  }
-  return raw;
+  return POLICY_SCOPE_LABELS[toDbPolicyScope(raw)];
 }
