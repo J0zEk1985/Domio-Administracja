@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { firstProfileEmbed, profileDisplayName } from "@/lib/profileDisplayName";
+import { firstProfileEmbed, parseProfileFullName, profileDisplayName } from "@/lib/profileDisplayName";
 
 describe("profileDisplayName", () => {
   it("uses full_name when present", () => {
@@ -27,6 +27,26 @@ describe("profileDisplayName", () => {
 
   it("unwraps array embeds from PostgREST", () => {
     expect(profileDisplayName([{ full_name: "", email: "a@b.pl" }], "Użytkownik")).toBe("a@b.pl");
+  });
+});
+
+describe("parseProfileFullName", () => {
+  it("trims and collapses whitespace", () => {
+    expect(parseProfileFullName("  Marcin   Józefiak  ")).toEqual({
+      ok: true,
+      value: "Marcin Józefiak",
+    });
+  });
+
+  it("rejects an empty name", () => {
+    expect(parseProfileFullName("   ")).toEqual({ ok: false, message: "Podaj imię i nazwisko." });
+  });
+
+  it("rejects names longer than 200 characters", () => {
+    const parsed = parseProfileFullName("a".repeat(201));
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) throw new Error("expected failure");
+    expect(parsed.message).toContain("200");
   });
 });
 

@@ -1,9 +1,9 @@
 import { useParams } from "react-router-dom";
-import { Building2, ListTodo } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BoardPortalTaskCard } from "@/components/board-portal/BoardPortalTaskCard";
+import { BoardPortalTasksCard } from "@/components/board-portal/BoardPortalTasksCard";
 import { isBoardPortalToken, useBoardPortal } from "@/hooks/useBoardPortal";
 
 export default function BoardPortal() {
@@ -67,26 +67,7 @@ export default function BoardPortal() {
               </div>
             </section>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ListTodo className="h-4 w-4" aria-hidden />
-                  Zadania
-                </CardTitle>
-                <CardDescription>Tylko zadania oznaczone jako widoczne dla Zarządu.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {data.tasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Brak zadań udostępnionych Zarządowi.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {data.tasks.map((task) => (
-                      <BoardPortalTaskCard key={task.id} token={token!} task={task} />
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+            <BoardPortalTasksCard token={token!} openTasks={data.tasks} />
           </>
         )}
       </main>

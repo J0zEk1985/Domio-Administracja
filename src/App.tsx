@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Login from "./pages/Login.tsx";
 import Team from "./pages/Team.tsx";
 import MemberDetails from "./pages/MemberDetails.tsx";
+import MyProfile from "./pages/MyProfile.tsx";
 import Properties from "./pages/Properties.tsx";
 import Communities from "./pages/Communities.tsx";
 import CommunityDetails from "./pages/CommunityDetails.tsx";
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/:id" element={<MemberDetails />} />
+                <Route path="/profile" element={<MyProfile />} />
                 <Route path="/issues" element={<TriageInbox />} />
                 <Route path="/emergency" element={<EmergencyMode />} />
                 <Route path="/quick-actions" element={<QuickActions />} />

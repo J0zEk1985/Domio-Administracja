@@ -25,6 +25,7 @@ export type BoardPortalTask = {
   status: Database["public"]["Enums"]["property_task_status"];
   priority: Database["public"]["Enums"]["property_task_priority"];
   created_at: string;
+  completed_at: string | null;
   location_name: string | null;
   comments: BoardPortalTaskComment[];
 };
@@ -124,6 +125,7 @@ function parseTasks(raw: unknown): BoardPortalTask[] {
         status,
         priority,
         created_at,
+        completed_at: asString(row.completed_at),
         location_name: asString(row.location_name),
         comments: parseComments(row.comments),
       },
@@ -191,6 +193,22 @@ export function parseBoardPortalSnapshot(data: Json | null): BoardPortalResult {
     announcements: parseAnnouncements(data.announcements),
     contacts: parseContacts(data.contacts),
   };
+}
+
+export function parseBoardPortalCompletedTasks(data: Json | null):
+  | { ok: true; tasks: BoardPortalTask[] }
+  | { ok: false; error: "invalid_token" | "not_found" | "invalid_range" | "bad_response" } {
+  if (!isRecord(data)) {
+    return { ok: false, error: "bad_response" };
+  }
+  if (data.ok !== true) {
+    const err = asString(data.error);
+    if (err === "not_found" || err === "invalid_token" || err === "invalid_range") {
+      return { ok: false, error: err };
+    }
+    return { ok: false, error: "bad_response" };
+  }
+  return { ok: true, tasks: parseTasks(data.tasks) };
 }
 
 export function parseBoardPortalCommentInsert(data: Json | null): BoardPortalTaskComment | null {

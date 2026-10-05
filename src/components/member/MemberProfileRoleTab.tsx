@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MemberDetailsData } from "@/hooks/useMemberDetails";
-import { useUpdateMemberPhone, useUpdateMemberRole } from "@/hooks/useMemberDetails";
+import { useUpdateMemberFullName, useUpdateMemberPhone, useUpdateMemberRole } from "@/hooks/useMemberDetails";
 import { TEAM_ADMIN_ROLES } from "@/hooks/useTeamMembers";
+import { PROFILE_FULL_NAME_MAX } from "@/lib/profileDisplayName";
 
 const ROLE_OPTIONS: { value: (typeof TEAM_ADMIN_ROLES)[number]; label: string }[] = [
   { value: "owner", label: "Właściciel" },
@@ -25,14 +26,16 @@ const ROLE_OPTIONS: { value: (typeof TEAM_ADMIN_ROLES)[number]; label: string }[
 
 type Props = {
   member: MemberDetailsData;
-  /** Owner-only: edycja roli i telefonu; dla pozostałych ról widok tylko do odczytu. */
+  /** Owner-only: edycja roli, imienia i telefonu; dla pozostałych ról widok tylko do odczytu. */
   canEdit?: boolean;
 };
 
 export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
   const [role, setRole] = useState(member.roleCode);
+  const [fullName, setFullName] = useState(member.fullName);
   const [phone, setPhone] = useState(member.phone);
   const updateRole = useUpdateMemberRole(member.membershipId);
+  const updateFullName = useUpdateMemberFullName(member.membershipId);
   const updatePhone = useUpdateMemberPhone(member.membershipId);
 
   useEffect(() => {
@@ -40,15 +43,20 @@ export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
   }, [member.roleCode]);
 
   useEffect(() => {
+    setFullName(member.fullName);
+  }, [member.fullName]);
+
+  useEffect(() => {
     setPhone(member.phone);
   }, [member.phone]);
 
   const roleDirty = role !== member.roleCode;
+  const nameDirty = fullName.trim() !== member.fullName.trim();
   const phoneDirty = phone !== member.phone;
-  const anyDirty = roleDirty || phoneDirty;
+  const anyDirty = roleDirty || nameDirty || phoneDirty;
   const validRole = ROLE_OPTIONS.some((o) => o.value === role);
 
-  const saving = updateRole.isPending || updatePhone.isPending;
+  const saving = updateRole.isPending || updateFullName.isPending || updatePhone.isPending;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -58,6 +66,9 @@ export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
     const tasks: Promise<unknown>[] = [];
     if (roleDirty && validRole) {
       tasks.push(updateRole.mutateAsync(role));
+    }
+    if (nameDirty) {
+      tasks.push(updateFullName.mutateAsync(fullName));
     }
     if (phoneDirty) {
       tasks.push(updatePhone.mutateAsync(phone));
@@ -78,7 +89,7 @@ export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
       <CardHeader>
         <CardTitle className="text-base">Profil i rola</CardTitle>
         <CardDescription>
-          E-mail logowania jest stały. Rolę i telefon zapisujesz w organizacji (uprawnienia wg roli).
+          E-mail logowania jest stały. Imię, rolę i telefon zapisujesz w organizacji (uprawnienia wg roli).
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -97,6 +108,24 @@ export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
             />
             <p className="text-[11px] text-muted-foreground">
               Adres powiązany z kontem — nie edytujemy go w tym panelu.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="member-full-name">Imię i nazwisko</Label>
+            <Input
+              id="member-full-name"
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              disabled={saving || !canEdit}
+              placeholder="np. Anna Kowalska"
+              maxLength={PROFILE_FULL_NAME_MAX}
+              className={!canEdit ? "bg-muted/40" : undefined}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Widoczne przy komentarzach, zadaniach i na liście zespołu.
             </p>
           </div>
 
@@ -148,7 +177,7 @@ export function MemberProfileRoleTab({ member, canEdit = true }: Props) {
               )}
             </Button>
           ) : (
-            <p className="text-xs text-muted-foreground">Tylko właściciel może zmieniać rolę i telefon w organizacji.</p>
+            <p className="text-xs text-muted-foreground">Tylko właściciel może zmieniać imię, rolę i telefon w organizacji.</p>
           )}
         </form>
       </CardContent>

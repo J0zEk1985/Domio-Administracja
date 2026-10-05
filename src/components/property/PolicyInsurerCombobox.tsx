@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronsUpDown, Loader2, Plus, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
@@ -12,22 +12,38 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePolicyInsurerCompanies, useCompanyById } from "@/hooks/useCompanies";
 import type { Company } from "@/types/contracts";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+function InsurerNameTooltip({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="top" className="z-[200] max-w-xs break-words text-sm">
+        {name}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function PolicyInsurerListItem({ company, onPick }: { company: Company; onPick: () => void }) {
   return (
-    <CommandItem
-      value={company.id}
-      keywords={[company.name]}
-      onSelect={onPick}
-      className="items-start py-2.5"
-    >
-      <span className="truncate text-[15px] font-medium leading-snug">{company.name}</span>
-    </CommandItem>
+    <InsurerNameTooltip name={company.name}>
+      <CommandItem
+        value={company.id}
+        keywords={[company.name]}
+        onSelect={onPick}
+        className="items-start py-2.5"
+      >
+        <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-snug">
+          {company.name}
+        </span>
+      </CommandItem>
+    </InsurerNameTooltip>
   );
 }
 
@@ -86,8 +102,12 @@ export function PolicyInsurerCombobox({ value, onChange, disabled }: PolicyInsur
         >
           {showTriggerSkeleton ? (
             <Skeleton className="h-4 w-[min(100%,12rem)]" />
+          ) : selectedCompany?.name ? (
+            <InsurerNameTooltip name={selectedCompany.name}>
+              <span className="min-w-0 flex-1 truncate text-left">{selectedCompany.name}</span>
+            </InsurerNameTooltip>
           ) : (
-            <span className="min-w-0 flex-1 truncate text-left">{selectedCompany?.name ?? "Wybierz…"}</span>
+            <span className="min-w-0 flex-1 truncate text-left">Wybierz…</span>
           )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>

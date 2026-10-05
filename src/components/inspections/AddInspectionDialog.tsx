@@ -162,20 +162,20 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] w-[calc(100vw-2rem)] min-w-0 flex-col overflow-x-hidden sm:max-w-lg">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Nowy przegląd techniczny</DialogTitle>
           <DialogDescription>
             Zapis protokołu przeglądu dla tej nieruchomości. Pola wymagane muszą być uzupełnione przed zatwierdzeniem.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="min-w-0 space-y-4">
             <FormField
               control={control}
               name="company_id"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0">
                   <FormLabel>Firma</FormLabel>
                   <FormControl>
                     <CompanyComboBox value={field.value} onChange={field.onChange} disabled={isPending} />
@@ -185,7 +185,7 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
               )}
             />
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={control}
                 name="type"
@@ -236,7 +236,7 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <DateFormField control={control} name="execution_date" label="Data wykonania" disabled={isPending} />
               <DateFormField control={control} name="valid_until" label="Data ważności" disabled={isPending} />
             </div>

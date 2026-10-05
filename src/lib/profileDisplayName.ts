@@ -28,3 +28,20 @@ export function firstProfileEmbed<T>(value: T | T[] | null | undefined): T | nul
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
 }
+
+export const PROFILE_FULL_NAME_MAX = 200;
+
+export type ParsedProfileFullName =
+  | { ok: true; value: string }
+  | { ok: false; message: string };
+
+export function parseProfileFullName(raw: string): ParsedProfileFullName {
+  const value = raw.trim().replace(/\s+/g, " ");
+  if (!value) {
+    return { ok: false, message: "Podaj imię i nazwisko." };
+  }
+  if (value.length > PROFILE_FULL_NAME_MAX) {
+    return { ok: false, message: `Imię i nazwisko może mieć najwyżej ${PROFILE_FULL_NAME_MAX} znaków.` };
+  }
+  return { ok: true, value };
+}

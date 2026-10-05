@@ -7,6 +7,7 @@ import {
   FileText,
   ListTodo,
   Users,
+  User,
   Megaphone,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { title: "Przeglądy (c-KOB)", url: "/inspections", icon: ShieldCheck },
   { title: "Zadania", url: "/tasks", icon: ListTodo },
   { title: "Zespół", url: "/team", icon: Users, ownerOnly: true },
+  { title: "Mój profil", url: "/profile", icon: User },
 ];
 
 export function AppSidebar() {

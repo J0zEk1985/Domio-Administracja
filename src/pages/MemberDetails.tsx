@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { useMemberDetails } from "@/hooks/useMemberDetails";
+import { profileDisplayName } from "@/lib/profileDisplayName";
 import { MemberProfileRoleTab } from "@/components/member/MemberProfileRoleTab";
 import { MemberBuildingsTab } from "@/components/member/MemberBuildingsTab";
 import { MemberLeaveTab } from "@/components/member/MemberLeaveTab";
@@ -74,7 +75,9 @@ export default function MemberDetails() {
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Wróć do listy zespołu
         </Button>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{member.fullName}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          {profileDisplayName({ full_name: member.fullName, email: member.authEmail }, "—")}
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">{member.email}</p>
       </div>
 

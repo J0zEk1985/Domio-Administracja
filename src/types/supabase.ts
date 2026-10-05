@@ -2958,6 +2958,7 @@ export type Database = {
         Row: {
           assignee_id: string | null
           community_id: string | null
+          completed_at: string | null
           created_at: string
           created_by: string
           id: string
@@ -2970,6 +2971,7 @@ export type Database = {
         Insert: {
           assignee_id?: string | null
           community_id?: string | null
+          completed_at?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -2982,6 +2984,7 @@ export type Database = {
         Update: {
           assignee_id?: string | null
           community_id?: string | null
+          completed_at?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -3918,6 +3921,10 @@ export type Database = {
       }
       add_board_portal_task_comment: {
         Args: { p_token: string; p_task_id: string; p_content: string }
+        Returns: Json
+      }
+      get_board_portal_completed_tasks: {
+        Args: { p_token: string; p_from: string; p_to: string }
         Returns: Json
       }
       rotate_community_board_portal_token: {

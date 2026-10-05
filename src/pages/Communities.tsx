@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Pencil } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,13 @@ import {
 import { DeactivateCommunityDialog } from "@/components/communities/DeactivateCommunityDialog";
 import { useOrgVerificationAlerts } from "@/hooks/useOrgVerificationAlerts";
 import { formatCommunityStatus, isCommunityInactive } from "@/lib/communityStatus";
+import {
+  filterCommunitiesByName,
+  nextCommunityNameSort,
+  sortCommunitiesByName,
+  type CommunityNameSortDir,
+} from "@/lib/communityList";
+import { cn } from "@/lib/utils";
 import { HOUSING_KINDS } from "@/lib/legalEntityMessages";
 import type { LegalEntityPublic } from "@/lib/legalEntityApi";
 import { Button } from "@/components/ui/button";
@@ -62,6 +69,38 @@ const communityFormSchema = z.object({
 
 type CommunityFormValues = z.infer<typeof communityFormSchema>;
 
+function SortableNameHead({
+  direction,
+  onSort,
+}: {
+  direction: CommunityNameSortDir | null;
+  onSort: () => void;
+}) {
+  const ariaSort = direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none";
+
+  return (
+    <TableHead className="p-0" aria-sort={ariaSort}>
+      <button
+        type="button"
+        className={cn(
+          "flex w-full items-center gap-1.5 px-2 py-3 text-left font-medium",
+          "hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        )}
+        onClick={onSort}
+      >
+        <span>Nazwa</span>
+        {direction === "asc" ? (
+          <ArrowUp className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+        ) : direction === "desc" ? (
+          <ArrowDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 shrink-0 opacity-35" aria-hidden />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
   if (error) {
@@ -87,6 +126,8 @@ export default function Communities() {
   const [createEntity, setCreateEntity] = useState<LegalEntityPublic | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [nameQuery, setNameQuery] = useState("");
+  const [nameSort, setNameSort] = useState<CommunityNameSortDir | null>(null);
   const [deactivateId, setDeactivateId] = useState<string | null>(null);
   const deactivateMutation = useDeactivateCommunity();
 
@@ -97,9 +138,17 @@ export default function Communities() {
 
   const editingRow = editingId ? communities?.find((c) => c.id === editingId) : undefined;
   const deactivateRow = deactivateId ? communities?.find((c) => c.id === deactivateId) : undefined;
-  const visibleCommunities = (communities ?? []).filter(
+  const visibleCommunities = useMemo(() => {
+    const byStatus = (communities ?? []).filter(
+      (c) => showInactive || !isCommunityInactive(c.status),
+    );
+    return sortCommunitiesByName(filterCommunitiesByName(byStatus, nameQuery), nameSort);
+  }, [communities, showInactive, nameQuery, nameSort]);
+
+  const statusFilteredCount = (communities ?? []).filter(
     (c) => showInactive || !isCommunityInactive(c.status),
-  );
+  ).length;
+  const searchNoHits = statusFilteredCount > 0 && visibleCommunities.length === 0;
 
   const onCreateSubmit = async () => {
     if (!orgId) return;
@@ -191,6 +240,14 @@ export default function Communities() {
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <Input
+            type="search"
+            placeholder="Szukaj po nazwie…"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+            className="sm:w-64"
+            aria-label="Szukaj wspólnoty po nazwie"
+          />
           <div className="flex items-center gap-2">
             <Switch
               id="show-inactive-communities"
@@ -225,7 +282,10 @@ export default function Communities() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nazwa</TableHead>
+                <SortableNameHead
+                  direction={nameSort}
+                  onSort={() => setNameSort((prev) => nextCommunityNameSort(prev))}
+                />
                 <TableHead>NIP</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data dodania</TableHead>
@@ -236,7 +296,11 @@ export default function Communities() {
               {visibleCommunities.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-muted-foreground">
-                    {showInactive ? "Brak wspólnot." : "Brak aktywnych wspólnot. Dodaj pierwszą albo pokaż nieaktywne."}
+                    {searchNoHits
+                      ? "Brak wyników dla podanego wyszukiwania."
+                      : showInactive
+                        ? "Brak wspólnot."
+                        : "Brak aktywnych wspólnot. Dodaj pierwszą albo pokaż nieaktywne."}
                   </TableCell>
                 </TableRow>
               ) : (

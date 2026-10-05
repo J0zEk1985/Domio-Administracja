@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import {
   parseBoardPortalCommentInsert,
+  parseBoardPortalCompletedTasks,
   parseBoardPortalSnapshot,
   type BoardPortalAnnouncement,
   type BoardPortalContact,
@@ -47,6 +48,52 @@ export function useBoardPortal(token: string | undefined) {
         throw error;
       }
       return parseBoardPortalSnapshot(data);
+    },
+  });
+}
+
+export type BoardPortalCompletedRange = { from: string; to: string };
+
+export function boardPortalCompletedQueryKey(token: string, range: BoardPortalCompletedRange) {
+  return ["board-portal-completed", token, range.from, range.to] as const;
+}
+
+export function useBoardPortalCompletedTasks(
+  token: string | undefined,
+  range: BoardPortalCompletedRange | null,
+) {
+  const valid = isBoardPortalToken(token);
+  return useQuery({
+    queryKey:
+      valid && range
+        ? boardPortalCompletedQueryKey(token, range)
+        : ["board-portal-completed", "none"],
+    enabled: valid && range !== null,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!isBoardPortalToken(token) || !range) {
+        throw new Error("Wyszukiwanie nie zostało uruchomione.");
+      }
+      const { data, error } = await supabase.rpc("get_board_portal_completed_tasks", {
+        p_token: token,
+        p_from: range.from,
+        p_to: range.to,
+      });
+      if (error) {
+        console.error("[useBoardPortalCompletedTasks] get_board_portal_completed_tasks:", error);
+        throw error;
+      }
+      const parsed = parseBoardPortalCompletedTasks(data);
+      if (!parsed.ok) {
+        if (parsed.error === "invalid_range") {
+          throw new Error("Podany przedział dat jest nieprawidłowy.");
+        }
+        if (parsed.error === "invalid_token" || parsed.error === "not_found") {
+          throw new Error("Link jest nieprawidłowy.");
+        }
+        throw new Error("Nie udało się wczytać zakończonych zadań.");
+      }
+      return parsed.tasks;
     },
   });
 }

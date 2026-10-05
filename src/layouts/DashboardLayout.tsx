@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut, Siren, Zap } from "lucide-react";
+import { LayoutDashboard, LogOut, Siren, User, Zap } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
@@ -16,6 +16,7 @@ export default function DashboardLayout() {
   const { pathname } = useLocation();
   const isFieldPanel = pathname === "/quick-actions";
   const isEmergency = pathname === "/emergency";
+  const isMyProfile = pathname === "/profile";
 
   async function handleSignOut() {
     try {
@@ -88,6 +89,21 @@ export default function DashboardLayout() {
       </Tooltip>
       <CookieConsentSettingsButton className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" />
       <ThemeToggle />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant={isMyProfile ? "default" : "outline"}
+            size="sm"
+            className="h-9 gap-2 text-xs"
+            onClick={() => navigate("/profile")}
+          >
+            <User className="h-3.5 w-3.5" aria-hidden />
+            Mój profil
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Imię, nazwisko i telefon</TooltipContent>
+      </Tooltip>
       <Button
         type="button"
         variant="outline"

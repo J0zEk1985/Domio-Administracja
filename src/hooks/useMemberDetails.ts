@@ -9,6 +9,7 @@ import {
   parseAdminLeaveDescription,
   type AdminLeavePayload,
 } from "@/lib/adminLeaveDescription";
+import { updateProfileFullName } from "@/lib/updateProfileFullName";
 
 const STALE_MS = 0;
 const GC_MS = 30_000;
@@ -62,7 +63,7 @@ async function fetchMemberDetails(membershipId: string): Promise<MemberDetailsDa
 
   const authEmail = prof?.email?.trim() ?? "";
   const email = prof?.email?.trim() || prof?.contact_email?.trim() || "—";
-  const fullName = prof?.full_name?.trim() || "—";
+  const fullName = prof?.full_name?.trim() ?? "";
   const phone = prof?.phone?.trim() ?? "";
   const roleCode = row.role?.trim() ?? "";
 
@@ -272,6 +273,30 @@ export function useUpdateMemberPhone(membershipId: string | undefined) {
       const msg = e instanceof Error ? e.message : "Nie udało się zapisać telefonu.";
       toast.error(msg);
       console.error("[useUpdateMemberPhone]", e);
+    },
+  });
+}
+
+export function useUpdateMemberFullName(membershipId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (fullName: string) => {
+      if (!membershipId) throw new Error("Brak identyfikatora.");
+      const detail = await fetchMemberDetails(membershipId);
+      await updateProfileFullName(detail.userId, fullName);
+    },
+    onSuccess: () => {
+      toast.success("Zapisano imię i nazwisko.");
+      if (membershipId) {
+        void qc.invalidateQueries({ queryKey: memberDetailsQueryKey(membershipId) });
+      }
+      void qc.invalidateQueries({ queryKey: [TEAM_MEMBERS_QUERY_KEY] });
+      void qc.invalidateQueries({ queryKey: ["my-profile"] });
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Nie udało się zapisać imienia i nazwiska.";
+      toast.error(msg);
+      console.error("[useUpdateMemberFullName]", e);
     },
   });
 }
