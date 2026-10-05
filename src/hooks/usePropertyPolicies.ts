@@ -22,8 +22,10 @@ function policiesScopeCacheKey(scope?: PropertyResourceScopeOptions | null): str
   return `c:${communityId}:${[...buildingIds].sort().join(",")}`;
 }
 
+export const PROPERTY_POLICIES_QUERY_ROOT = "property_policies" as const;
+
 export const propertyPoliciesQueryKey = (locationId: string, scope?: PropertyResourceScopeOptions | null) =>
-  ["property_policies", locationId, policiesScopeCacheKey(scope)] as const;
+  [PROPERTY_POLICIES_QUERY_ROOT, locationId, policiesScopeCacheKey(scope)] as const;
 
 async function fetchPropertyPolicies(
   locationId: string,
@@ -115,10 +117,10 @@ export function useAddPropertyPolicy(): UseMutationResult<void, Error, AddProper
 
   return useMutation({
     mutationFn: insertPropertyPolicy,
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: propertyPoliciesQueryKey(variables.locationId),
-      });
+    onSuccess: async () => {
+      // Prefix only — community lists use a scoped third key segment (`c:…` / `h:…`),
+      // so invalidating the default key would miss the active query (list stayed stale until refresh).
+      await queryClient.invalidateQueries({ queryKey: [PROPERTY_POLICIES_QUERY_ROOT] });
     },
   });
 }

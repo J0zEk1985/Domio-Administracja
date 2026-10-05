@@ -6,7 +6,6 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 
-import { allInspectionsQueryKey } from "@/hooks/useAllInspections";
 import type { AddInspectionFormValues } from "@/schemas/inspectionSchema";
 import { supabase } from "@/lib/supabase";
 import type { Company } from "@/types/contracts";
@@ -28,10 +27,12 @@ function inspectionsScopeCacheKey(scope?: PropertyInspectionsScopeOptions | null
   return `b:${[...ids].sort().join(",")}`;
 }
 
+export const PROPERTY_INSPECTIONS_QUERY_ROOT = "inspections" as const;
+
 export const propertyInspectionsQueryKey = (
   locationId: string,
   scope?: PropertyInspectionsScopeOptions | null,
-) => ["inspections", locationId, inspectionsScopeCacheKey(scope)] as const;
+) => [PROPERTY_INSPECTIONS_QUERY_ROOT, locationId, inspectionsScopeCacheKey(scope)] as const;
 
 type InspectionInsert = Database["public"]["Tables"]["property_inspections"]["Insert"];
 
@@ -119,9 +120,10 @@ export function useAddInspection(): UseMutationResult<void, Error, AddInspection
 
   return useMutation({
     mutationFn: insertPropertyInspection,
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: propertyInspectionsQueryKey(variables.locationId) });
-      void queryClient.invalidateQueries({ queryKey: allInspectionsQueryKey });
+    onSuccess: async () => {
+      // Prefix only — community lists use a scoped third key segment (`b:…`),
+      // so invalidating the default key would miss the active query (list stayed stale until refresh).
+      await queryClient.invalidateQueries({ queryKey: [PROPERTY_INSPECTIONS_QUERY_ROOT] });
     },
   });
 }

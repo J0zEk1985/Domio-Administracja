@@ -1,13 +1,10 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, isValid, parseISO } from "date-fns";
-import { pl } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
-import { useForm, type Control } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { CompanyComboBox } from "@/components/companies/CompanyComboBox";
+import { InspectionDateField, ValidityPresetButtons } from "@/components/inspections/InspectionDateFields";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +22,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -44,7 +40,6 @@ import {
   INSPECTION_TYPES,
   INSPECTION_TYPE_LABELS,
 } from "@/schemas/inspectionSchema";
-import { cn } from "@/lib/utils";
 
 function apiErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -71,62 +66,6 @@ export interface AddInspectionDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function DateFormField({
-  name,
-  label,
-  disabled,
-  control,
-}: {
-  name: "execution_date" | "valid_until";
-  label: string;
-  disabled: boolean;
-  control: Control<AddInspectionFormValues>;
-}) {
-  return (
-    <FormField
-      control={control}
-      name={name}
-      render={({ field }) => {
-        const parsed = field.value ? parseISO(field.value) : undefined;
-        const selected = parsed && isValid(parsed) ? parsed : undefined;
-        return (
-          <FormItem className="flex flex-col">
-            <FormLabel>{label}</FormLabel>
-            <Popover>
-              <PopoverTrigger asChild>
-                <FormControl>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={disabled}
-                    className={cn(
-                      "h-10 w-full justify-start pl-3 text-left font-normal",
-                      !field.value && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-60" aria-hidden />
-                    {selected ? format(selected, "d MMM yyyy", { locale: pl }) : "Wybierz datę"}
-                  </Button>
-                </FormControl>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selected}
-                  onSelect={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
-                  locale={pl}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            <FormMessage />
-          </FormItem>
-        );
-      }}
-    />
-  );
-}
-
 export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspectionDialogProps) {
   const addInspection = useAddInspection();
 
@@ -135,7 +74,8 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
     defaultValues: DEFAULT_VALUES,
   });
 
-  const { reset, control, handleSubmit } = form;
+  const { reset, control, handleSubmit, setValue } = form;
+  const executionDate = useWatch({ control, name: "execution_date" });
 
   useEffect(() => {
     if (!open) return;
@@ -237,8 +177,17 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
             </div>
 
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-              <DateFormField control={control} name="execution_date" label="Data wykonania" disabled={isPending} />
-              <DateFormField control={control} name="valid_until" label="Data ważności" disabled={isPending} />
+              <InspectionDateField control={control} name="execution_date" label="Data wykonania" disabled={isPending} />
+              <div className="flex min-w-0 flex-col gap-2">
+                <InspectionDateField control={control} name="valid_until" label="Data ważności" disabled={isPending} />
+                <ValidityPresetButtons
+                  executionDate={executionDate ?? ""}
+                  disabled={isPending}
+                  onSelect={(isoDate) =>
+                    setValue("valid_until", isoDate, { shouldDirty: true, shouldValidate: true })
+                  }
+                />
+              </div>
             </div>
 
             <FormField

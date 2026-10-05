@@ -6,8 +6,7 @@ import {
 
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
-import { allInspectionsQueryKey } from "@/hooks/useAllInspections";
-import { propertyInspectionsQueryKey } from "@/hooks/usePropertyInspections";
+import { PROPERTY_INSPECTIONS_QUERY_ROOT } from "@/hooks/usePropertyInspections";
 
 export type SyncCKOBVariables = {
   locationId: string;
@@ -69,9 +68,8 @@ export function useSyncCKOB(): UseMutationResult<void, Error, SyncCKOBVariables>
 
   return useMutation({
     mutationFn: triggerCkobSync,
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: propertyInspectionsQueryKey(variables.locationId) });
-      void queryClient.invalidateQueries({ queryKey: allInspectionsQueryKey });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [PROPERTY_INSPECTIONS_QUERY_ROOT] });
       toast.success("Zlecono synchronizację z c-KOB. Może to potrwać kilkanaście sekund.");
     },
     onError: (err) => {

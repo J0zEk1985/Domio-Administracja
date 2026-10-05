@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { CommunityLocationRow } from "@/hooks/useProperties";
+import { propertyDisplayName, type CommunityLocationRow } from "@/hooks/useProperties";
 import {
   useDeleteResidentOrderCatalogItem,
   useResidentOrderCatalog,
@@ -86,7 +86,7 @@ export function CommunityOrderCatalogCard({ communityId, orgId, buildings }: Pro
   }
 
   const locationLabel = useMemo(() => {
-    const map = new Map(buildings.map((b) => [b.id, b.name]));
+    const map = new Map(buildings.map((b) => [b.id, propertyDisplayName(b.name) ?? b.address]));
     return (ids: string[]) => {
       if (ids.length === 0) return "Wszystkie budynki";
       return ids.map((id) => map.get(id) ?? id).join(", ");
@@ -275,7 +275,9 @@ export function CommunityOrderCatalogCard({ communityId, orgId, buildings }: Pro
                 <p className="text-xs text-muted-foreground">Brak budynków przypisanych do wspólnoty.</p>
               ) : (
                 <ul className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-border/60 p-2">
-                  {buildings.map((b) => (
+                  {buildings.map((b) => {
+                    const title = propertyDisplayName(b.name);
+                    return (
                     <li key={b.id} className="flex items-start gap-2">
                       <Checkbox
                         id={`cat-loc-${b.id}`}
@@ -283,11 +285,18 @@ export function CommunityOrderCatalogCard({ communityId, orgId, buildings }: Pro
                         onCheckedChange={() => toggleLocation(b.id)}
                       />
                       <Label htmlFor={`cat-loc-${b.id}`} className="cursor-pointer font-normal leading-snug">
-                        {b.name}
-                        <span className="block text-xs text-muted-foreground">{b.address}</span>
+                        {title ? (
+                          <>
+                            {title}
+                            <span className="block text-xs text-muted-foreground">{b.address}</span>
+                          </>
+                        ) : (
+                          b.address
+                        )}
                       </Label>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>

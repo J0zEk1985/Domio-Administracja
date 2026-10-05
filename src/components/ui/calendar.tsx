@@ -7,17 +7,39 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+const CURRENT_YEAR = new Date().getFullYear();
+
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  captionLayout = "dropdown",
+  fromYear = CURRENT_YEAR - 20,
+  toYear = CURRENT_YEAR + 20,
+  ...props
+}: CalendarProps) {
+  const dropdownCaption = captionLayout === "dropdown" || captionLayout === "dropdown-buttons";
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fromYear={fromYear}
+      toYear={toYear}
+      {...props}
+      captionLayout={captionLayout}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
+        caption_label: cn("text-sm font-medium", dropdownCaption && "hidden"),
+        caption_dropdowns: "flex items-center justify-center gap-1",
+        dropdown_month: "relative inline-flex items-center",
+        dropdown_year: "relative inline-flex items-center",
+        dropdown:
+          "h-8 cursor-pointer rounded-md border border-input bg-background px-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring",
+        vhidden: "sr-only",
+        nav: dropdownCaption ? "hidden" : "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
@@ -45,7 +67,6 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
       }}
-      {...props}
     />
   );
 }

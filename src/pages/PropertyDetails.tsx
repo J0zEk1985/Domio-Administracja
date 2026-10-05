@@ -174,120 +174,6 @@ export default function PropertyDetails() {
         {displayName ? <p className="text-sm text-muted-foreground mt-1">{property.address}</p> : null}
       </div>
 
-      <CollapsibleSection title="Podstawowe">
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1">
-          <TabsTrigger value="general" className="text-xs sm:text-sm">
-            Informacje ogólne
-          </TabsTrigger>
-          <TabsTrigger value="admins" className="text-xs sm:text-sm">
-            Administratorzy
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="mt-6 space-y-6">
-          <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
-          <PropertySerwisQrAccessCard
-            property={property}
-            canManage={portalAccessQuery.data === true}
-            accessPending={portalAccessQuery.isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="admins" className="mt-6">
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">Administratorzy budynku</CardTitle>
-              <CardDescription>
-                Pracownicy biura z dostępem administracyjnym do tego budynku. Kliknij wiersz, aby otworzyć profil w
-                Zespole.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {adminsQuery.isError && (
-                <Alert variant="destructive">
-                  <AlertDescription className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                    <span>
-                      {adminsQuery.error instanceof Error
-                        ? adminsQuery.error.message
-                        : "Nie udało się wczytać listy."}
-                    </span>
-                    <Button type="button" variant="link" className="h-auto p-0" onClick={() => adminsQuery.refetch()}>
-                      Spróbuj ponownie
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-              {adminsQuery.isLoading ? (
-                <AdministratorsSkeleton showActions={isOwner} />
-              ) : (adminsQuery.data ?? []).length === 0 ? (
-                <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Brak przypisanych administratorów dla tego obiektu.
-                </p>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Imię i nazwisko</TableHead>
-                        <TableHead>E-mail</TableHead>
-                        {isOwner ? <TableHead className="w-[72px] text-right">Akcje</TableHead> : null}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(adminsQuery.data ?? []).map((row) => {
-                        const goTeam = row.membershipId
-                          ? () => navigate(`/team/${row.membershipId}`)
-                          : undefined;
-                        const revoking =
-                          revokeLocationAccess.isPending &&
-                          revokeLocationAccess.variables === row.accessId;
-                        return (
-                          <TableRow
-                            key={row.accessId}
-                            className={cn(goTeam && "cursor-pointer")}
-                            onClick={goTeam}
-                          >
-                            <TableCell className="font-medium">{row.fullName}</TableCell>
-                            <TableCell className="text-muted-foreground">{row.email}</TableCell>
-                            {isOwner ? (
-                              <TableCell className="text-right">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                  aria-label="Usuń dostęp do budynku"
-                                  disabled={revoking}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      !window.confirm(
-                                        "Czy na pewno usunąć dostęp administracyjny tej osoby do tego budynku?",
-                                      )
-                                    ) {
-                                      return;
-                                    }
-                                    revokeLocationAccess.mutate(row.accessId);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" aria-hidden />
-                                </Button>
-                              </TableCell>
-                            ) : null}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      </CollapsibleSection>
-
       <CollapsibleSection title="Zarządzanie">
       <Tabs defaultValue="team" className="w-full">
         <TabsList className="grid h-auto w-full max-w-7xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-5">
@@ -398,6 +284,120 @@ export default function PropertyDetails() {
 
         <TabsContent value="local-inspections" className="mt-6">
           <PropertyLocalInspectionsTab locationId={property.id} />
+        </TabsContent>
+      </Tabs>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Podstawowe">
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1">
+          <TabsTrigger value="general" className="text-xs sm:text-sm">
+            Informacje ogólne
+          </TabsTrigger>
+          <TabsTrigger value="admins" className="text-xs sm:text-sm">
+            Administratorzy
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="mt-6 space-y-6">
+          <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
+          <PropertySerwisQrAccessCard
+            property={property}
+            canManage={portalAccessQuery.data === true}
+            accessPending={portalAccessQuery.isLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="admins" className="mt-6">
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Administratorzy budynku</CardTitle>
+              <CardDescription>
+                Pracownicy biura z dostępem administracyjnym do tego budynku. Kliknij wiersz, aby otworzyć profil w
+                Zespole.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {adminsQuery.isError && (
+                <Alert variant="destructive">
+                  <AlertDescription className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                    <span>
+                      {adminsQuery.error instanceof Error
+                        ? adminsQuery.error.message
+                        : "Nie udało się wczytać listy."}
+                    </span>
+                    <Button type="button" variant="link" className="h-auto p-0" onClick={() => adminsQuery.refetch()}>
+                      Spróbuj ponownie
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {adminsQuery.isLoading ? (
+                <AdministratorsSkeleton showActions={isOwner} />
+              ) : (adminsQuery.data ?? []).length === 0 ? (
+                <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  Brak przypisanych administratorów dla tego obiektu.
+                </p>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Imię i nazwisko</TableHead>
+                        <TableHead>E-mail</TableHead>
+                        {isOwner ? <TableHead className="w-[72px] text-right">Akcje</TableHead> : null}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(adminsQuery.data ?? []).map((row) => {
+                        const goTeam = row.membershipId
+                          ? () => navigate(`/team/${row.membershipId}`)
+                          : undefined;
+                        const revoking =
+                          revokeLocationAccess.isPending &&
+                          revokeLocationAccess.variables === row.accessId;
+                        return (
+                          <TableRow
+                            key={row.accessId}
+                            className={cn(goTeam && "cursor-pointer")}
+                            onClick={goTeam}
+                          >
+                            <TableCell className="font-medium">{row.fullName}</TableCell>
+                            <TableCell className="text-muted-foreground">{row.email}</TableCell>
+                            {isOwner ? (
+                              <TableCell className="text-right">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  aria-label="Usuń dostęp do budynku"
+                                  disabled={revoking}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      !window.confirm(
+                                        "Czy na pewno usunąć dostęp administracyjny tej osoby do tego budynku?",
+                                      )
+                                    ) {
+                                      return;
+                                    }
+                                    revokeLocationAccess.mutate(row.accessId);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" aria-hidden />
+                                </Button>
+                              </TableCell>
+                            ) : null}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
       </CollapsibleSection>
