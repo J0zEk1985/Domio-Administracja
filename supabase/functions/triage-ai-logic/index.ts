@@ -14,14 +14,13 @@ const corsHeaders: Record<string, string> = {
 
 const GEMINI_MODEL = "gemini-1.5-flash";
 
-/** Must match `src/lib/issueCategoryOptions.ts` (DB values). */
+/** Must match `src/lib/issueCategoryOptions.ts` / Serwis taxonomy. */
 const ALLOWED_CATEGORIES = [
-  "Elektryczna",
   "Hydrauliczna",
+  "Elektryczna",
+  "Ślusarska",
   "Ogólnobudowlana",
-  "Sprzęt",
-  "Sprzątanie doraźne",
-  "Prace porządkowe",
+  "Inna",
 ] as const;
 
 const ALLOWED_PRIORITIES_EN = ["medium", "critical"] as const;
@@ -77,8 +76,8 @@ function normalizeCategory(raw: string): AllowedCategory {
   const lower = t.toLowerCase();
   const fuzzy = ALLOWED_CATEGORIES.find((c) => c.toLowerCase() === lower);
   if (fuzzy) return fuzzy;
-  console.warn("[triage-issue] Unrecognized category, defaulting to Ogólnobudowlana:", raw);
-  return "Ogólnobudowlana";
+  console.warn("[triage-issue] Unrecognized category, defaulting to Inna:", raw);
+  return "Inna";
 }
 
 /** Model may return Polish labels (schema); map to RHF / DB values. */

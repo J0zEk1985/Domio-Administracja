@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { coerceIssueCategory } from "@/lib/issueCategoryOptions";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import type { Database } from "@/types/supabase";
@@ -79,9 +80,14 @@ export function useAddRoutingRule() {
         throw new Error("Brak kontekstu organizacji.");
       }
 
+      const canon = coerceIssueCategory(issueCategory);
+      if (!canon) {
+        throw new Error("Wybierz kategorię.");
+      }
+
       const { error } = await supabase.from("location_vendor_routing").insert({
         location_id: locationId,
-        issue_category: issueCategory.trim(),
+        issue_category: canon,
         vendor_id: vendorId,
         org_id: String(orgId),
       });

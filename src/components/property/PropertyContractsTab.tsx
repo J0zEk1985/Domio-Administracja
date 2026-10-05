@@ -7,6 +7,10 @@ import { AlertTriangle, ExternalLink, Plus } from "lucide-react";
 import { InsurancePolicyForm } from "@/components/property/InsurancePolicyForm";
 import { PropertyContractsListCard } from "@/components/property/PropertyContractsListCard";
 import { AddInspectionDialog } from "@/components/inspections/AddInspectionDialog";
+import {
+  inspectionBuildingOptionLabel,
+  type InspectionBuildingOption,
+} from "@/components/inspections/InspectionBuildingScope";
 import { CKobSyncButton } from "@/components/inspections/CKobSyncButton";
 import { InspectionCKobStatusCell } from "@/components/inspections/columns";
 import { Badge } from "@/components/ui/badge";
@@ -195,12 +199,13 @@ function PoliciesTableSkeleton() {
   );
 }
 
-function InspectionsTableSkeleton() {
+function InspectionsTableSkeleton({ showBuilding }: { showBuilding: boolean }) {
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
+            {showBuilding ? <TableHead className="min-w-[10rem]">Nieruchomość</TableHead> : null}
             <TableHead className="min-w-[10rem]">Typ przeglądu</TableHead>
             <TableHead className="min-w-[10rem]">Wykonawca (firma)</TableHead>
             <TableHead className="min-w-[8rem]">Data wykonania</TableHead>
@@ -213,6 +218,11 @@ function InspectionsTableSkeleton() {
         <TableBody>
           {[1, 2, 3].map((i) => (
             <TableRow key={i}>
+              {showBuilding ? (
+                <TableCell>
+                  <Skeleton className="h-4 w-36" />
+                </TableCell>
+              ) : null}
               <TableCell>
                 <Skeleton className="h-5 w-32 rounded-full" />
               </TableCell>
@@ -251,6 +261,7 @@ export function PropertyContractsTab({
   inspectionsScope,
   sections = DEFAULT_SECTIONS,
   communityAssignOption,
+  communityBuildings,
 }: {
   locationId: string;
   cKobBuildingId: string | null;
@@ -259,6 +270,8 @@ export function PropertyContractsTab({
   sections?: { contracts: boolean; policies: boolean; inspections: boolean };
   /** Checkbox „cała wspólnota” w formularzach dodawania (wymaga `communityId`). */
   communityAssignOption?: { communityId: string } | null;
+  /** Used when adding an inspection from the community tab. */
+  communityBuildings?: InspectionBuildingOption[] | null;
 }) {
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
@@ -371,6 +384,10 @@ export function PropertyContractsTab({
     hideHistoricalInspections,
     maxExecutionMsByType,
   ]);
+
+  const showInspectionBuilding =
+    Boolean(inspectionsScope?.communityBuildingIds && inspectionsScope.communityBuildingIds.length > 0);
+  const inspectionColumnCount = showInspectionBuilding ? 8 : 7;
 
   const latestCkobSyncAt = useMemo(() => {
     let best: string | null = null;
@@ -579,15 +596,19 @@ export function PropertyContractsTab({
             locationId={locationId}
             open={inspectionDialogOpen}
             onOpenChange={setInspectionDialogOpen}
+            communityBuildings={showInspectionBuilding ? communityBuildings : null}
           />
 
           {inspectionsQuery.isLoading ? (
-            <InspectionsTableSkeleton />
+            <InspectionsTableSkeleton showBuilding={showInspectionBuilding} />
           ) : inspectionRows.length === 0 ? (
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {showInspectionBuilding ? (
+                      <TableHead className="min-w-[10rem]">Nieruchomość</TableHead>
+                    ) : null}
                     <TableHead className="min-w-[10rem]">Typ przeglądu</TableHead>
                     <TableHead className="min-w-[10rem]">Wykonawca (firma)</TableHead>
                     <TableHead className="min-w-[8rem]">Data wykonania</TableHead>
@@ -599,7 +620,7 @@ export function PropertyContractsTab({
                 </TableHeader>
                 <TableBody>
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={7} className="h-36 text-center align-middle">
+                    <TableCell colSpan={inspectionColumnCount} className="h-36 text-center align-middle">
                       <p className="text-sm text-muted-foreground">Brak zapisanych przeglądów dla tej nieruchomości.</p>
                     </TableCell>
                   </TableRow>
@@ -620,6 +641,9 @@ export function PropertyContractsTab({
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        {showInspectionBuilding ? (
+                          <TableHead className="min-w-[10rem]">Nieruchomość</TableHead>
+                        ) : null}
                         <TableHead className="min-w-[10rem]">Typ przeglądu</TableHead>
                         <TableHead className="min-w-[10rem]">Wykonawca (firma)</TableHead>
                         <TableHead className="min-w-[8rem]">Data wykonania</TableHead>
@@ -636,8 +660,24 @@ export function PropertyContractsTab({
                       const statusLabel = INSPECTION_STATUS_LABELS[row.status] ?? row.status;
                       const docUrl = row.document_url?.trim();
 
+                      const location = row.location ?? null;
+                      const buildingLabel = location
+                        ? inspectionBuildingOptionLabel({
+                            id: row.location_id,
+                            name: location.name ?? "",
+                            address: location.address ?? "",
+                          })
+                        : "—";
+
                       return (
                         <TableRow key={row.id}>
+                          {showInspectionBuilding ? (
+                            <TableCell>
+                              <Link to={`/properties/${row.location_id}`} className="font-medium text-primary hover:underline">
+                                {buildingLabel}
+                              </Link>
+                            </TableCell>
+                          ) : null}
                           <TableCell>
                             <Badge variant="outline" className="max-w-[240px] whitespace-normal font-normal leading-snug">
                               {typeLabel}

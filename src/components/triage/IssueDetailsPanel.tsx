@@ -119,10 +119,10 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
             <span className="text-muted-foreground font-normal">Budynek: </span>
             {formatIssueBuildingLabel(issue.location)}
           </p>
-          <div className="flex flex-col gap-1.5 text-sm text-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-            <span>Utworzono: {formatDt(issue.created_at)}</span>
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground">Kategoria:</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-foreground">
+            <span className="shrink-0">Utworzono: {formatDt(issue.created_at)}</span>
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <span className="shrink-0 text-muted-foreground">Kategoria:</span>
               {categoryEditable ? (
                 <IssueCategorySelect issue={issue} />
               ) : (

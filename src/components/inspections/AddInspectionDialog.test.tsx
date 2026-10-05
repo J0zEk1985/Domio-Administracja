@@ -23,6 +23,30 @@ describe("validUntilFromPreset", () => {
 });
 
 describe("AddInspectionDialog", () => {
+  it("lets a community inspection cover every building or a chosen subset", () => {
+    global.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    render(
+      <AddInspectionDialog
+        locationId="loc-1"
+        open
+        onOpenChange={vi.fn()}
+        communityBuildings={[
+          { id: "loc-1", name: "—", address: "Pienista 51" },
+          { id: "loc-2", name: "Klatka B", address: "Pienista 53" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByLabelText("Wszystkie budynki we wspólnocie")).toBeChecked();
+    fireEvent.click(screen.getByLabelText("Tylko wybrane budynki"));
+    expect(screen.getByLabelText("Pienista 51")).toBeChecked();
+    expect(screen.getByLabelText("Klatka B — Pienista 53")).toBeChecked();
+  });
+
   it("fills valid-until from a preset and offers year dropdown in the calendar", () => {
     render(<AddInspectionDialog locationId="loc-1" open onOpenChange={vi.fn()} />);
 

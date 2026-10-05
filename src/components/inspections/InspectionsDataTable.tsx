@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PropertyInspectionGlobalRow } from "@/hooks/useAllInspections";
+import { contractPropertyDisplay } from "@/lib/contractPropertyLabel";
 import {
   INSPECTION_STATUSES,
   INSPECTION_STATUS_LABELS,
@@ -66,7 +67,10 @@ function globalInspectionsFilter(
     .toLowerCase();
   if (!q) return true;
   const company = row.original.company?.name?.toLowerCase() ?? "";
-  const building = row.original.location?.name?.toLowerCase() ?? "";
+  const building = contractPropertyDisplay({
+    location_id: row.original.location_id,
+    location: row.original.location,
+  }).searchText;
   return company.includes(q) || building.includes(q);
 }
 

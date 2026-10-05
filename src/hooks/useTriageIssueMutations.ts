@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { coerceIssueCategory } from "@/lib/issueCategoryOptions";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
 import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
@@ -246,7 +247,7 @@ export function useUpdateIssueCategory() {
     mutationFn: async ({ issueId, category }: UpdateIssueCategoryVars) => {
       const { error } = await supabase
         .from("property_issues")
-        .update({ category: category?.trim() || null })
+        .update({ category: coerceIssueCategory(category) })
         .eq("id", issueId);
 
       if (error) {
@@ -258,7 +259,7 @@ export function useUpdateIssueCategory() {
       await qc.cancelQueries({ queryKey: triageIssuesQueryKey() });
       const previous = qc.getQueryData<TriageIssue[]>(triageIssuesQueryKey());
       qc.setQueryData<TriageIssue[]>(triageIssuesQueryKey(), (old) =>
-        patchIssue(old, issueId, { category: category?.trim() || null }),
+        patchIssue(old, issueId, { category: coerceIssueCategory(category) }),
       );
       return { previous };
     },

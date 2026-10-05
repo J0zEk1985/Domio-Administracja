@@ -22,6 +22,7 @@ export type PropertyListRow = {
   adminCount: number;
   communityId: string | null;
   communityName: string | null;
+  locationMasterId: string | null;
   latitude: number | null;
   longitude: number | null;
 };
@@ -31,6 +32,32 @@ export function propertyDisplayName(name: string | null | undefined): string | n
   const n = name?.trim();
   if (!n || n === "—") return null;
   return n;
+}
+
+function propertyDisplayAddress(address: string | null | undefined): string | null {
+  const a = address?.trim();
+  if (!a || a === "—") return null;
+  return a;
+}
+
+export function propertyBuildingParts(
+  name: string | null | undefined,
+  address: string | null | undefined,
+): { title: string; subtitle: string | null } {
+  const displayName = propertyDisplayName(name);
+  const displayAddress = propertyDisplayAddress(address);
+  if (displayName && displayAddress && displayName !== displayAddress) {
+    return { title: displayName, subtitle: displayAddress };
+  }
+  return { title: displayName || displayAddress || "Budynek", subtitle: null };
+}
+
+export function propertyBuildingLabel(
+  name: string | null | undefined,
+  address: string | null | undefined,
+): string {
+  const { title, subtitle } = propertyBuildingParts(name, address);
+  return subtitle ? `${title} — ${subtitle}` : title;
 }
 
 async function fetchProperties(): Promise<PropertyListRow[]> {
@@ -43,6 +70,7 @@ async function fetchProperties(): Promise<PropertyListRow[]> {
         name: string | null;
         address: string | null;
         community_id: string | null;
+        location_master_id: string | null;
         latitude: number | null;
         longitude: number | null;
         communities: { name: string | null } | null;
@@ -50,7 +78,7 @@ async function fetchProperties(): Promise<PropertyListRow[]> {
     | null = null;
 
   const locationSelect =
-    "id, name, address, community_id, latitude, longitude, communities ( name )" as const;
+    "id, name, address, community_id, location_master_id, latitude, longitude, communities ( name )" as const;
 
   if (isOwner) {
     const { data, error } = await supabase
@@ -130,6 +158,7 @@ async function fetchProperties(): Promise<PropertyListRow[]> {
     adminCount: distinctUsersByLoc.get(l.id)?.size ?? 0,
     communityId: l.community_id ?? null,
     communityName: l.communities?.name?.trim() ? l.communities.name.trim() : null,
+    locationMasterId: l.location_master_id ?? null,
     latitude: l.latitude ?? null,
     longitude: l.longitude ?? null,
   }));

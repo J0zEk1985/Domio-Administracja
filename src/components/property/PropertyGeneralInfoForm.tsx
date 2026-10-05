@@ -32,6 +32,9 @@ function formatCoord(n: number | null | undefined): string {
   return String(n);
 }
 
+/** c-KOB stays in the save payload; the basics tab hides the fields until the integration is turned back on. */
+const SHOW_CKOB_ON_BUILDING_BASICS = false;
+
 export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
   const save = useUpdatePropertyGeneral(property.id);
   const integrationsCardRef = useRef<HTMLDivElement>(null);
@@ -198,6 +201,7 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
               wspólnoty.
             </p>
           </div>
+          {SHOW_CKOB_ON_BUILDING_BASICS ? (
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="prop-ckob-summary">ID Książki Obiektu (c-KOB)</Label>
             {hasStoredCkob ? (
@@ -247,9 +251,11 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
               </div>
             )}
           </div>
+          ) : null}
         </CardContent>
       </Card>
 
+      {SHOW_CKOB_ON_BUILDING_BASICS ? (
       <Card
         ref={integrationsCardRef}
         id="property-integrations-ckob"
@@ -279,6 +285,7 @@ export function PropertyGeneralInfoForm({ property, isOwner }: Props) {
           </div>
         </CardContent>
       </Card>
+      ) : null}
 
       {!canEdit ? (
         <p className="text-xs text-muted-foreground">

@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,14 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/components/ui/sonner";
 import { useVendorPartners } from "@/hooks/useVendorPartners";
 import {
   useCommunityEmergencyProviders,
-  useDeleteEmergencyProvider,
-  useUpsertEmergencyProvider,
+  useSaveEmergencyProvider,
 } from "@/hooks/useCommunityEmergencyProviders";
+import { EMERGENCY_TRADES, type EmergencyTradeCode } from "@/types/emergencyDuty";
 
-const TRADES = ["Elektryczna", "Hydrauliczna", "Ogólnobudowlana", "Sprzęt"] as const;
+const NO_VENDOR = "__none__";
 
 export function PropertyEcosystemEmergencyProvidersCard({
   orgId,
@@ -30,96 +30,111 @@ export function PropertyEcosystemEmergencyProvidersCard({
 }) {
   const { data: rows = [], isLoading } = useCommunityEmergencyProviders(communityId);
   const { data: vendors = [] } = useVendorPartners();
-  const add = useUpsertEmergencyProvider(communityId, orgId);
-  const remove = useDeleteEmergencyProvider(communityId);
-  const [trade, setTrade] = useState<string>(TRADES[0]);
-  const [vendorId, setVendorId] = useState<string>("");
+  const save = useSaveEmergencyProvider(communityId, orgId);
+
+  const byCode = useMemo(() => {
+    const map = new Map(rows.map((row) => [row.trade_code, row]));
+    return map;
+  }, [rows]);
+
+  const pendingCode = save.isPending ? (save.variables?.trade_code ?? null) : null;
+
+  const saveTrade = (
+    code: EmergencyTradeCode,
+    patch: { is_enabled?: boolean; vendor_partner_id?: string | null },
+  ) => {
+    const current = byCode.get(code);
+    save.mutate({
+      trade_code: code,
+      is_enabled: patch.is_enabled ?? current?.is_enabled ?? false,
+      vendor_partner_id:
+        patch.vendor_partner_id !== undefined
+          ? patch.vendor_partner_id
+          : (current?.vendor_partner_id ?? null),
+    });
+  };
 
   return (
     <Card className="border-border/60 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base">Pogotowie techniczne 24h</CardTitle>
+        <CardTitle className="text-base">Pogotowie 24h</CardTitle>
         <CardDescription>
-          Rejestr firm poza godzinami pracy — do przekazywania zgłoszeń z trybu awaryjnego. Osobno od tablicy w Home.
+          Dla całej wspólnoty: które branże działają w trybie pogotowia i jaka firma je obsługuje.
+          Osobno od tablicy kontaktów w Home.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Wczytywanie…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Brak przypisanych firm 24h.</p>
         ) : (
-          <ul className="space-y-2">
-            {rows.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                <div>
-                  <p className="font-medium">{row.trade_category}</p>
-                  <p className="text-muted-foreground">{row.vendor_name ?? row.vendor_partner_id}</p>
-                </div>
-                {canManage ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => remove.mutate(row.id)}
-                    disabled={remove.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </li>
-            ))}
+          <ul className="divide-y rounded-lg border">
+            {EMERGENCY_TRADES.map((trade) => {
+              const row = byCode.get(trade.code);
+              const enabled = row?.is_enabled === true;
+              const vendorId = row?.vendor_partner_id ?? "";
+              const busy = pendingCode === trade.code;
+              return (
+                <li
+                  key={trade.code}
+                  className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,14rem)] sm:items-center"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{trade.label}</p>
+                    {!canManage ? (
+                      <p className="text-xs text-muted-foreground">
+                        {enabled
+                          ? (row?.vendor_name ?? "Włączone")
+                          : "Wyłączone"}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`emergency-24h-${trade.code}`}
+                      checked={enabled}
+                      disabled={!canManage || busy}
+                      onCheckedChange={(checked) => {
+                        if (checked && !vendorId) {
+                          toast.error("Aby włączyć pogotowie 24h, najpierw wybierz firmę.");
+                          return;
+                        }
+                        saveTrade(trade.code, { is_enabled: checked });
+                      }}
+                    />
+                    <Label htmlFor={`emergency-24h-${trade.code}`} className="text-xs text-muted-foreground">
+                      24h
+                    </Label>
+                  </div>
+                  {canManage ? (
+                    <Select
+                      value={vendorId || NO_VENDOR}
+                      disabled={busy}
+                      onValueChange={(value) => {
+                        const nextVendor = value === NO_VENDOR ? null : value;
+                        saveTrade(trade.code, {
+                          vendor_partner_id: nextVendor,
+                          ...(nextVendor === null ? { is_enabled: false } : {}),
+                        });
+                      }}
+                    >
+                      <SelectTrigger aria-label={`Firma dla branży ${trade.label}`}>
+                        <SelectValue placeholder="Wybierz firmę" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_VENDOR}>Brak firmy</SelectItem>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            {vendor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
-
-        {canManage ? (
-          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-            <div className="space-y-1.5">
-              <Label>Branża</Label>
-              <Select value={trade} onValueChange={setTrade}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRADES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Firma</Label>
-              <Select value={vendorId} onValueChange={setVendorId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz firmę" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              type="button"
-              className="self-end gap-1.5"
-              disabled={!vendorId || add.isPending}
-              onClick={() =>
-                add.mutate(
-                  { trade_category: trade, vendor_partner_id: vendorId, location_id: null },
-                  { onSuccess: () => setVendorId("") },
-                )
-              }
-            >
-              <Plus className="h-4 w-4" />
-              Dodaj
-            </Button>
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   );

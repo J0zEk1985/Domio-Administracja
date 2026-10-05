@@ -12,6 +12,7 @@ import {
 } from "@/schemas/inspectionSchema";
 import type { Enums } from "@/types/supabase";
 import type { PropertyInspectionGlobalRow } from "@/hooks/useAllInspections";
+import { contractPropertyDisplay } from "@/lib/contractPropertyLabel";
 import { cn } from "@/lib/utils";
 
 type SyncStatus = Enums<"sync_status">;
@@ -118,20 +119,28 @@ function CkobDot({ status }: { status: SyncStatus }) {
 export const globalInspectionsColumns: ColumnDef<PropertyInspectionGlobalRow>[] = [
   {
     id: "location",
-    accessorFn: (row) => row.location?.name?.trim() || "",
+    accessorFn: (row) =>
+      contractPropertyDisplay({ location_id: row.location_id, location: row.location }).sortKey,
     header: ({ column }) => <DataTableColumnHeader column={column} title="Nieruchomość" />,
     cell: ({ row }) => {
-      const loc = row.original.location;
-      const name = loc?.name?.trim() || "—";
-      const id = row.original.location_id;
-      if (name !== "—") {
-        return (
-          <Link to={`/properties/${id}`} className={navLinkClass}>
-            {name}
-          </Link>
-        );
+      const display = contractPropertyDisplay({
+        location_id: row.original.location_id,
+        location: row.original.location,
+      });
+      const body = (
+        <span className="flex flex-col gap-0.5">
+          <span className={display.title === "—" ? "text-muted-foreground" : undefined}>{display.title}</span>
+          {display.subtitle ? <span className="text-xs text-muted-foreground">{display.subtitle}</span> : null}
+        </span>
+      );
+      if (!display.href || display.title === "—") {
+        return body;
       }
-      return <span className="text-muted-foreground">—</span>;
+      return (
+        <Link to={display.href} className={navLinkClass}>
+          {body}
+        </Link>
+      );
     },
     enableSorting: true,
   },

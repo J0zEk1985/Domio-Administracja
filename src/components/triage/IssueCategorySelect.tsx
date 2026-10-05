@@ -46,7 +46,7 @@ export function IssueCategorySelect({ issue, disabled, className }: IssueCategor
         mut.mutate({ issueId: issue.id, category: next });
       }}
     >
-      <SelectTrigger className={cn("h-8 w-[min(100%,14rem)] text-xs font-normal", className)}>
+      <SelectTrigger className={cn("h-8 w-auto min-w-[10rem] max-w-[14rem] shrink-0 text-xs font-normal", className)}>
         <SelectValue placeholder="Wybierz kategorię" />
       </SelectTrigger>
       <SelectContent>

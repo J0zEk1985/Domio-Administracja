@@ -5,6 +5,7 @@ import {
   declineServiceMandate,
   fetchOrgAdminLegalEntityId,
   inviteServiceMandate,
+  copyBuildingEcosystemSettings,
   listCooperationLinks,
   listLocationModulePresence,
   listProviderDirectory,
@@ -175,6 +176,28 @@ export function useUpsertCooperation(locationMasterId: string | null) {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Nie udało się zapisać kooperacji.");
+    },
+  });
+}
+
+export function useCopyBuildingEcosystem(
+  locationMasterId: string | null,
+  communityLegalEntityId: string | null,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: copyBuildingEcosystemSettings,
+    onSuccess: () => {
+      toast.success("Skopiowano ustawienia ekosystemu.");
+      if (locationMasterId) {
+        void qc.invalidateQueries({ queryKey: ecosystemQueryKeys.coop(locationMasterId) });
+      }
+      if (communityLegalEntityId) {
+        void qc.invalidateQueries({ queryKey: ecosystemQueryKeys.mandates(communityLegalEntityId) });
+      }
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Nie udało się skopiować ustawień ekosystemu.");
     },
   });
 }

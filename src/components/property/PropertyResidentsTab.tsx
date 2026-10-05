@@ -1,9 +1,16 @@
 import { useMemo, useState } from "react";
-import { Loader2, Pencil, Trash2, Upload } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
+import { AddResidentDialog } from "@/components/property/AddResidentDialog";
 import { ResidentCsvImportDialog } from "@/components/property/ResidentCsvImportDialog";
 import { PropertyUnitRegistryCard } from "@/components/property/PropertyUnitRegistryCard";
+import {
+  ResidentsTableSortableHead,
+  sortPropertyOccupants,
+  type ResidentSortDir,
+  type ResidentSortKey,
+} from "@/components/property/ResidentsTableSortableHead";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,9 +58,14 @@ export function PropertyResidentsTab({
   const removeOccupant = useRemoveUnitOccupant(locationId);
   const updateOccupant = useUpdateUnitOccupant(locationId);
   const [importOpen, setImportOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<PropertyOccupantRow | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [sort, setSort] = useState<{ key: ResidentSortKey; dir: ResidentSortDir }>({
+    key: "unitNumber",
+    dir: "asc",
+  });
 
   const units = residentsQuery.data?.units ?? [];
   const occupants = residentsQuery.data?.occupants ?? [];
@@ -62,6 +74,18 @@ export function PropertyResidentsTab({
     () => new Set(units.map((unit) => unit.normalizedUnitNumber)),
     [units]
   );
+
+  const sortedOccupants = useMemo(() => {
+    const unitNumberById = new Map(units.map((unit) => [unit.id, unit.unitNumber]));
+    return sortPropertyOccupants(occupants, unitNumberById, sort);
+  }, [occupants, sort, units]);
+
+  const handleSortColumn = (key: ResidentSortKey) => {
+    setSort((prev) => {
+      if (prev.key !== key) return { key, dir: "asc" };
+      return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+    });
+  };
 
   const openEdit = (occupant: PropertyOccupantRow) => {
     setEditing(occupant);
@@ -90,7 +114,7 @@ export function PropertyResidentsTab({
       {!communityId ? (
         <Alert>
           <AlertDescription>
-            Ten budynek nie ma przypisanej wspólnoty. Import mieszkańców i pomieszczenia techniczne wymagają wspólnoty.
+            Ten budynek nie ma przypisanej wspólnoty. Dodawanie mieszkańców i pomieszczenia techniczne wymagają wspólnoty.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -101,14 +125,21 @@ export function PropertyResidentsTab({
             <CardTitle>Mieszkańcy</CardTitle>
             <CardDescription>
               Zmiana e-maila odbiera dostęp do Home poprzedniemu kontu. Nowy adres czeka na logowanie albo
-              od razu dostaje dostęp, jeśli konto już istnieje.
+              od razu dostaje dostęp, jeśli konto już istnieje. Brakujący lokal powstaje przy dodawaniu
+              mieszkańca.
             </CardDescription>
           </div>
           {canManage ? (
-            <Button type="button" onClick={() => setImportOpen(true)} disabled={!communityId}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import mieszkańców
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => setAddOpen(true)} disabled={!communityId}>
+                <Plus className="mr-2 h-4 w-4" />
+                Dodaj mieszkańca
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setImportOpen(true)} disabled={!communityId}>
+                <Upload className="mr-2 h-4 w-4" />
+                Import mieszkańców
+              </Button>
+            </div>
           ) : null}
         </CardHeader>
         <CardContent>
@@ -123,19 +154,31 @@ export function PropertyResidentsTab({
           ) : occupants.length === 0 ? (
             <p className="text-sm text-muted-foreground">Brak przypisanych mieszkańców.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="max-h-[min(70vh,36rem)] overflow-auto">
+              <Table className="[&_th]:h-8 [&_th]:px-3 [&_th]:py-0 [&_td]:px-3 [&_td]:py-1">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Imię i nazwisko</TableHead>
+                    <ResidentsTableSortableHead
+                      label="Imię i nazwisko"
+                      sortKey="fullName"
+                      activeKey={sort.key}
+                      direction={sort.dir}
+                      onSort={handleSortColumn}
+                    />
                     <TableHead>E-mail</TableHead>
-                    <TableHead>Lokal</TableHead>
+                    <ResidentsTableSortableHead
+                      label="Lokal"
+                      sortKey="unitNumber"
+                      activeKey={sort.key}
+                      direction={sort.dir}
+                      onSort={handleSortColumn}
+                    />
                     <TableHead>Status</TableHead>
-                    {canManage ? <TableHead className="w-24 text-right">Akcje</TableHead> : null}
+                    {canManage ? <TableHead className="w-20 text-right">Akcje</TableHead> : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {occupants.map((occupant) => {
+                  {sortedOccupants.map((occupant) => {
                     const unit = unitById.get(occupant.unitId);
                     return (
                       <TableRow key={occupant.id}>
@@ -144,40 +187,48 @@ export function PropertyResidentsTab({
                         <TableCell className="tabular-nums">{unit?.unitNumber ?? "—"}</TableCell>
                         <TableCell>
                           {occupant.userId ? (
-                            <Badge variant="secondary">Konto aktywne</Badge>
+                            <Badge variant="secondary" className="px-2 py-0">
+                              Konto aktywne
+                            </Badge>
                           ) : (
-                            <Badge variant="outline">Oczekuje na logowanie</Badge>
+                            <Badge variant="outline" className="px-2 py-0">
+                              Oczekuje na logowanie
+                            </Badge>
                           )}
                         </TableCell>
                         {canManage ? (
                           <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Edytuj ${occupant.fullName}`}
-                              onClick={() => openEdit(occupant)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Usuń ${occupant.fullName}`}
-                              disabled={removeOccupant.isPending}
-                              onClick={() =>
-                                removeOccupant.mutate(occupant.id, {
-                                  onSuccess: () => toast.success("Usunięto mieszkańca z lokalu."),
-                                  onError: (error) =>
-                                    toast.error(
-                                      error instanceof Error ? error.message : "Nie udało się usunąć mieszkańca."
-                                    ),
-                                })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="inline-flex items-center justify-end gap-0.5">
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                aria-label={`Edytuj ${occupant.fullName}`}
+                                onClick={() => openEdit(occupant)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                aria-label={`Usuń ${occupant.fullName}`}
+                                disabled={removeOccupant.isPending}
+                                onClick={() =>
+                                  removeOccupant.mutate(occupant.id, {
+                                    onSuccess: () => toast.success("Usunięto mieszkańca z lokalu."),
+                                    onError: (error) =>
+                                      toast.error(
+                                        error instanceof Error ? error.message : "Nie udało się usunąć mieszkańca."
+                                      ),
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         ) : null}
                       </TableRow>
@@ -239,6 +290,13 @@ export function PropertyResidentsTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddResidentDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        locationId={locationId}
+        units={units}
+      />
 
       <ResidentCsvImportDialog
         open={importOpen}

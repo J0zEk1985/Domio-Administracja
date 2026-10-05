@@ -4,6 +4,8 @@ const ERROR_PL: Record<string, string> = {
   ISSUE_AUTH_REQUIRED: "Musisz być zalogowany.",
   EMERGENCY_MANAGE_FORBIDDEN: "Tylko administrator wspólnoty może zgłosić tryb awaryjny.",
   EMERGENCY_VENDOR_MISSING: "Brak firmy pogotowia 24h dla wybranej branży.",
+  EMERGENCY_TRADE_DISABLED: "Ta branża nie działa w trybie pogotowia 24h.",
+  EMERGENCY_TRADE_UNKNOWN: "Nieznana branża pogotowia 24h.",
   EMERGENCY_VENDOR_ARGS: "Wybierz wspólnotę i branżę.",
   EMERGENCY_ISSUE_INVALID: "Uzupełnij budynek, branżę i opis (min. 10 znaków).",
   EMERGENCY_LOCATION_FORBIDDEN: "Ten budynek nie należy do Twojej organizacji.",
@@ -35,22 +37,25 @@ async function invokeRpc<T>(fn: string, args: Record<string, unknown>): Promise<
 export type CreateEmergencyIssueResult = {
   issue_id: string;
   vendor_id: string;
+  trade_code: string;
+  category: string;
 };
 
 export async function resolveEmergencyVendor(
   communityId: string,
   locationId: string | null,
-  tradeCategory: string,
+  trade: string,
 ): Promise<string> {
   return invokeRpc<string>("resolve_emergency_vendor", {
     p_community_id: communityId,
     p_location_id: locationId,
-    p_trade_category: tradeCategory,
+    p_trade_category: trade,
   });
 }
 
 export async function createEmergencyIssue(input: {
   locationId: string;
+  /** Emergency trade code or Polish label (RPC resolves both). */
   category: string;
   description: string;
   photosBefore?: string[] | null;

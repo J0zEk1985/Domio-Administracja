@@ -137,6 +137,28 @@ export function useImportPropertyResidents(locationId: string) {
   });
 }
 
+export function useAddPropertyResident(locationId: string) {
+  const importResidents = useImportPropertyResidents(locationId);
+  return {
+    ...importResidents,
+    mutate: (
+      input: { email: string; fullName: string; unitNumber: string },
+      options?: Parameters<typeof importResidents.mutate>[1]
+    ) =>
+      importResidents.mutate(
+        [
+          {
+            row_index: 1,
+            email: input.email,
+            full_name: input.fullName,
+            unit_number: input.unitNumber,
+          },
+        ],
+        options
+      ),
+  };
+}
+
 async function insertCommunityUnit(input: {
   locationId: string;
   orgId: string;

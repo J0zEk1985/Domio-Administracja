@@ -5,6 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import { pendingIssuesCountQueryKey } from "@/hooks/usePendingIssuesCount";
 import { propertyIssuesQueryKey } from "@/hooks/usePropertyIssues";
 import { triageIssuesQueryKey } from "@/hooks/useTriageIssues";
+import { coerceIssueCategory, ISSUE_CATEGORY_VALUES } from "@/lib/issueCategoryOptions";
 import { MAX_ISSUE_PHOTOS, uploadIssuePhotos } from "@/lib/issuePhotos";
 
 const issuePriorityEnum = z.enum(["medium", "critical"]);
@@ -13,7 +14,9 @@ export const createIssueSchema = z.object({
   location_id: z.string().uuid({ message: "Wybierz budynek." }),
   /** Odczyt z `cleaning_locations.community_id` — brak kolumny w `property_issues`, używane w UI. */
   community_id: z.union([z.string().uuid(), z.literal("")]).optional(),
-  category: z.string().min(1, "Wybierz kategorię."),
+  category: z
+    .union([z.literal(""), z.enum(ISSUE_CATEGORY_VALUES)])
+    .refine((v) => v !== "", { message: "Wybierz kategorię." }),
   priority: issuePriorityEnum,
   description: z.string().min(10, "Opis musi mieć co najmniej 10 znaków."),
   immediate_fulfillment: z.boolean(),
@@ -75,7 +78,7 @@ export function useCreateIssue() {
         id: issueId,
         org_id: String(orgId),
         location_id: insertPayload.location_id,
-        category: insertPayload.category.trim(),
+        category: coerceIssueCategory(insertPayload.category) ?? "Inna",
         priority: insertPayload.priority,
         description: insertPayload.description.trim(),
         status: "new",

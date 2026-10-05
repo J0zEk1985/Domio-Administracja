@@ -666,31 +666,37 @@ export type Database = {
           community_id: string
           created_at: string
           id: string
+          is_enabled: boolean
           location_id: string | null
           org_id: string
           trade_category: string
+          trade_code: string
           updated_at: string
-          vendor_partner_id: string
+          vendor_partner_id: string | null
         }
         Insert: {
           community_id: string
           created_at?: string
           id?: string
+          is_enabled?: boolean
           location_id?: string | null
           org_id: string
-          trade_category: string
+          trade_category?: string
+          trade_code?: string
           updated_at?: string
-          vendor_partner_id: string
+          vendor_partner_id?: string | null
         }
         Update: {
           community_id?: string
           created_at?: string
           id?: string
+          is_enabled?: boolean
           location_id?: string | null
           org_id?: string
           trade_category?: string
+          trade_code?: string
           updated_at?: string
-          vendor_partner_id?: string
+          vendor_partner_id?: string | null
         }
         Relationships: [
           {
@@ -701,6 +707,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "community_emergency_providers_trade_code_fkey"
+            columns: ["trade_code"]
+            isOneToOne: false
+            referencedRelation: "emergency_trades"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "community_emergency_providers_vendor_partner_id_fkey"
             columns: ["vendor_partner_id"]
             isOneToOne: false
@@ -708,6 +721,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      emergency_trades: {
+        Row: {
+          code: string
+          is_active: boolean
+          label_pl: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          is_active?: boolean
+          label_pl: string
+          sort_order: number
+        }
+        Update: {
+          code?: string
+          is_active?: boolean
+          label_pl?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       community_board: {
         Row: {
@@ -2656,6 +2690,7 @@ export type Database = {
           estimated_hours: number | null
           estimated_resolution_date: string | null
           emergency_mode: boolean
+          emergency_trade_code: string | null
           emergency_vendor_id: string | null
           id: string
           immediate_fulfillment: boolean
@@ -2704,6 +2739,7 @@ export type Database = {
           estimated_hours?: number | null
           estimated_resolution_date?: string | null
           emergency_mode?: boolean
+          emergency_trade_code?: string | null
           emergency_vendor_id?: string | null
           id?: string
           immediate_fulfillment?: boolean
@@ -2752,6 +2788,7 @@ export type Database = {
           estimated_hours?: number | null
           estimated_resolution_date?: string | null
           emergency_mode?: boolean
+          emergency_trade_code?: string | null
           emergency_vendor_id?: string | null
           id?: string
           immediate_fulfillment?: boolean
@@ -2809,6 +2846,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vendor_partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_issues_emergency_trade_code_fkey"
+            columns: ["emergency_trade_code"]
+            isOneToOne: false
+            referencedRelation: "emergency_trades"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "property_issues_emergency_vendor_id_fkey"
@@ -3907,9 +3951,15 @@ export type Database = {
           p_photos_before?: string[] | null
         }
         Returns: {
+          category: string
           issue_id: string
+          trade_code: string
           vendor_id: string
         }
+      }
+      emergency_trade_to_issue_category: {
+        Args: { p_code: string }
+        Returns: string
       }
       create_estate: {
         Args: { p_community_id: string; p_name: string }
@@ -4239,6 +4289,10 @@ export type Database = {
           p_raw_payload?: Json
         }
         Returns: Json
+      }
+      resolve_emergency_trade_code: {
+        Args: { p_trade: string }
+        Returns: string
       }
       resolve_emergency_vendor: {
         Args: {

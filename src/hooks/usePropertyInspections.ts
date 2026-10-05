@@ -13,6 +13,7 @@ import type { Database, Tables } from "@/types/supabase";
 
 export type PropertyInspectionWithCompany = Tables<"property_inspections"> & {
   company: Company | null;
+  location?: { id: string; name: string | null; address: string | null } | null;
 };
 
 /** Przeglądy nie mają community_id — w widoku wspólnoty filtrujemy po budynkach. */
@@ -42,7 +43,11 @@ async function fetchPropertyInspections(
 ): Promise<PropertyInspectionWithCompany[]> {
   try {
     const ids = scope?.communityBuildingIds;
-    let q = supabase.from("property_inspections").select("*, company:companies(*)");
+    let q = supabase
+      .from("property_inspections")
+      .select(
+        "*, company:companies(*), location:cleaning_locations!property_inspections_location_id_fkey(id, name, address)",
+      );
 
     if (ids && ids.length > 0) {
       q = q.in("location_id", ids);
@@ -77,7 +82,7 @@ export function usePropertyInspections(
 }
 
 export type AddInspectionVariables = {
-  locationId: string;
+  locationIds: string[];
   values: AddInspectionFormValues;
 };
 
@@ -97,14 +102,19 @@ function buildInspectionPayload(
   };
 }
 
-async function insertPropertyInspection({ locationId, values }: AddInspectionVariables): Promise<void> {
+async function insertPropertyInspection({ locationIds, values }: AddInspectionVariables): Promise<void> {
   try {
-    const row: InspectionInsert = {
-      ...buildInspectionPayload(values),
-      location_id: locationId,
-    };
+    const ids = [...new Set(locationIds.map((id) => id.trim()).filter((id) => id.length > 0))];
+    if (ids.length === 0) {
+      throw new Error("Wybierz co najmniej jeden budynek.");
+    }
+    const payload = buildInspectionPayload(values);
+    const rows: InspectionInsert[] = ids.map((location_id) => ({
+      ...payload,
+      location_id,
+    }));
 
-    const { error } = await supabase.from("property_inspections").insert(row);
+    const { error } = await supabase.from("property_inspections").insert(rows);
     if (error) {
       console.error("[useAddInspection] insert:", error);
       throw error;

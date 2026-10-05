@@ -294,6 +294,7 @@ export default function CommunityDetails() {
                   communityScope: { communityId: communityId!, buildingIds },
                 }}
                 inspectionsScope={{ communityBuildingIds: buildingIds }}
+                communityBuildings={assigned}
                 sections={{ contracts: false, policies: false, inspections: true }}
               />
             ) : (

@@ -1,8 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 
 import { CompanyComboBox } from "@/components/companies/CompanyComboBox";
+import {
+  InspectionBuildingScope,
+  type InspectionBuildingOption,
+} from "@/components/inspections/InspectionBuildingScope";
 import { InspectionDateField, ValidityPresetButtons } from "@/components/inspections/InspectionDateFields";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,10 +68,22 @@ export interface AddInspectionDialogProps {
   locationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Buildings of the community. When more than one, the protocol can cover all or a subset. */
+  communityBuildings?: InspectionBuildingOption[] | null;
 }
 
-export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspectionDialogProps) {
+export function AddInspectionDialog({
+  locationId,
+  open,
+  onOpenChange,
+  communityBuildings,
+}: AddInspectionDialogProps) {
   const addInspection = useAddInspection();
+  const buildings = (communityBuildings ?? []).filter((building) => building.id.trim().length > 0);
+  const buildingIdsKey = buildings.map((building) => building.id).join(",");
+  const canPickBuildings = buildings.length > 1;
+  const [scopeMode, setScopeMode] = useState<"all" | "selected">("all");
+  const [selectedBuildingIds, setSelectedBuildingIds] = useState<Set<string>>(() => new Set());
 
   const form = useForm<AddInspectionFormValues>({
     resolver: zodResolver(addInspectionFormSchema),
@@ -80,16 +96,31 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
   useEffect(() => {
     if (!open) return;
     reset(DEFAULT_VALUES);
-  }, [open, reset]);
+    setScopeMode("all");
+    setSelectedBuildingIds(new Set(buildingIdsKey ? buildingIdsKey.split(",") : []));
+  }, [open, reset, buildingIdsKey]);
 
   const isPending = addInspection.isPending;
 
   function onSubmit(values: AddInspectionFormValues) {
+    const locationIds = canPickBuildings
+      ? scopeMode === "all"
+        ? buildings.map((building) => building.id)
+        : [...selectedBuildingIds]
+      : [locationId];
+    if (locationIds.length === 0) {
+      toast.error("Wybierz co najmniej jeden budynek.");
+      return;
+    }
     addInspection.mutate(
-      { locationId, values },
+      { locationIds, values },
       {
         onSuccess: () => {
-          toast.success("Przegląd został dodany.");
+          toast.success(
+            locationIds.length > 1
+              ? `Przegląd został dodany dla ${locationIds.length} budynków.`
+              : "Przegląd został dodany.",
+          );
           onOpenChange(false);
         },
         onError: (err) => {
@@ -106,11 +137,30 @@ export function AddInspectionDialog({ locationId, open, onOpenChange }: AddInspe
         <DialogHeader className="shrink-0">
           <DialogTitle>Nowy przegląd techniczny</DialogTitle>
           <DialogDescription>
-            Zapis protokołu przeglądu dla tej nieruchomości. Pola wymagane muszą być uzupełnione przed zatwierdzeniem.
+            {canPickBuildings
+              ? "Zapis protokołu dla wszystkich budynków wspólnoty albo tylko dla wybranych."
+              : "Zapis protokołu przeglądu dla tej nieruchomości. Pola wymagane muszą być uzupełnione przed zatwierdzeniem."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="min-w-0 space-y-4">
+            {canPickBuildings ? (
+              <InspectionBuildingScope
+                buildings={buildings}
+                mode={scopeMode}
+                onModeChange={setScopeMode}
+                selectedIds={selectedBuildingIds}
+                disabled={isPending}
+                onToggle={(id, checked) => {
+                  setSelectedBuildingIds((prev) => {
+                    const next = new Set(prev);
+                    if (checked) next.add(id);
+                    else next.delete(id);
+                    return next;
+                  });
+                }}
+              />
+            ) : null}
             <FormField
               control={control}
               name="company_id"

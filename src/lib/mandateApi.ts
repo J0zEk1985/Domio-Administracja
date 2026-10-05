@@ -57,6 +57,17 @@ function mandateErrorMessage(code: string, fallback: string): string {
     COOP_CLEANING_NOT_ENROLLED: "Firma sprzątająca nie ma dopiętego tego adresu w Cleaning.",
     COOP_MAINTENANCE_MANDATE_INACTIVE: "Firma serwisowa nie ma aktywnego mandatu Serwis.",
     COOP_MAINTENANCE_NOT_ENROLLED: "Firma serwisowa nie ma dopiętego tego adresu w Serwis.",
+    ECOSYSTEM_COPY_BUILDING_REQUIRED: "Wskaż budynek źródłowy i docelowy.",
+    ECOSYSTEM_COPY_SAME_BUILDING: "Wybierz inny budynek niż bieżący.",
+    ECOSYSTEM_COPY_SOURCE_FORBIDDEN: "Nie obsługujesz budynku źródłowego w Administracji.",
+    ECOSYSTEM_COPY_TARGET_FORBIDDEN: "Nie obsługujesz tego budynku w Administracji.",
+    ECOSYSTEM_COPY_TARGET_COMMUNITY: "Ten budynek nie ma wspólnoty z NIP, na którą można skopiować ustawienia.",
+    ECOSYSTEM_COPY_SOURCE_COMMUNITY: "Budynek źródłowy nie ma wspólnoty z NIP, więc nie da się skopiować firm.",
+    ECOSYSTEM_COPY_SOURCE_EMPTY: "Wybrany budynek nie ma zapisanych ustawień kooperacji.",
+    ECOSYSTEM_COPY_SOURCE_MANDATE_MISSING:
+      "Na budynku źródłowym brakuje aktywnego mandatu firmy, której ustawienia kopiujesz.",
+    ECOSYSTEM_COPY_PRIMARY_EXISTS:
+      "Na tym budynku jest już inny główny operator tego modułu. Zakończ ten mandat, zanim skopiujesz ustawienia.",
     SUCCESSION_FORBIDDEN: "Brak uprawnień do sukcesji.",
     SUCCESSION_NOT_FOUND: "Nie znaleziono procesu sukcesji.",
     SUCCESSION_PARTNER_NOT_FOUND: "Nie znaleziono podmiotu następcy.",
@@ -321,6 +332,25 @@ export async function upsertBuildingCooperationLink(args: {
       p_skip_admin_triage: args.skipAdminTriage,
     },
     "Nie udało się zapisać kooperacji.",
+  );
+  return mapCooperationLink(data);
+}
+
+export async function copyBuildingEcosystemSettings(args: {
+  actingOrgId: string;
+  sourceLocationMasterId: string;
+  targetLocationMasterId: string;
+  targetCommunityLegalEntityId: string;
+}): Promise<BuildingCooperationLink> {
+  const data = await rpcMandate<Record<string, unknown>>(
+    "copy_building_ecosystem_settings",
+    {
+      p_acting_org_id: args.actingOrgId,
+      p_source_location_master_id: args.sourceLocationMasterId,
+      p_target_location_master_id: args.targetLocationMasterId,
+      p_target_community_legal_entity_id: args.targetCommunityLegalEntityId,
+    },
+    "Nie udało się skopiować ustawień ekosystemu.",
   );
   return mapCooperationLink(data);
 }

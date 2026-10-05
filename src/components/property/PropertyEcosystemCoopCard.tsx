@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { Network } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import type { LocationModulePresence } from "@/lib/mandateApi";
 export const COOP_NONE = "__none__";
 
 type PropertyEcosystemCoopCardProps = {
-  communityId: string;
   canManage: boolean;
   cleaningOrgs: LocationModulePresence[];
   maintenanceOrgs: LocationModulePresence[];
@@ -34,7 +32,6 @@ type PropertyEcosystemCoopCardProps = {
 };
 
 export function PropertyEcosystemCoopCard({
-  communityId,
   canManage,
   cleaningOrgs,
   maintenanceOrgs,
@@ -123,12 +120,6 @@ export function PropertyEcosystemCoopCard({
             Zapisz kooperację
           </Button>
         ) : null}
-        <p className="text-xs text-muted-foreground">
-          Sukcesję zarządcy ustawiasz na karcie wspólnoty.{" "}
-          <Link className="underline underline-offset-2" to={`/communities/${communityId}`}>
-            Otwórz wspólnotę
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );

@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { COOP_NONE, PropertyEcosystemCoopCard } from "@/components/property/PropertyEcosystemCoopCard";
+import { PropertyEcosystemCopyCard } from "@/components/property/PropertyEcosystemCopyCard";
 import { PropertyEcosystemDirectoryCard } from "@/components/property/PropertyEcosystemDirectoryCard";
 import { PropertyEcosystemPresenceCard } from "@/components/property/PropertyEcosystemPresenceCard";
 import { PropertyEcosystemEmergencyProvidersCard } from "@/components/property/PropertyEcosystemEmergencyProvidersCard";
@@ -323,8 +324,15 @@ export function PropertyEcosystemTab({
         </CardContent>
       </Card>
 
+      {canManage ? (
+        <PropertyEcosystemCopyCard
+          orgId={orgId}
+          locationMasterId={locationMasterId}
+          communityLegalEntityId={communityLegalEntityId}
+        />
+      ) : null}
+
       <PropertyEcosystemCoopCard
-        communityId={communityId}
         canManage={canManage}
         cleaningOrgs={cleaningOrgs}
         maintenanceOrgs={maintenanceOrgs}

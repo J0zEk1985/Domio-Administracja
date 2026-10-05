@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Siren } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,17 +14,18 @@ import {
 } from "@/components/ui/select";
 import { IssuePhotoPicker } from "@/components/triage/IssuePhotoPicker";
 import { toast } from "@/components/ui/sonner";
+import { emergencyTradeLabel, useCommunityEmergencyProviders } from "@/hooks/useCommunityEmergencyProviders";
 import { useProperties } from "@/hooks/useProperties";
 import { createEmergencyIssue } from "@/lib/emergencyDutyApi";
 import { MAX_ISSUE_PHOTOS, uploadIssuePhotos } from "@/lib/issuePhotos";
 import { supabase } from "@/lib/supabase";
-
-const TRADES = ["Elektryczna", "Hydrauliczna", "Ogólnobudowlana", "Sprzęt"] as const;
+import { EMERGENCY_TRADES } from "@/types/emergencyDuty";
 
 type EmergencyIssueRow = {
   id: string;
   description: string | null;
   category: string | null;
+  emergency_trade_code: string | null;
   status: string | null;
   created_at: string | null;
   location: { name: string | null; address: string | null } | null;
@@ -33,7 +34,7 @@ type EmergencyIssueRow = {
 export default function EmergencyMode() {
   const { data: properties = [], isLoading: propsLoading } = useProperties();
   const [locationId, setLocationId] = useState("");
-  const [category, setCategory] = useState<string>(TRADES[0]);
+  const [tradeCode, setTradeCode] = useState<string>("");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -42,6 +43,27 @@ export default function EmergencyMode() {
     () => properties.filter((p) => Boolean(p.communityId)),
     [properties],
   );
+  const selectedCommunityId = buildings.find((p) => p.id === locationId)?.communityId ?? null;
+  const providersQuery = useCommunityEmergencyProviders(selectedCommunityId);
+
+  const enabledTrades = useMemo(() => {
+    const enabled = new Set(
+      (providersQuery.data ?? [])
+        .filter((row) => row.is_enabled && row.vendor_partner_id)
+        .map((row) => row.trade_code),
+    );
+    return EMERGENCY_TRADES.filter((trade) => enabled.has(trade.code));
+  }, [providersQuery.data]);
+
+  useEffect(() => {
+    if (enabledTrades.length === 0) {
+      setTradeCode("");
+      return;
+    }
+    if (!enabledTrades.some((trade) => trade.code === tradeCode)) {
+      setTradeCode(enabledTrades[0].code);
+    }
+  }, [enabledTrades, tradeCode]);
 
   const listQuery = useQuery({
     queryKey: ["emergency-issues"],
@@ -51,7 +73,7 @@ export default function EmergencyMode() {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("property_issues")
-        .select("id, description, category, status, created_at, location:cleaning_locations(name, address)")
+        .select("id, description, category, emergency_trade_code, status, created_at, location:cleaning_locations(name, address)")
         .eq("org_id", String(orgId))
         .eq("emergency_mode", true)
         .order("created_at", { ascending: false })
@@ -62,8 +84,8 @@ export default function EmergencyMode() {
   });
 
   const submit = async () => {
-    if (!locationId || description.trim().length < 10) {
-      toast.error("Wybierz budynek i wpisz opis (min. 10 znaków).");
+    if (!locationId || !tradeCode || description.trim().length < 10) {
+      toast.error("Wybierz budynek, branżę i wpisz opis (min. 10 znaków).");
       return;
     }
     setBusy(true);
@@ -72,7 +94,7 @@ export default function EmergencyMode() {
       if (orgErr) throw orgErr;
       const created = await createEmergencyIssue({
         locationId,
-        category,
+        category: tradeCode,
         description: description.trim(),
       });
       if (photos.length > 0 && orgId) {
@@ -110,7 +132,7 @@ export default function EmergencyMode() {
         <CardHeader>
           <CardTitle>Nowe zgłoszenie do pogotowia 24h</CardTitle>
           <CardDescription>
-            Osobny kanał poza skrzynką triażu. Zgłoszenie trafia do firmy pogotowia z wybranej branży.
+            Osobny kanał poza skrzynką triażu. Zgłoszenie trafia do firmy włączonej dla danej branży we wspólnocie.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -131,18 +153,27 @@ export default function EmergencyMode() {
           </div>
           <div className="space-y-1.5">
             <Label>Branża</Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select
+              value={tradeCode}
+              onValueChange={setTradeCode}
+              disabled={!locationId || providersQuery.isLoading || enabledTrades.length === 0}
+            >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder={locationId ? "Wybierz branżę" : "Najpierw wybierz budynek"} />
               </SelectTrigger>
               <SelectContent>
-                {TRADES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
+                {enabledTrades.map((trade) => (
+                  <SelectItem key={trade.code} value={trade.code}>
+                    {trade.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {locationId && !providersQuery.isLoading && enabledTrades.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Ta wspólnota nie ma włączonego pogotowia 24h. Uzupełnij branże w ekosystemie nieruchomości.
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="emergency-desc">Opis usterki</Label>
@@ -155,7 +186,7 @@ export default function EmergencyMode() {
             />
           </div>
           <IssuePhotoPicker files={photos} onChange={setPhotos} maxPhotos={MAX_ISSUE_PHOTOS} />
-          <Button type="button" onClick={() => void submit()} disabled={busy}>
+          <Button type="button" onClick={() => void submit()} disabled={busy || !tradeCode}>
             Wyślij do pogotowia 24h
           </Button>
         </CardContent>
@@ -175,7 +206,12 @@ export default function EmergencyMode() {
             <ul className="space-y-2">
               {(listQuery.data ?? []).map((row) => (
                 <li key={row.id} className="rounded-lg border p-3 text-sm">
-                  <p className="font-medium">{row.category ?? "—"} · {row.status}</p>
+                  <p className="font-medium">
+                    {row.emergency_trade_code
+                      ? emergencyTradeLabel(row.emergency_trade_code)
+                      : (row.category ?? "—")}{" "}
+                    · {row.status}
+                  </p>
                   <p className="text-muted-foreground">
                     {row.location?.name ?? row.location?.address ?? "Budynek"}
                   </p>

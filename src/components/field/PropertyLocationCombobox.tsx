@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
-import type { PropertyListRow } from "@/hooks/useProperties";
+import { propertyBuildingLabel, propertyBuildingParts, type PropertyListRow } from "@/hooks/useProperties";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -46,7 +46,7 @@ export function PropertyLocationCombobox({
             <Skeleton className="h-4 w-48" />
           ) : (
             <span className="truncate text-left text-sm">
-              {selected ? `${selected.name} — ${selected.address}` : "Wybierz budynek…"}
+              {selected ? propertyBuildingLabel(selected.name, selected.address) : "Wybierz budynek…"}
             </span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -63,25 +63,30 @@ export function PropertyLocationCombobox({
           </div>
           <CommandList className="max-h-56">
             <CommandGroup>
-              {properties.map((p) => (
-                <CommandItem
-                  key={p.id}
-                  value={`${p.name} ${p.address} ${p.id}`}
-                  keywords={[p.name, p.address]}
-                  onSelect={() => {
-                    onChange(p.id);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")}
-                  />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium">{p.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{p.address}</span>
-                  </div>
-                </CommandItem>
-              ))}
+              {properties.map((p) => {
+                const parts = propertyBuildingParts(p.name, p.address);
+                return (
+                  <CommandItem
+                    key={p.id}
+                    value={`${parts.title} ${parts.subtitle ?? ""} ${p.id}`}
+                    keywords={[parts.title, parts.subtitle ?? "", p.address].filter(Boolean)}
+                    onSelect={() => {
+                      onChange(p.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")}
+                    />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-medium">{parts.title}</span>
+                      {parts.subtitle ? (
+                        <span className="truncate text-xs text-muted-foreground">{parts.subtitle}</span>
+                      ) : null}
+                    </div>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
             <CommandEmpty className="py-3 text-center text-sm text-muted-foreground">
               Brak budynków.

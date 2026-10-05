@@ -180,14 +180,14 @@ export function PropertyUnitRegistryCard({
           ) : units.length === 0 ? (
             <p className="text-sm text-muted-foreground">Rejestr jest pusty. Dodaj lokal albo wgraj plik CSV.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="max-h-[min(50vh,24rem)] overflow-auto">
+              <Table className="[&_th]:h-8 [&_th]:px-3 [&_th]:py-0 [&_td]:px-3 [&_td]:py-1">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Numer / nazwa</TableHead>
                     <TableHead>Rodzaj</TableHead>
                     <TableHead>Mieszkańcy</TableHead>
-                    {canManage ? <TableHead className="w-24 text-right">Akcje</TableHead> : null}
+                    {canManage ? <TableHead className="w-20 text-right">Akcje</TableHead> : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -203,36 +203,40 @@ export function PropertyUnitRegistryCard({
                         <TableCell className="tabular-nums">{count}</TableCell>
                         {canManage ? (
                           <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Edytuj ${title}`}
-                              onClick={() => {
-                                setEditingUnit(unit);
-                                setEditValue(title);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Usuń ${title}`}
-                              disabled={count > 0 || deleteUnit.isPending}
-                              onClick={() =>
-                                deleteUnit.mutate(unit.id, {
-                                  onSuccess: () => toast.success("Usunięto lokal z rejestru."),
-                                  onError: (error) =>
-                                    toast.error(
-                                      error instanceof Error ? error.message : "Nie udało się usunąć lokalu."
-                                    ),
-                                })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="inline-flex items-center justify-end gap-0.5">
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                aria-label={`Edytuj ${title}`}
+                                onClick={() => {
+                                  setEditingUnit(unit);
+                                  setEditValue(title);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                aria-label={`Usuń ${title}`}
+                                disabled={count > 0 || deleteUnit.isPending}
+                                onClick={() =>
+                                  deleteUnit.mutate(unit.id, {
+                                    onSuccess: () => toast.success("Usunięto lokal z rejestru."),
+                                    onError: (error) =>
+                                      toast.error(
+                                        error instanceof Error ? error.message : "Nie udało się usunąć lokalu."
+                                      ),
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         ) : null}
                       </TableRow>
