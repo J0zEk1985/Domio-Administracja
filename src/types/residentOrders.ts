@@ -13,6 +13,8 @@ export type ResidentOrderStatus =
   | "dispatch_queued"
   | "dispatch_sent"
   | "dispatch_failed"
+  | "contractor_ready"
+  | "contractor_rejected"
   | "cancelled";
 
 export type ResidentOrderEventType =
@@ -24,6 +26,9 @@ export type ResidentOrderEventType =
   | "dispatch_queued"
   | "dispatch_sent"
   | "dispatch_failed"
+  | "contractor_accepted"
+  | "contractor_ready"
+  | "contractor_rejected"
   | "cancelled";
 
 export interface ResidentOrderCatalogItem {
@@ -62,6 +67,7 @@ export interface ResidentOrder {
   contactPhone: string | null;
   contactEmail: string | null;
   notes: string | null;
+  publicNumber: string;
   status: ResidentOrderStatus;
   fulfillmentCompanyId: string | null;
   handedOverAt: string | null;
@@ -103,6 +109,8 @@ export const RESIDENT_ORDER_STATUS_LABEL: Record<ResidentOrderStatus, string> = 
   dispatch_queued: "Wysyłka do kontrahenta",
   dispatch_sent: "Wysłane do kontrahenta",
   dispatch_failed: "Błąd wysyłki",
+  contractor_ready: "Gotowe u firmy",
+  contractor_rejected: "Odrzucone przez firmę",
   cancelled: "Anulowane",
 };
 
@@ -115,6 +123,9 @@ export const RESIDENT_ORDER_EVENT_LABEL: Record<ResidentOrderEventType, string> 
   dispatch_queued: "Zlecono wysyłkę e-mail",
   dispatch_sent: "E-mail wysłany",
   dispatch_failed: "Błąd wysyłki e-mail",
+  contractor_accepted: "Firma przyjęła zamówienie",
+  contractor_ready: "Firma zgłosiła gotowość",
+  contractor_rejected: "Firma odrzuciła zamówienie",
   cancelled: "Anulowano",
 };
 

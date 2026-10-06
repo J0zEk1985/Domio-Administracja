@@ -18,7 +18,7 @@ export const RESIDENT_ORDER_TEMPLATE_TOKENS: readonly ResidentOrderTemplateToken
   { technical: "{{order.quantity}}", friendly: "#ilosc", label: "liczba sztuk", group: "order" },
   { technical: "{{item.price_label}}", friendly: "#cena", label: "cena z katalogu", group: "order" },
   { technical: "{{order.notes}}", friendly: "#uwagi", label: "uwagi dopisane przez mieszkańca", group: "order" },
-  { technical: "{{order.id}}", friendly: "#numer_zamowienia", label: "numer tego zamówienia", group: "order" },
+  { technical: "{{order.number}}", friendly: "#numer_zamowienia", label: "numer tego zamówienia", group: "order" },
   { technical: "{{order.created_at}}", friendly: "#data_zamowienia", label: "data i godzina złożenia", group: "order" },
   { technical: "{{building.address}}", friendly: "#adres_budynku", label: "adres budynku", group: "place" },
   { technical: "{{unit.number}}", friendly: "#numer_lokalu", label: "numer mieszkania", group: "place" },
@@ -38,11 +38,12 @@ export const RESIDENT_ORDER_TEMPLATE_TOKENS: readonly ResidentOrderTemplateToken
   { technical: "{{order.contact_name}}", friendly: "#osoba_kontaktowa", label: "inna osoba do kontaktu, jeśli podana", group: "extra" },
   { technical: "{{order.contact_phone}}", friendly: "#telefon_kontaktowy", label: "telefon osoby kontaktowej", group: "extra" },
   { technical: "{{order.contact_email}}", friendly: "#email_kontaktowy", label: "e-mail osoby kontaktowej", group: "extra" },
+  { technical: "{{order.id}}", friendly: "#id_zamowienia", label: "wewnętrzny identyfikator", group: "extra" },
 ];
 
 /** Factory copy still stored for communities that never edited the template. */
 export const RESIDENT_ORDER_FACTORY_SUBJECT =
-  "Zamówienie: {{item.name}} — {{building.address}}, lokal {{unit.number}}";
+  "[DOMIO {{order.number}}] Zamówienie: {{item.name}} — {{building.address}}, lokal {{unit.number}}";
 
 export const RESIDENT_ORDER_FACTORY_BODY = `Dzień dobry,
 
@@ -84,11 +85,14 @@ Cena: {{item.price_label}}
 Uwagi
 {{order.notes}}
 
-Numer zamówienia: {{order.id}}
-Data: {{order.created_at}}`;
+Numer zamówienia: {{order.number}}
+Data: {{order.created_at}}
+
+W odpowiedzi podaj numer zamówienia: {{order.number}}
+oraz czy zamówienie jest przyjęte, gotowe albo odrzucone.`;
 
 export const RESIDENT_ORDER_SIMPLE_SUBJECT =
-  "Zamówienie: #nazwa_pozycji — #adres_budynku, lokal #numer_lokalu";
+  "[DOMIO #numer_zamowienia] Zamówienie: #nazwa_pozycji — #adres_budynku, lokal #numer_lokalu";
 
 export const RESIDENT_ORDER_SIMPLE_BODY = `Dzień dobry,
 
@@ -108,6 +112,9 @@ E-mail: #email_mieszkanca
 
 Numer zamówienia: #numer_zamowienia
 Data: #data_zamowienia
+
+W odpowiedzi podaj numer zamówienia: #numer_zamowienia
+oraz czy zamówienie jest przyjęte, gotowe albo odrzucone.
 
 Pozdrawiamy
 #nazwa_firmy`;

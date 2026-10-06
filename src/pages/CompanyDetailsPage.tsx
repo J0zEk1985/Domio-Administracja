@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAllContracts } from "@/hooks/useAllContracts";
 import { useCompanyById } from "@/hooks/useCompanies";
-import { COMPANY_CATEGORY_LABELS } from "@/schemas/companySchema";
+import { companyCategoryLabel } from "@/schemas/companySchema";
 import { toast } from "@/components/ui/sonner";
 
 export default function CompanyDetailsPage() {
@@ -86,7 +86,7 @@ export default function CompanyDetailsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-xl font-semibold tracking-tight text-foreground">{company.name}</h1>
-            <p className="text-sm text-muted-foreground">{COMPANY_CATEGORY_LABELS[company.category]}</p>
+            <p className="text-sm text-muted-foreground">{companyCategoryLabel(company.category)}</p>
           </div>
         </div>
 

@@ -2,14 +2,20 @@ import { z } from "zod";
 
 import type { Company, CompanyCategory } from "@/types/contracts";
 
-export const COMPANY_CATEGORIES = ["contractor", "insurer", "utility", "other"] as const satisfies readonly CompanyCategory[];
+export const COMPANY_CATEGORIES = ["contractor", "insurer", "other"] as const satisfies readonly CompanyCategory[];
 
 export const COMPANY_CATEGORY_LABELS: Record<(typeof COMPANY_CATEGORIES)[number], string> = {
   contractor: "Wykonawca",
   insurer: "Ubezpieczyciel",
-  utility: "Usługa komunalna",
   other: "Inne",
 };
+
+export function companyCategoryLabel(category: string): string {
+  if (category in COMPANY_CATEGORY_LABELS) {
+    return COMPANY_CATEGORY_LABELS[category as (typeof COMPANY_CATEGORIES)[number]];
+  }
+  return COMPANY_CATEGORY_LABELS.contractor;
+}
 
 const optionalTrimmed = z
   .string()

@@ -29,7 +29,7 @@ export function PropertyEcosystemEmergencyProvidersCard({
   canManage: boolean;
 }) {
   const { data: rows = [], isLoading } = useCommunityEmergencyProviders(communityId);
-  const { data: vendors = [] } = useVendorPartners();
+  const { data: vendors = [], isLoading: vendorsLoading } = useVendorPartners();
   const save = useSaveEmergencyProvider(communityId, orgId);
 
   const byCode = useMemo(() => {
@@ -60,14 +60,21 @@ export function PropertyEcosystemEmergencyProvidersCard({
         <CardTitle className="text-base">Pogotowie 24h</CardTitle>
         <CardDescription>
           Dla całej wspólnoty: które branże działają w trybie pogotowia i jaka firma je obsługuje.
-          Osobno od tablicy kontaktów w Home.
+          Osobno od tablicy kontaktów w Home. Na liście są wykonawcy z Umowy i Firmy,
+          nie ubezpieczyciele.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoading || vendorsLoading ? (
           <p className="text-sm text-muted-foreground">Wczytywanie…</p>
         ) : (
-          <ul className="divide-y rounded-lg border">
+          <>
+            {canManage && vendors.length === 0 ? (
+              <p className="mb-3 text-sm text-muted-foreground">
+                Brak wykonawców. Dodaj firmę z kategorią Wykonawca w zakładce Umowy i Firmy.
+              </p>
+            ) : null}
+            <ul className="divide-y rounded-lg border">
             {EMERGENCY_TRADES.map((trade) => {
               const row = byCode.get(trade.code);
               const enabled = row?.is_enabled === true;
@@ -133,7 +140,8 @@ export function PropertyEcosystemEmergencyProvidersCard({
                 </li>
               );
             })}
-          </ul>
+            </ul>
+          </>
         )}
       </CardContent>
     </Card>

@@ -3604,6 +3604,7 @@ export type Database = {
       }
       vendor_partners: {
         Row: {
+          company_id: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string | null
@@ -3617,6 +3618,7 @@ export type Database = {
           trade_categories: string[]
         }
         Insert: {
+          company_id?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string | null
@@ -3630,6 +3632,7 @@ export type Database = {
           trade_categories?: string[]
         }
         Update: {
+          company_id?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string | null
@@ -5041,7 +5044,7 @@ export type Database = {
     Enums: {
       community_post_status: "active" | "completed" | "cancelled" | "deleted" | "pending_review"
       community_post_type: "offer" | "request" | "event" | "general"
-      company_category: "contractor" | "insurer" | "utility" | "other"
+      company_category: "contractor" | "insurer" | "other"
       eboard_msg_status: "published" | "pending_moderation" | "archived"
       eboard_msg_type: "official" | "advertisement" | "resident"
       estate_member_status: "invited" | "accepted" | "rejected" | "withdrawn"
@@ -5250,7 +5253,7 @@ export const Constants = {
     Enums: {
       community_post_status: ["active", "completed", "cancelled", "deleted", "pending_review"],
       community_post_type: ["offer", "request", "event", "general"],
-      company_category: ["contractor", "insurer", "utility", "other"],
+      company_category: ["contractor", "insurer", "other"],
       eboard_msg_status: ["published", "pending_moderation", "archived"],
       eboard_msg_type: ["official", "advertisement", "resident"],
       estate_member_status: ["invited", "accepted", "rejected", "withdrawn"],

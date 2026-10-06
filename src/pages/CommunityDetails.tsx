@@ -45,6 +45,8 @@ import { CommunityOrdersTab } from "@/components/communities/CommunityOrdersTab"
 import { CommunityAnnouncementReviewTab } from "@/components/communities/CommunityAnnouncementReviewTab";
 import { CommunityIssuesTab } from "@/components/communities/CommunityIssuesTab";
 import { CommunityWarrantyTab } from "@/components/communities/CommunityWarrantyTab";
+import { CommunitySharedResourcesTab } from "@/components/communities/CommunitySharedResourcesTab";
+import { CommunityWasteTab } from "@/components/communities/CommunityWasteTab";
 import {
   VerificationNeededBadge,
   rowNeedsVerification,
@@ -238,7 +240,7 @@ export default function CommunityDetails() {
           <TabsList
             className={cn(
               "grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4",
-              isOrgOwner ? "xl:grid-cols-10" : "xl:grid-cols-9",
+              isOrgOwner ? "xl:grid-cols-12" : "xl:grid-cols-11",
             )}
           >
             <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
@@ -249,6 +251,8 @@ export default function CommunityDetails() {
             <TabsTrigger value="announcements">Ogłoszenia</TabsTrigger>
             <TabsTrigger value="issues">Zgłoszenia</TabsTrigger>
             <TabsTrigger value="warranty">Usterki deweloperskie</TabsTrigger>
+            <TabsTrigger value="resources">Zasoby</TabsTrigger>
+            <TabsTrigger value="waste">Gospodarka odpadami</TabsTrigger>
             <TabsTrigger value="estate">Osiedle</TabsTrigger>
             {isOrgOwner ? <TabsTrigger value="succession">Sukcesja</TabsTrigger> : null}
           </TabsList>
@@ -343,8 +347,24 @@ export default function CommunityDetails() {
             )}
           </TabsContent>
 
+          <TabsContent value="resources" className="mt-4">
+            <CommunitySharedResourcesTab communityId={communityId!} buildings={assigned} />
+          </TabsContent>
+
           <TabsContent value="estate" className="mt-4">
             <CommunityEstateTab communityId={communityId!} communityName={community.name} />
+          </TabsContent>
+
+          <TabsContent value="waste" className="mt-4">
+            {orgId ? (
+              <CommunityWasteTab
+                communityId={communityId!}
+                orgId={orgId}
+                buildings={assigned}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Ładowanie...</p>
+            )}
           </TabsContent>
 
           {isOrgOwner ? (

@@ -13,13 +13,28 @@ import {
   type ResidentOrderStatus,
 } from "@/types/residentOrders";
 
-const OPEN_STATUSES: ResidentOrderStatus[] = ["pending", "stock_delivery", "dispatch_queued", "dispatch_failed"];
+const OPEN_STATUSES: ResidentOrderStatus[] = [
+  "pending",
+  "stock_delivery",
+  "dispatch_queued",
+  "dispatch_sent",
+  "dispatch_failed",
+  "contractor_ready",
+  "contractor_rejected",
+];
 const HISTORY_LIMIT = 8;
 
 function statusVariant(status: ResidentOrderStatus): "default" | "secondary" | "outline" | "destructive" {
   if (status === "pending" || status === "stock_delivery") return "default";
-  if (status === "dispatch_failed") return "destructive";
-  if (status === "delivered" || status === "dispatch_sent" || status === "ordered_offline") return "secondary";
+  if (status === "dispatch_failed" || status === "contractor_rejected") return "destructive";
+  if (
+    status === "delivered" ||
+    status === "dispatch_sent" ||
+    status === "ordered_offline" ||
+    status === "contractor_ready"
+  ) {
+    return "secondary";
+  }
   return "outline";
 }
 
@@ -28,6 +43,9 @@ function OrderMeta({ order }: { order: ResidentOrder }) {
   return (
     <div className="min-w-0 space-y-1">
       <p className="font-medium leading-snug">{order.itemName}</p>
+      {order.publicNumber ? (
+        <p className="text-xs font-medium text-foreground/80">{order.publicNumber}</p>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         {order.locationAddress || order.locationName || "Budynek"}
         {order.unitNumber ? ` · lokal ${order.unitNumber}` : ""}
@@ -67,7 +85,16 @@ function OpenOrderRow({ order }: { order: ResidentOrder }) {
     setCompanyId(order.fulfillmentCompanyId ?? "");
   }, [order.fulfillmentCompanyId]);
   const [showEvents, setShowEvents] = useState(false);
-  const canAct = order.status === "pending" || order.status === "dispatch_failed";
+  const canStock =
+    order.status === "pending" ||
+    order.status === "dispatch_failed" ||
+    order.status === "contractor_ready" ||
+    order.status === "contractor_rejected";
+  const canOffline =
+    order.status === "pending" ||
+    order.status === "dispatch_failed" ||
+    order.status === "contractor_rejected";
+  const canDispatch = canOffline;
   const busy = stock.isPending || offline.isPending || dispatch.isPending || company.isPending;
 
   return (
@@ -92,23 +119,32 @@ function OpenOrderRow({ order }: { order: ResidentOrder }) {
           </Button>
         ) : null}
       </div>
-      {canAct ? (
+      {order.status === "dispatch_sent" ? (
+        <p className="text-xs text-muted-foreground">
+          Czekamy na odpowiedź firmy. W mailu musi być numer {order.publicNumber || "zamówienia"}.
+        </p>
+      ) : null}
+      {canStock || canOffline ? (
         <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" disabled={busy} onClick={() => stock.mutate(order.id)}>
+          <Button type="button" size="sm" disabled={busy || !canStock} onClick={() => stock.mutate(order.id)}>
             Mam na stanie — przekażę
           </Button>
-          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => offline.mutate(order.id)}>
-            Zamówione poza systemem
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => dispatch.mutate({ orderId: order.id, companyId: companyId || null })}
-          >
-            Wyślij do kontrahenta
-          </Button>
+          {canOffline ? (
+            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => offline.mutate(order.id)}>
+              Zamówione poza systemem
+            </Button>
+          ) : null}
+          {canDispatch ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => dispatch.mutate({ orderId: order.id, companyId: companyId || null })}
+            >
+              Wyślij do kontrahenta
+            </Button>
+          ) : null}
         </div>
       ) : null}
       <Button type="button" variant="ghost" size="sm" className="h-8 px-0" onClick={() => setShowEvents((v) => !v)}>

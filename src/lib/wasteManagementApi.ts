@@ -1,0 +1,361 @@
+/**
+ * DOMIO Home - Waste Management API
+ * Funkcje do komunikacji z bazą danych dla modułu gospodarki odpadami
+ */
+
+import { supabase } from "@/lib/supabase";
+import type {
+  WasteCollectionSchedule,
+  WasteCollectionScheduleRow,
+  WasteGuideItem,
+  WasteGuideItemRow,
+  WasteScheduleSyncLog,
+  WasteScheduleSyncLogRow,
+  WasteSyncResult,
+  WasteType,
+  CityAdapterResponse,
+} from "@/types/wasteManagement";
+import {
+  mapScheduleRowToSchedule,
+  mapGuideItemRowToGuideItem,
+} from "@/types/wasteManagement";
+
+// ============================================================================
+// Waste Collection Schedules
+// ============================================================================
+
+/**
+ * Pobierz harmonogram odbioru odpadów dla lokalizacji
+ */
+export async function fetchWasteSchedule(
+  locationId: string,
+  fromDate?: string,
+  toDate?: string
+): Promise<WasteCollectionSchedule[]> {
+  let query = supabase
+    .from("waste_collection_schedules")
+    .select("*")
+    .eq("location_id", locationId)
+    .eq("is_cancelled", false)
+    .order("collection_date", { ascending: true });
+
+  if (fromDate) {
+    query = query.gte("collection_date", fromDate);
+  }
+
+  if (toDate) {
+    query = query.lte("collection_date", toDate);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("[fetchWasteSchedule]", error);
+    throw new Error(error.message);
+  }
+
+  return (data as WasteCollectionScheduleRow[]).map(mapScheduleRowToSchedule);
+}
+
+/**
+ * Pobierz najbliższe terminy odbioru dla lokalizacji
+ */
+export async function fetchUpcomingWasteSchedule(
+  locationId: string,
+  limit: number = 10
+): Promise<WasteCollectionSchedule[]> {
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data, error } = await supabase
+    .from("waste_collection_schedules")
+    .select("*")
+    .eq("location_id", locationId)
+    .eq("is_cancelled", false)
+    .gte("collection_date", today)
+    .order("collection_date", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("[fetchUpcomingWasteSchedule]", error);
+    throw new Error(error.message);
+  }
+
+  return (data as WasteCollectionScheduleRow[]).map(mapScheduleRowToSchedule);
+}
+
+/**
+ * Dodaj nowy termin odbioru (admin)
+ */
+export async function createWasteSchedule(
+  locationId: string,
+  orgId: string,
+  wasteType: WasteType,
+  collectionDate: string,
+  options?: {
+    collectionTimeFrom?: string;
+    collectionTimeUntil?: string;
+    notes?: string;
+  }
+): Promise<WasteCollectionSchedule> {
+  const { data, error } = await supabase
+    .from("waste_collection_schedules")
+    .insert({
+      location_id: locationId,
+      org_id: orgId,
+      waste_type: wasteType,
+      collection_date: collectionDate,
+      collection_time_from: options?.collectionTimeFrom || null,
+      collection_time_until: options?.collectionTimeUntil || null,
+      notes: options?.notes || null,
+      data_source: "manual",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[createWasteSchedule]", error);
+    throw new Error(error.message);
+  }
+
+  return mapScheduleRowToSchedule(data as WasteCollectionScheduleRow);
+}
+
+/**
+ * Aktualizuj termin odbioru (admin)
+ */
+export async function updateWasteSchedule(
+  scheduleId: string,
+  updates: Partial<{
+    collectionDate: string;
+    collectionTimeFrom: string | null;
+    collectionTimeUntil: string | null;
+    notes: string | null;
+    isCancelled: boolean;
+    cancellationNote: string | null;
+  }>
+): Promise<WasteCollectionSchedule> {
+  const dbUpdates: Record<string, unknown> = {};
+  
+  if (updates.collectionDate !== undefined) dbUpdates.collection_date = updates.collectionDate;
+  if (updates.collectionTimeFrom !== undefined) dbUpdates.collection_time_from = updates.collectionTimeFrom;
+  if (updates.collectionTimeUntil !== undefined) dbUpdates.collection_time_until = updates.collectionTimeUntil;
+  if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+  if (updates.isCancelled !== undefined) dbUpdates.is_cancelled = updates.isCancelled;
+  if (updates.cancellationNote !== undefined) dbUpdates.cancellation_note = updates.cancellationNote;
+
+  const { data, error } = await supabase
+    .from("waste_collection_schedules")
+    .update(dbUpdates)
+    .eq("id", scheduleId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[updateWasteSchedule]", error);
+    throw new Error(error.message);
+  }
+
+  return mapScheduleRowToSchedule(data as WasteCollectionScheduleRow);
+}
+
+/**
+ * Usuń termin odbioru (admin)
+ */
+export async function deleteWasteSchedule(scheduleId: string): Promise<void> {
+  const { error } = await supabase
+    .from("waste_collection_schedules")
+    .delete()
+    .eq("id", scheduleId);
+
+  if (error) {
+    console.error("[deleteWasteSchedule]", error);
+    throw new Error(error.message);
+  }
+}
+
+// ============================================================================
+// Waste Guide
+// ============================================================================
+
+/**
+ * Pobierz przewodnik segregacji odpadów
+ */
+export async function fetchWasteGuide(
+  orgId?: string | null,
+  searchQuery?: string
+): Promise<WasteGuideItem[]> {
+  let query = supabase
+    .from("waste_guide_items")
+    .select("*")
+    .eq("is_active", true);
+
+  // Pobierz globalny przewodnik (org_id IS NULL)
+  if (!orgId) {
+    query = query.is("org_id", null);
+  } else {
+    // Pobierz globalny + organizacyjny
+    query = query.or(`org_id.is.null,org_id.eq.${orgId}`);
+  }
+
+  // Wyszukiwanie po nazwie lub słowach kluczowych
+  if (searchQuery && searchQuery.trim()) {
+    const searchTerm = searchQuery.trim().toLowerCase();
+    // Użyj trigram similarity dla lepszego wyszukiwania
+    query = query.or(
+      `item_name_pl.ilike.%${searchTerm}%,item_keywords.cs.{${searchTerm}}`
+    );
+  }
+
+  query = query.order("is_popular", { ascending: false })
+    .order("display_order", { ascending: true })
+    .order("item_name_pl", { ascending: true });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("[fetchWasteGuide]", error);
+    throw new Error(error.message);
+  }
+
+  return (data as WasteGuideItemRow[]).map(mapGuideItemRowToGuideItem);
+}
+
+/**
+ * Pobierz najpopularniejsze elementy przewodnika
+ */
+export async function fetchPopularWasteGuideItems(
+  orgId?: string | null,
+  limit: number = 12
+): Promise<WasteGuideItem[]> {
+  let query = supabase
+    .from("waste_guide_items")
+    .select("*")
+    .eq("is_active", true)
+    .eq("is_popular", true);
+
+  if (!orgId) {
+    query = query.is("org_id", null);
+  } else {
+    query = query.or(`org_id.is.null,org_id.eq.${orgId}`);
+  }
+
+  query = query.order("display_order", { ascending: true }).limit(limit);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("[fetchPopularWasteGuideItems]", error);
+    throw new Error(error.message);
+  }
+
+  return (data as WasteGuideItemRow[]).map(mapGuideItemRowToGuideItem);
+}
+
+// ============================================================================
+// City Adapter Sync
+// ============================================================================
+
+/**
+ * Synchronizuj harmonogram z adapterem miasta (admin)
+ */
+export async function syncWasteScheduleFromCity(
+  locationId: string,
+  orgId: string,
+  cityAdapter: string,
+  street: string,
+  buildingNumber: string,
+  adapterResponse: CityAdapterResponse
+): Promise<WasteSyncResult> {
+  if (!adapterResponse.success || !adapterResponse.schedules) {
+    // Zapisz błąd do logu
+    await supabase.from("waste_schedule_sync_log").insert({
+      location_id: locationId,
+      city_adapter: cityAdapter,
+      sync_status: "error",
+      records_added: 0,
+      records_updated: 0,
+      error_message: adapterResponse.error || "Unknown error",
+    });
+
+    return {
+      success: false,
+      recordsAdded: 0,
+      recordsUpdated: 0,
+      error: adapterResponse.error,
+    };
+  }
+
+  let recordsAdded = 0;
+  let recordsUpdated = 0;
+
+  // Dodaj/zaktualizuj harmonogramy
+  for (const schedule of adapterResponse.schedules) {
+    const { error } = await supabase
+      .from("waste_collection_schedules")
+      .upsert(
+        {
+          location_id: locationId,
+          org_id: orgId,
+          waste_type: schedule.wasteType,
+          collection_date: schedule.collectionDate,
+          collection_time_from: schedule.collectionTimeFrom || null,
+          collection_time_until: schedule.collectionTimeUntil || null,
+          data_source: "city_scraper",
+          city_adapter: cityAdapter,
+          street_name: street,
+          building_number: buildingNumber,
+          last_synced_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "location_id,waste_type,collection_date",
+          ignoreDuplicates: false,
+        }
+      );
+
+    if (!error) {
+      recordsAdded++;
+    }
+  }
+
+  // Zapisz log synchronizacji
+  const { data: logData } = await supabase
+    .from("waste_schedule_sync_log")
+    .insert({
+      location_id: locationId,
+      city_adapter: cityAdapter,
+      sync_status: "success",
+      records_added: recordsAdded,
+      records_updated: recordsUpdated,
+    })
+    .select()
+    .single();
+
+  return {
+    success: true,
+    recordsAdded,
+    recordsUpdated,
+    logId: (logData as WasteScheduleSyncLogRow)?.id,
+  };
+}
+
+/**
+ * Pobierz logi synchronizacji dla lokalizacji (admin)
+ */
+export async function fetchWasteSyncLogs(
+  locationId: string,
+  limit: number = 10
+): Promise<WasteScheduleSyncLog[]> {
+  const { data, error } = await supabase
+    .from("waste_schedule_sync_log")
+    .select("*")
+    .eq("location_id", locationId)
+    .order("synced_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[fetchWasteSyncLogs]", error);
+    throw new Error(error.message);
+  }
+
+  return data as WasteScheduleSyncLog[];
+}

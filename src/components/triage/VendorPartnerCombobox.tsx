@@ -158,8 +158,8 @@ export function VendorPartnerCombobox({
                 {mode === "routing" && vendors.length > 0
                   ? "Brak wyników dla podanej frazy."
                   : mode === "routing"
-                    ? "Brak globalnych partnerów. Dodaj firmę w zakładce Umowy & Firmy."
-                    : "Brak partnerów — dodaj ich w module umów."}
+                    ? "Brak wykonawców. Dodaj firmę z kategorią Wykonawca w zakładce Umowy i Firmy. Ubezpieczyciele nie pojawiają się na tej liście."
+                    : "Brak wykonawców. Dodaj firmę z kategorią Wykonawca w module umów."}
               </CommandEmpty>
             )}
           </CommandList>

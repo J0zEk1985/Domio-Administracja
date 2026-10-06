@@ -58,7 +58,7 @@ describe("CommunityOrderCatalogItemDialog", () => {
     );
 
     expect(screen.getByLabelText("Temat wiadomości")).toHaveValue(
-      "Zamówienie: #nazwa_pozycji — #adres_budynku, lokal #numer_lokalu",
+      "[DOMIO #numer_zamowienia] Zamówienie: #nazwa_pozycji — #adres_budynku, lokal #numer_lokalu",
     );
     const body = screen.getByLabelText("Treść wiadomości") as HTMLTextAreaElement;
     expect(body.value).toContain("#nazwa_firmy");

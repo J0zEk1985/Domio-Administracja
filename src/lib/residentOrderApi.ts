@@ -48,6 +48,7 @@ type OrderRow = {
   contact_phone: string | null;
   contact_email: string | null;
   notes: string | null;
+  public_number: string | null;
   status: string;
   fulfillment_company_id: string | null;
   handed_over_at: string | null;
@@ -138,6 +139,7 @@ function mapOrder(row: OrderRow): ResidentOrder {
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email,
     notes: row.notes,
+    publicNumber: row.public_number ?? "",
     status: asStatus(row.status),
     fulfillmentCompanyId: row.fulfillment_company_id,
     handedOverAt: row.handed_over_at,
@@ -251,7 +253,7 @@ export async function deleteResidentOrderCatalogItem(itemId: string): Promise<vo
 }
 
 const ORDER_SELECT =
-  "id, org_id, community_id, location_id, unit_number, resident_user_id, catalog_item_id, item_name, item_price_amount, item_price_kind, quantity, contact_name, contact_phone, contact_email, notes, status, fulfillment_company_id, handed_over_at, handed_over_by, handover_photo_urls, dispatched_at, dispatch_error, created_at, updated_at, profiles!resident_orders_resident_user_id_fkey(full_name), cleaning_locations!resident_orders_location_id_fkey(name, address), companies!resident_orders_fulfillment_company_id_fkey(name)";
+  "id, org_id, community_id, location_id, unit_number, resident_user_id, catalog_item_id, item_name, item_price_amount, item_price_kind, quantity, contact_name, contact_phone, contact_email, notes, public_number, status, fulfillment_company_id, handed_over_at, handed_over_by, handover_photo_urls, dispatched_at, dispatch_error, created_at, updated_at, profiles!resident_orders_resident_user_id_fkey(full_name), cleaning_locations!resident_orders_location_id_fkey(name, address), companies!resident_orders_fulfillment_company_id_fkey(name)";
 
 export async function listCommunityResidentOrders(communityId: string): Promise<ResidentOrder[]> {
   const { data, error } = await fromTable("resident_orders")

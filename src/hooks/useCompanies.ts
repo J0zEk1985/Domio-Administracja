@@ -6,6 +6,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { VENDOR_PARTNERS_QUERY_KEY } from "@/hooks/useVendorPartners";
 import type { Database } from "@/types/supabase";
 import type { Company, CompanyCategory } from "@/types/contracts";
 
@@ -172,6 +173,7 @@ export function useUpsertCompany(): UseMutationResult<Company, Error, UpsertComp
     mutationFn: upsertCompanyRpc,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["companies"] });
+      void queryClient.invalidateQueries({ queryKey: [VENDOR_PARTNERS_QUERY_KEY] });
     },
   });
 }
@@ -211,6 +213,7 @@ export function useUpdateCompany(): UseMutationResult<Company, Error, UpdateComp
     onSuccess: (row) => {
       void queryClient.invalidateQueries({ queryKey: ["companies"] });
       void queryClient.invalidateQueries({ queryKey: companyByIdQueryKey(row.id) });
+      void queryClient.invalidateQueries({ queryKey: [VENDOR_PARTNERS_QUERY_KEY] });
     },
   });
 }

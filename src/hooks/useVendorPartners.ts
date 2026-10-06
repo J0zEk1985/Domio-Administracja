@@ -12,8 +12,9 @@ export type VendorPartnerRow = {
 };
 
 /**
- * All vendor_partners for the current org — org_id only (no category/status filters).
- * Maps 1:1 to `inspection_campaigns.vendor_id`.
+ * Active vendor_partners for the current org.
+ * Contractors are mirrored from `companies` by a database trigger.
+ * Insurers and rows marked inactive are omitted.
  */
 export async function fetchOrgVendorPartners(): Promise<VendorPartnerRow[]> {
   const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
@@ -29,6 +30,7 @@ export async function fetchOrgVendorPartners(): Promise<VendorPartnerRow[]> {
     .from("vendor_partners")
     .select("id, name, service_type, contact_email, dispatch_channel")
     .eq("org_id", String(orgId))
+    .or("status.is.null,status.neq.inactive")
     .order("name", { ascending: true });
 
   if (error) {

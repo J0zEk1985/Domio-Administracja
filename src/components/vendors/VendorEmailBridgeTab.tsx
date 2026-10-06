@@ -62,7 +62,7 @@ export function VendorEmailBridgeTab() {
             <p className="text-sm text-destructive">Nie udało się wczytać listy partnerów.</p>
           ) : partners.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Brak partnerów B2B. Dodaj firmę w module umów, a następnie włącz most e-mail.
+              Brak wykonawców. Dodaj firmę z kategorią Wykonawca w module umów, a następnie włącz most e-mail.
             </p>
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border">

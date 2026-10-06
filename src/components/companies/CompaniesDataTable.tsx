@@ -20,7 +20,7 @@ import {
   VerificationNeededBadge,
   rowNeedsVerification,
 } from "@/components/legal-entity/VerificationNeededBadge";
-import { COMPANY_CATEGORY_LABELS } from "@/schemas/companySchema";
+import { companyCategoryLabel } from "@/schemas/companySchema";
 import type { Company } from "@/types/contracts";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
@@ -164,7 +164,7 @@ export function CompaniesDataTable() {
                   </TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">{row.tax_id}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {COMPANY_CATEGORY_LABELS[row.category]}
+                    {companyCategoryLabel(row.category)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => openEdit(row)}>
