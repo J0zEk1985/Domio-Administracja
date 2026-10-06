@@ -3,7 +3,10 @@ import { addDays, addHours, parseISO, startOfDay } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 import { formatMissedCleaningDetail } from "@/lib/dashboardMissedCleaning";
-import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
+import {
+  ADMIN_HANDOFF_FROM_SERWIS_OR,
+  ADMIN_VISIBLE_ISSUES_OR,
+} from "@/lib/issueModuleVisibility";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
 
 export const DASHBOARD_METRICS_STALE_MS = 60_000;
@@ -90,6 +93,7 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
       .eq("org_id", orgId)
       .eq("location.is_admin_active", true)
       .or(ADMIN_VISIBLE_ISSUES_OR)
+      .or(ADMIN_HANDOFF_FROM_SERWIS_OR)
       .in("status", ACTIVE_ISSUE_STATUSES)
       .lt("created_at", cutoff)
       .order("created_at", { ascending: true })

@@ -2719,6 +2719,7 @@ export type Database = {
           resolved_at: string | null
           scheduled_at: string | null
           released_from_cleaning_at: string | null
+          released_to_serwis_at: string | null
           signed_by: string | null
           source: Database["public"]["Enums"]["issue_source_enum"]
           started_at: string | null
@@ -2768,6 +2769,7 @@ export type Database = {
           resolved_at?: string | null
           scheduled_at?: string | null
           released_from_cleaning_at?: string | null
+          released_to_serwis_at?: string | null
           signed_by?: string | null
           source?: Database["public"]["Enums"]["issue_source_enum"]
           started_at?: string | null
@@ -2817,6 +2819,7 @@ export type Database = {
           resolved_at?: string | null
           scheduled_at?: string | null
           released_from_cleaning_at?: string | null
+          released_to_serwis_at?: string | null
           signed_by?: string | null
           source?: Database["public"]["Enums"]["issue_source_enum"]
           started_at?: string | null

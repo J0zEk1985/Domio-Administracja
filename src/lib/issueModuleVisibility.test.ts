@@ -20,8 +20,18 @@ describe("isIssueVisibleInAdminModule", () => {
     ).toBe(true);
   });
 
-  it("shows Serwis and Administracja tickets immediately", () => {
-    expect(isIssueVisibleInAdminModule({ source: "dispatcher" })).toBe(true);
-    expect(isIssueVisibleInAdminModule({ source: "admin_ui" })).toBe(true);
+  it("hides Serwis tickets until they are sent to Administracja", () => {
+    expect(isIssueVisibleInAdminModule({ source: "dispatcher", status: "open" })).toBe(false);
+    expect(isIssueVisibleInAdminModule({ source: "serwis", status: "new" })).toBe(false);
+    expect(
+      isIssueVisibleInAdminModule({
+        source: "dispatcher",
+        status: "pending_admin_approval",
+      }),
+    ).toBe(true);
+  });
+
+  it("shows Administracja tickets immediately", () => {
+    expect(isIssueVisibleInAdminModule({ source: "admin_ui", status: "new" })).toBe(true);
   });
 });

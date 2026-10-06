@@ -23,8 +23,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { useWarrantyIssues } from "@/hooks/useDeveloperWarranty";
 import { useCommunities } from "@/hooks/useCommunities";
+import { CreateWarrantyIssueDialog } from "@/components/communities/CreateWarrantyIssueDialog";
 import {
   DEVELOPER_WARRANTY_ISSUE_STATUS_LABELS,
   DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS,
@@ -38,8 +41,18 @@ export default function DeveloperWarranty() {
   const [selectedCommunity, setSelectedCommunity] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<DeveloperWarrantyIssueStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [createIssueOpen, setCreateIssueOpen] = useState(false);
 
-  const { data: communities, isLoading: communitiesLoading } = useCommunities();
+  const { data: orgId, isLoading: orgLoading } = useQuery({
+    queryKey: ["org-id"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_org_id_safe");
+      if (error) throw error;
+      return data as string | null;
+    },
+  });
+
+  const { data: communities, isLoading: communitiesLoading } = useCommunities(orgId ?? null);
   
   const { data: issues, isLoading: issuesLoading } = useWarrantyIssues({
     community_id: selectedCommunity !== "all" ? selectedCommunity : undefined,
@@ -118,6 +131,10 @@ export default function DeveloperWarranty() {
             Zarządzanie usterkami objętymi rękojmią deweloperską
           </p>
         </div>
+        <Button onClick={() => setCreateIssueOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Dodaj usterkę
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -332,6 +349,12 @@ export default function DeveloperWarranty() {
           )}
         </CardContent>
       </Card>
+
+      {/* Create Issue Dialog */}
+      <CreateWarrantyIssueDialog
+        open={createIssueOpen}
+        onOpenChange={setCreateIssueOpen}
+      />
     </div>
   );
 }

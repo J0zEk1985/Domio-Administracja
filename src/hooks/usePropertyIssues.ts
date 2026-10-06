@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
+import {
+  ADMIN_HANDOFF_FROM_SERWIS_OR,
+  ADMIN_VISIBLE_ISSUES_OR,
+  isIssueVisibleInAdminModule,
+} from "@/lib/issueModuleVisibility";
 import type { TriageIssue } from "@/hooks/useTriageIssues";
 import { parseProtocolFields } from "@/lib/issueProtocol";
 import type { Database } from "@/types/supabase";
@@ -50,6 +54,7 @@ async function fetchPropertyIssues(locationId: string): Promise<PropertyIssue[]>
     .eq("org_id", String(orgId))
     .eq("location_id", locationId)
     .or(ADMIN_VISIBLE_ISSUES_OR)
+    .or(ADMIN_HANDOFF_FROM_SERWIS_OR)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -57,7 +62,9 @@ async function fetchPropertyIssues(locationId: string): Promise<PropertyIssue[]>
     throw error;
   }
 
-  return ((data ?? []) as RowWithEmbeds[]).map((row) => {
+  return ((data ?? []) as RowWithEmbeds[])
+    .filter(isIssueVisibleInAdminModule)
+    .map((row) => {
     const protocol = parseProtocolFields(row as unknown as Record<string, unknown>);
     return {
       ...row,

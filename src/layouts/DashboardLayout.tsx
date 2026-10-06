@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut, Siren, User, Zap } from "lucide-react";
+import { LayoutDashboard, LogOut, MoreHorizontal, Siren, User, Zap } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
@@ -7,9 +7,16 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase";
 import { setPreferredAppView } from "@/lib/sessionKeys";
 import { CookieConsentSettingsButton } from "@/components/cookie-consent/CookieConsentRoot";
+import { openCookiePreferences } from "@/lib/cookieConsent";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -42,78 +49,135 @@ export default function DashboardLayout() {
   }
 
   const headerActions = (
-    <div className="ml-auto flex shrink-0 items-center gap-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2 text-xs"
-            onClick={handleViewToggle}
-          >
-            {isFieldPanel ? (
-              <>
-                <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
-                Panel administracyjny
-              </>
-            ) : (
-              <>
-                <Zap className="h-3.5 w-3.5" aria-hidden />
-                Panel terenowy
-              </>
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          {isFieldPanel ? "Wróć do panelu administracyjnego" : "Przejdź do panelu terenowego"}
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant={isEmergency ? "default" : "outline"}
-            size="sm"
-            className={cn(
-              "h-9 gap-2 text-xs",
-              isEmergency && "bg-orange-600 text-white hover:bg-orange-700",
-            )}
-            onClick={() => navigate("/emergency")}
-          >
-            <Siren className="h-3.5 w-3.5" aria-hidden />
-            Zgłoszenie awaryjne
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">Zgłoś usterkę do pogotowia 24h</TooltipContent>
-      </Tooltip>
-      <CookieConsentSettingsButton className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" />
-      <ThemeToggle />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant={isMyProfile ? "default" : "outline"}
-            size="sm"
-            className="h-9 gap-2 text-xs"
-            onClick={() => navigate("/profile")}
-          >
-            <User className="h-3.5 w-3.5" aria-hidden />
-            Mój profil
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">Imię, nazwisko i telefon</TooltipContent>
-      </Tooltip>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-9 gap-2 text-xs"
-        onClick={() => void handleSignOut()}
-      >
-        <LogOut className="h-3.5 w-3.5" aria-hidden />
-        Wyloguj
-      </Button>
+    <div className="ml-auto flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-2">
+      <div className="hidden items-center gap-2 lg:flex">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2 text-xs"
+              onClick={handleViewToggle}
+            >
+              {isFieldPanel ? (
+                <>
+                  <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+                  Panel administracyjny
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3.5 w-3.5" aria-hidden />
+                  Panel terenowy
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {isFieldPanel ? "Wróć do panelu administracyjnego" : "Przejdź do panelu terenowego"}
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant={isEmergency ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "h-9 gap-2 text-xs",
+                isEmergency && "bg-orange-600 text-white hover:bg-orange-700",
+              )}
+              onClick={() => navigate("/emergency")}
+            >
+              <Siren className="h-3.5 w-3.5" aria-hidden />
+              Zgłoszenie awaryjne
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Zgłoś usterkę do pogotowia 24h</TooltipContent>
+        </Tooltip>
+        <CookieConsentSettingsButton variant="icon" />
+        <ThemeToggle />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant={isMyProfile ? "default" : "outline"}
+              size="sm"
+              className="h-9 gap-2 text-xs"
+              onClick={() => navigate("/profile")}
+            >
+              <User className="h-3.5 w-3.5" aria-hidden />
+              Mój profil
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Imię, nazwisko i telefon</TooltipContent>
+        </Tooltip>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 gap-2 text-xs"
+          onClick={() => void handleSignOut()}
+        >
+          <LogOut className="h-3.5 w-3.5" aria-hidden />
+          Wyloguj
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-0.5 lg:hidden">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant={isEmergency ? "default" : "ghost"}
+              size="icon"
+              className={cn(
+                "h-9 w-9 shrink-0",
+                isEmergency && "bg-orange-600 text-white hover:bg-orange-700",
+              )}
+              onClick={() => navigate("/emergency")}
+              aria-label="Zgłoszenie awaryjne"
+            >
+              <Siren className="h-4 w-4" aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Zgłoś usterkę do pogotowia 24h</TooltipContent>
+        </Tooltip>
+        <ThemeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Więcej funkcji">
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={handleViewToggle}>
+              {isFieldPanel ? (
+                <>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Panel administracyjny
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Panel terenowy
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/profile")}>
+              <User className="mr-2 h-4 w-4" />
+              Mój profil
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openCookiePreferences()}>
+              Zarządzaj zgodami cookies
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void handleSignOut()}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Wyloguj
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 
@@ -122,11 +186,11 @@ export default function DashboardLayout() {
       <div className="flex min-h-screen w-full flex-col bg-background">
         <header
           className={cn(
-            "sticky top-0 z-30 flex h-16 w-full shrink-0 items-center gap-3 border-b border-border/50",
-            "bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70",
+            "sticky top-0 z-30 flex h-16 w-full min-w-0 shrink-0 items-center gap-2 border-b border-border/50",
+            "bg-background/80 px-3 sm:px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70",
           )}
         >
-          <span className="font-display text-sm font-bold tracking-tight gradient-brand-text">
+          <span className="min-w-0 truncate font-display text-sm font-bold tracking-tight gradient-brand-text">
             Administracja
           </span>
           {headerActions}
@@ -145,8 +209,8 @@ export default function DashboardLayout() {
         <div className="flex-1 flex flex-col min-w-0">
           <header
             className={cn(
-              "sticky top-0 z-30 flex h-16 w-full shrink-0 items-center gap-3 border-b border-border/50",
-              "bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70",
+              "sticky top-0 z-30 flex h-16 w-full min-w-0 shrink-0 items-center gap-2 border-b border-border/50",
+              "bg-background/80 px-3 sm:px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70",
             )}
           >
             <SidebarTrigger

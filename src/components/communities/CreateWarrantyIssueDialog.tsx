@@ -40,6 +40,9 @@ import { DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS } from "@/types/developer-warr
 import { toast } from "@/components/ui/sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PhotoUpload } from "@/components/warranty/PhotoUpload";
+import { useCommunities } from "@/hooks/useCommunities";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 const CATEGORIES = [
   "Hydraulika",
@@ -55,6 +58,7 @@ const CATEGORIES = [
 ];
 
 const formSchema = z.object({
+  community_id: z.string().min(1, "Wspólnota jest wymagana"),
   title: z
     .string()
     .min(1, "Tytuł jest wymagany")
@@ -71,26 +75,37 @@ type FormValues = z.infer<typeof formSchema>;
 interface CreateWarrantyIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  communityId: string;
-  orgId: string;
+  communityId?: string; // Optional - if not provided, user selects from dropdown
+  orgId?: string; // Optional - will be derived from selected community
 }
 
 export function CreateWarrantyIssueDialog({
   open,
   onOpenChange,
-  communityId,
-  orgId,
+  communityId: propCommunityId,
+  orgId: propOrgId,
 }: CreateWarrantyIssueDialogProps) {
   const [photos, setPhotos] = useState<string[]>([]);
   const createMutation = useCreateWarrantyIssue();
   
-  const { data: locations, isLoading: locationsLoading } = useLocationsByCommunity(communityId, {
-    enabled: open,
+  const { data: userOrgId } = useQuery({
+    queryKey: ["org-id"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_org_id_safe");
+      if (error) throw error;
+      return data as string | null;
+    },
+    enabled: open && !propCommunityId && !propOrgId,
   });
 
+  const { data: communities, isLoading: communitiesLoading } = useCommunities(
+    userOrgId ?? null
+  );
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      community_id: propCommunityId || "",
       title: "",
       description: "",
       category: "",
@@ -100,7 +115,30 @@ export function CreateWarrantyIssueDialog({
     },
   });
 
+  const selectedCommunityId = form.watch("community_id") || propCommunityId;
+  const selectedCommunity = communities?.find((c) => c.id === selectedCommunityId);
+  
+  const { data: locations, isLoading: locationsLoading } = useLocationsByCommunity(
+    selectedCommunityId || "",
+    {
+      enabled: !!selectedCommunityId && open,
+    }
+  );
+
   const handleSubmit = async (values: FormValues) => {
+    const communityId = values.community_id || propCommunityId;
+    const orgId = propOrgId || selectedCommunity?.org_id;
+
+    if (!communityId) {
+      toast.error("Wybierz wspólnotę");
+      return;
+    }
+
+    if (!orgId) {
+      toast.error("Nie można określić organizacji dla wybranej wspólnoty");
+      return;
+    }
+
     try {
       await createMutation.mutateAsync({
         community_id: communityId,
@@ -124,7 +162,15 @@ export function CreateWarrantyIssueDialog({
   };
 
   const handleClose = () => {
-    form.reset();
+    form.reset({
+      community_id: propCommunityId || "",
+      title: "",
+      description: "",
+      category: "",
+      location_master_id: "",
+      location_detail: "",
+      priority: "normal",
+    });
     setPhotos([]);
     onOpenChange(false);
   };
@@ -141,6 +187,40 @@ export function CreateWarrantyIssueDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {!propCommunityId && (
+              <FormField
+                control={form.control}
+                name="community_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Wspólnota *</FormLabel>
+                    {communitiesLoading ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Wybierz wspólnotę" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {communities?.map((community) => (
+                            <SelectItem key={community.id} value={community.id}>
+                              {community.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <FormDescription>
+                      Wybierz wspólnotę, w której występuje usterka
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="title"

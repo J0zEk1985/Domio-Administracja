@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Cookie } from 'lucide-react'
 import {
   ACCEPTED_ALL_CATEGORIES,
   CONSENT_CHANGED_EVENT,
@@ -246,7 +247,30 @@ function CategoryToggle({
   )
 }
 
-export function CookieConsentSettingsButton({ className }: { className?: string }) {
+export function CookieConsentSettingsButton({
+  className,
+  variant = 'link',
+}: {
+  className?: string
+  variant?: 'link' | 'icon'
+}) {
+  if (variant === 'icon') {
+    return (
+      <button
+        type="button"
+        className={
+          className ??
+          'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground'
+        }
+        onClick={() => openCookiePreferences()}
+        aria-label="Zarządzaj zgodami cookies"
+        title="Zarządzaj zgodami cookies"
+      >
+        <Cookie className="h-4 w-4" aria-hidden />
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"

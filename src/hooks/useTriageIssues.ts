@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { subMonths } from "date-fns";
 import { supabase } from "@/lib/supabase";
-import { ADMIN_VISIBLE_ISSUES_OR } from "@/lib/issueModuleVisibility";
+import {
+  ADMIN_HANDOFF_FROM_SERWIS_OR,
+  ADMIN_VISIBLE_ISSUES_OR,
+  isIssueVisibleInAdminModule,
+} from "@/lib/issueModuleVisibility";
 import type { Database } from "@/types/supabase";
 import type { PropertyIssueLifecycleFields } from "@/types/issueLifecycle";
 import type { PropertyIssueProtocolFields } from "@/lib/issueProtocol";
@@ -113,7 +117,8 @@ async function fetchTriageIssues(locationIds?: readonly string[]): Promise<Triag
     )
     .eq("org_id", String(orgId))
     .eq("location.is_admin_active", true)
-    .or(ADMIN_VISIBLE_ISSUES_OR);
+    .or(ADMIN_VISIBLE_ISSUES_OR)
+    .or(ADMIN_HANDOFF_FROM_SERWIS_OR);
 
   if (scoped) {
     query = query.in("location_id", [...locationIds!]);
@@ -133,7 +138,7 @@ async function fetchTriageIssues(locationIds?: readonly string[]): Promise<Triag
     throw error;
   }
 
-  return mapTriageRows(data as unknown[] | null);
+  return mapTriageRows(data as unknown[] | null).filter(isIssueVisibleInAdminModule);
 }
 
 export function useTriageIssues(options: boolean | UseTriageIssuesOptions = true) {
