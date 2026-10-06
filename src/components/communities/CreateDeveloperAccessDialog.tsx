@@ -85,12 +85,17 @@ export function CreateDeveloperAccessDialog({
         toast.success("Dostęp dewelopera został utworzony");
       }
     } catch (error: any) {
+      console.error("Błąd tworzenia dostępu dewelopera:", error);
+      
       if (error.message?.includes("developer_access_already_exists")) {
         toast.error("Dostęp dewelopera dla tej Wspólnoty już istnieje");
+      } else if (error.message?.includes("unauthorized")) {
+        toast.error("Brak uprawnień. Sprawdź czy jesteś administratorem tej Wspólnoty.");
+      } else if (error.message?.includes("community_not_found")) {
+        toast.error("Nie znaleziono Wspólnoty");
       } else {
-        toast.error("Nie udało się utworzyć dostępu dewelopera");
+        toast.error(`Nie udało się utworzyć dostępu dewelopera: ${error.message || "Nieznany błąd"}`);
       }
-      console.error(error);
     }
   };
 

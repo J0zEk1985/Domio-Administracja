@@ -102,13 +102,16 @@ export function PropertySerwisQrAccessCard({ property, canManage, accessPending 
             </p>
           ) : (
             <>
-              <div
+              <a
+                href={issueUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
-                  "rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-foreground",
+                  "block rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-primary underline-offset-2 hover:underline",
                 )}
               >
                 {issueUrl}
-              </div>
+              </a>
               {legacyOnly ? (
                 <p className="text-xs text-amber-700 dark:text-amber-500">
                   Używany jest starszy kod QR. Wygeneruj nowy, aby zaktualizować link zgłoszeń.
