@@ -441,6 +441,7 @@ export function PendingBookingsView({ communityId }: PendingBookingsViewProps) {
   const [rejectionReason, setRejectionReason] = useState("");
 
   const { data: resources } = useAvailableResources({
+    communityId,
     resourceType: "community_managed",
   });
 
@@ -555,6 +556,7 @@ export function UsageReportsView({ communityId }: UsageReportsViewProps) {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
   const { data: resources } = useAvailableResources({
+    communityId,
     resourceType: "community_managed",
   });
 
@@ -720,6 +722,7 @@ export function AvailabilityCalendarView({
   const [selectedResourceId, setSelectedResourceId] = useState<string>("");
 
   const { data: resources } = useAvailableResources({
+    communityId,
     resourceType: "community_managed",
   });
 

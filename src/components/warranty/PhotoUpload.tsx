@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useWarrantyPhotoUpload } from "@/hooks/useWarrantyPhotoUpload";
+import { StoragePhoto } from "@/components/StoragePhoto";
+import { useWarrantyPhotoUpload, WARRANTY_PHOTOS_BUCKET } from "@/hooks/useWarrantyPhotoUpload";
 
 interface PhotoUploadProps {
   photos: string[];
@@ -89,9 +90,10 @@ export function PhotoUpload({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {photos.map((url, index) => (
             <Card key={index} className="relative aspect-square overflow-hidden group">
-              <img
-                src={url}
+              <StoragePhoto
+                pathOrUrl={url}
                 alt={`Zdjęcie ${index + 1}`}
+                fallbackBucket={WARRANTY_PHOTOS_BUCKET}
                 className="w-full h-full object-cover"
               />
               <Button

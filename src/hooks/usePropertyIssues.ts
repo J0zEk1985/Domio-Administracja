@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import {
   ADMIN_HANDOFF_FROM_SERWIS_OR,
+  ADMIN_INTAKE_MODULE_OR,
   ADMIN_VISIBLE_ISSUES_OR,
   isIssueVisibleInAdminModule,
 } from "@/lib/issueModuleVisibility";
@@ -55,6 +56,7 @@ async function fetchPropertyIssues(locationId: string): Promise<PropertyIssue[]>
     .eq("location_id", locationId)
     .or(ADMIN_VISIBLE_ISSUES_OR)
     .or(ADMIN_HANDOFF_FROM_SERWIS_OR)
+    .or(ADMIN_INTAKE_MODULE_OR)
     .order("created_at", { ascending: false });
 
   if (error) {

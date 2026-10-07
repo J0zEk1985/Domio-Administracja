@@ -18,8 +18,9 @@ vi.mock("@/hooks/useCommunities", () => ({
 vi.mock("@/hooks/useProperties", () => ({
   useLocationsByCommunity: () => ({
     data: [
-      { id: "loc-1", address: "Pienista 51" },
-      { id: "", address: "Pusty identyfikator" },
+      { id: "loc-1", address: "Pienista 51", locationMasterId: "master-1" },
+      { id: "", address: "Pusty identyfikator", locationMasterId: null },
+      { id: "loc-2", address: "Bez adresu głównego", locationMasterId: null },
     ],
     isLoading: false,
   }),
@@ -58,6 +59,8 @@ describe("CreateWarrantyIssueDialog", () => {
     const optionValues = Array.from(document.querySelectorAll("option")).map((option) => option.value);
     expect(optionValues).not.toContain("");
     expect(optionValues).toContain("__none__");
-    expect(optionValues).toContain("loc-1");
+    expect(optionValues).toContain("master-1");
+    expect(optionValues).not.toContain("loc-1");
+    expect(optionValues).not.toContain("loc-2");
   });
 });

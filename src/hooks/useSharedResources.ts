@@ -70,6 +70,7 @@ export function useAvailableResources(filters?: ResourceFilters) {
       if (error) throw error;
       return data || [];
     },
+    retry: false,
     staleTime: 1000 * 60 * 5, // 5 minut
   });
 }

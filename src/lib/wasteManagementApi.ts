@@ -19,6 +19,10 @@ import {
   mapScheduleRowToSchedule,
   mapGuideItemRowToGuideItem,
 } from "@/types/wasteManagement";
+import {
+  planWasteScheduleInserts,
+  todayIsoInWarsaw,
+} from "@/lib/wasteScheduleSyncPlan";
 
 // ============================================================================
 // Waste Collection Schedules
@@ -354,75 +358,119 @@ export async function syncWasteScheduleFromCity(
   buildingNumber: string,
   adapterResponse: CityAdapterResponse
 ): Promise<WasteSyncResult> {
-  if (!adapterResponse.success || !adapterResponse.schedules) {
-    // Zapisz błąd do logu
-    await supabase.from("waste_schedule_sync_log").insert({
-      location_id: locationId,
-      city_adapter: cityAdapter,
-      sync_status: "error",
-      records_added: 0,
-      records_updated: 0,
-      error_message: adapterResponse.error || "Unknown error",
-    });
-
-    return {
+  if (!adapterResponse.success || !adapterResponse.schedules?.length) {
+    return finishWasteSync(locationId, cityAdapter, {
       success: false,
       recordsAdded: 0,
       recordsUpdated: 0,
-      error: adapterResponse.error,
-    };
+      error: adapterResponse.error || "Nie znaleziono terminów do zapisania.",
+    });
   }
 
-  let recordsAdded = 0;
-  let recordsUpdated = 0;
+  const collectionDates = [
+    ...new Set(adapterResponse.schedules.map((schedule) => schedule.collectionDate)),
+  ];
+  const wasteTypes = [...new Set(adapterResponse.schedules.map((schedule) => schedule.wasteType))];
 
-  // Dodaj/zaktualizuj harmonogramy
-  for (const schedule of adapterResponse.schedules) {
-    const { error } = await supabase
-      .from("waste_collection_schedules")
-      .upsert(
-        {
-          location_id: locationId,
-          org_id: orgId,
-          waste_type: schedule.wasteType,
-          collection_date: schedule.collectionDate,
-          collection_time_from: schedule.collectionTimeFrom || null,
-          collection_time_until: schedule.collectionTimeUntil || null,
-          data_source: "city_scraper",
-          city_adapter: cityAdapter,
-          street_name: street,
-          building_number: buildingNumber,
-          last_synced_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "location_id,waste_type,collection_date",
-          ignoreDuplicates: false,
-        }
-      );
+  const { data: existingRows, error: existingError } = await supabase
+    .from("waste_collection_schedules")
+    .select("waste_type, collection_date")
+    .eq("location_id", locationId)
+    .in("waste_type", wasteTypes)
+    .in("collection_date", collectionDates)
+    .eq("is_cancelled", false);
 
-    if (!error) {
-      recordsAdded++;
-    }
+  if (existingError) {
+    console.error("[syncWasteScheduleFromCity] existing", existingError);
+    return finishWasteSync(locationId, cityAdapter, {
+      success: false,
+      recordsAdded: 0,
+      recordsUpdated: 0,
+      error: existingError.message,
+    });
   }
 
-  // Zapisz log synchronizacji
-  const { data: logData } = await supabase
+  const existingKeys = new Set(
+    (existingRows ?? []).map((row) => `${row.waste_type}|${row.collection_date}`),
+  );
+  const plan = planWasteScheduleInserts(
+    adapterResponse.schedules,
+    existingKeys,
+    todayIsoInWarsaw(),
+  );
+
+  if (plan.toInsert.length === 0) {
+    const error =
+      plan.skippedExisting === 0 && plan.skippedTooOld > 0
+        ? "Znalezione terminy są starsze niż 7 dni i nie można ich zapisać."
+        : undefined;
+    return finishWasteSync(locationId, cityAdapter, {
+      success: !error,
+      recordsAdded: 0,
+      recordsUpdated: 0,
+      error,
+    });
+  }
+
+  const syncedAt = new Date().toISOString();
+  const rows = plan.toInsert.map((schedule) => ({
+    location_id: locationId,
+    org_id: orgId,
+    waste_type: schedule.wasteType,
+    collection_date: schedule.collectionDate,
+    collection_time_from: schedule.collectionTimeFrom || null,
+    collection_time_until: schedule.collectionTimeUntil || null,
+    data_source: "city_scraper" as const,
+    city_adapter: cityAdapter,
+    street_name: street,
+    building_number: buildingNumber,
+    last_synced_at: syncedAt,
+  }));
+
+  const { data, error } = await supabase.from("waste_collection_schedules").insert(rows).select("id");
+
+  if (error) {
+    console.error("[syncWasteScheduleFromCity] insert", error);
+    return finishWasteSync(locationId, cityAdapter, {
+      success: false,
+      recordsAdded: 0,
+      recordsUpdated: 0,
+      error: error.message,
+    });
+  }
+
+  return finishWasteSync(locationId, cityAdapter, {
+    success: true,
+    recordsAdded: data?.length ?? rows.length,
+    recordsUpdated: 0,
+  });
+}
+
+async function finishWasteSync(
+  locationId: string,
+  cityAdapter: string,
+  result: WasteSyncResult,
+): Promise<WasteSyncResult> {
+  const { data: logData, error: logError } = await supabase
     .from("waste_schedule_sync_log")
     .insert({
       location_id: locationId,
       city_adapter: cityAdapter,
-      sync_status: "success",
-      records_added: recordsAdded,
-      records_updated: recordsUpdated,
+      sync_status: result.success ? "success" : "error",
+      records_added: result.recordsAdded,
+      records_updated: result.recordsUpdated,
+      error_message: result.error ?? null,
     })
     .select()
     .single();
 
+  if (logError) {
+    console.error("[syncWasteScheduleFromCity] log", logError);
+  }
+
   return {
-    success: true,
-    recordsAdded,
-    recordsUpdated,
-    logId: (logData as WasteScheduleSyncLogRow)?.id,
+    ...result,
+    logId: (logData as WasteScheduleSyncLogRow | null)?.id,
   };
 }
 

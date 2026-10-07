@@ -34,4 +34,24 @@ describe("isIssueVisibleInAdminModule", () => {
   it("shows Administracja tickets immediately", () => {
     expect(isIssueVisibleInAdminModule({ source: "admin_ui", status: "new" })).toBe(true);
   });
+
+  it("hides Serwis email tickets even when the building is also enrolled in Administracja", () => {
+    expect(
+      isIssueVisibleInAdminModule({
+        source: "email_ai",
+        status: "new",
+        intake_module: "serwis",
+      }),
+    ).toBe(false);
+  });
+
+  it("shows an Administracja email ticket that still needs a building", () => {
+    expect(
+      isIssueVisibleInAdminModule({
+        source: "email_ai",
+        status: "new",
+        intake_module: "administracja",
+      }),
+    ).toBe(true);
+  });
 });

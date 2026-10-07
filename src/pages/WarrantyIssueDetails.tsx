@@ -18,7 +18,6 @@ import {
   XCircle,
   MessageSquare,
   History,
-  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +33,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { StoragePhoto } from "@/components/StoragePhoto";
+import { WARRANTY_PHOTOS_BUCKET } from "@/hooks/useWarrantyPhotoUpload";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -280,9 +281,17 @@ export default function WarrantyIssueDetails() {
                       {issue.photos_reported.map((url, idx) => (
                         <div
                           key={idx}
-                          className="aspect-square rounded-lg border bg-muted flex items-center justify-center"
+                          className="aspect-square overflow-hidden rounded-lg border bg-muted"
                         >
-                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                          <StoragePhoto
+                            pathOrUrl={url}
+                            alt={`Zdjęcie zgłoszeniowe ${idx + 1}`}
+                            fallbackBucket={WARRANTY_PHOTOS_BUCKET}
+                            className="h-full w-full object-cover"
+                            onClick={(resolvedUrl) =>
+                              window.open(resolvedUrl, "_blank", "noopener,noreferrer")
+                            }
+                          />
                         </div>
                       ))}
                     </div>
@@ -295,9 +304,17 @@ export default function WarrantyIssueDetails() {
                       {issue.photos_completion.map((url, idx) => (
                         <div
                           key={idx}
-                          className="aspect-square rounded-lg border bg-muted flex items-center justify-center"
+                          className="aspect-square overflow-hidden rounded-lg border bg-muted"
                         >
-                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                          <StoragePhoto
+                            pathOrUrl={url}
+                            alt={`Zdjęcie po naprawie ${idx + 1}`}
+                            fallbackBucket={WARRANTY_PHOTOS_BUCKET}
+                            className="h-full w-full object-cover"
+                            onClick={(resolvedUrl) =>
+                              window.open(resolvedUrl, "_blank", "noopener,noreferrer")
+                            }
+                          />
                         </div>
                       ))}
                     </div>

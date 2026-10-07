@@ -4,6 +4,10 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import {
+  mapBookingRow,
+  mapResourceRow,
+} from "@/types/sharedResources";
 import type {
   SharedResource,
   SharedResourceRow,
@@ -19,8 +23,6 @@ import type {
   CheckAvailabilityResponse,
   ResourceFilters,
   BookingFilters,
-  mapResourceRow,
-  mapBookingRow,
   BookingStatus,
   ResourceType,
 } from "@/types/sharedResources";
@@ -147,12 +149,89 @@ export async function createPrivateResource(
   }
 }
 
+interface CommunityResourceQuery extends PromiseLike<{
+  data: SharedResourceRow[] | null;
+  error: { message: string } | null;
+}> {
+  eq(column: string, value: string): CommunityResourceQuery;
+  order(
+    column: string,
+    options: { ascending: boolean }
+  ): CommunityResourceQuery;
+}
+
+/**
+ * Zasoby wspólnoty dla panelu zarządcy.
+ * Odczyt po community_id, bez RPC get_available_resources.
+ */
+export async function getCommunityManagedResources(
+  communityId: string
+): Promise<RpcResponse<SharedResource[]>> {
+  try {
+    const client = supabase as unknown as {
+      from(table: "shared_resources"): {
+        select(columns: "*"): CommunityResourceQuery;
+      };
+    };
+
+    const { data, error } = await client
+      .from("shared_resources")
+      .select("*")
+      .eq("community_id", communityId)
+      .eq("resource_type", "community_managed")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getCommunityManagedResources] Error:", error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return {
+      data: (data ?? []).map(mapResourceRow),
+      error: null,
+    };
+  } catch (err) {
+    console.error("[getCommunityManagedResources] Exception:", err);
+    return { data: null, error: err as Error };
+  }
+}
+
 /**
  * Pobiera dostępne zasoby dla zalogowanego użytkownika
  */
 export async function getAvailableResources(
   filters?: ResourceFilters
 ): Promise<RpcResponse<SharedResource[]>> {
+  if (filters?.communityId) {
+    const listed = await getCommunityManagedResources(filters.communityId);
+    if (listed.error || !listed.data) return listed;
+
+    let filtered = listed.data;
+
+    if (filters.resourceType) {
+      filtered = filtered.filter((r) => r.resourceType === filters.resourceType);
+    }
+    if (filters.category) {
+      filtered = filtered.filter((r) => r.category === filters.category);
+    }
+    if (filters.status) {
+      filtered = filtered.filter((r) => r.status === filters.status);
+    }
+    if (filters.isFree !== undefined) {
+      filtered = filtered.filter((r) => r.isFree === filters.isFree);
+    }
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.name.toLowerCase().includes(searchLower) ||
+          r.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return { data: filtered, error: null };
+  }
+
   try {
     const { data, error } = await supabase.rpc("get_available_resources", {
       p_resource_type: filters?.resourceType || null,

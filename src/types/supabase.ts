@@ -2696,6 +2696,9 @@ export type Database = {
           immediate_fulfillment: boolean
           internal_comments: Json | null
           is_ai_draft: boolean | null
+          intake_module: string | null
+          reported_address: string | null
+          address_candidates: Json | null
           is_invoiced: boolean | null
           is_public_broadcast: boolean | null
           is_transfer_requested: boolean | null
@@ -2746,6 +2749,9 @@ export type Database = {
           immediate_fulfillment?: boolean
           internal_comments?: Json | null
           is_ai_draft?: boolean | null
+          intake_module?: string | null
+          reported_address?: string | null
+          address_candidates?: Json | null
           is_invoiced?: boolean | null
           is_public_broadcast?: boolean | null
           is_transfer_requested?: boolean | null
@@ -2796,6 +2802,9 @@ export type Database = {
           immediate_fulfillment?: boolean
           internal_comments?: Json | null
           is_ai_draft?: boolean | null
+          intake_module?: string | null
+          reported_address?: string | null
+          address_candidates?: Json | null
           is_invoiced?: boolean | null
           is_public_broadcast?: boolean | null
           is_transfer_requested?: boolean | null

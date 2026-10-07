@@ -3,6 +3,7 @@ import { subMonths } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import {
   ADMIN_HANDOFF_FROM_SERWIS_OR,
+  ADMIN_INTAKE_MODULE_OR,
   ADMIN_VISIBLE_ISSUES_OR,
   isIssueVisibleInAdminModule,
 } from "@/lib/issueModuleVisibility";
@@ -117,7 +118,8 @@ async function fetchTriageIssues(locationIds?: readonly string[]): Promise<Triag
     )
     .eq("org_id", String(orgId))
     .or(ADMIN_VISIBLE_ISSUES_OR)
-    .or(ADMIN_HANDOFF_FROM_SERWIS_OR);
+    .or(ADMIN_HANDOFF_FROM_SERWIS_OR)
+    .or(ADMIN_INTAKE_MODULE_OR);
 
   if (scoped) {
     query = query.in("location_id", [...locationIds!]);

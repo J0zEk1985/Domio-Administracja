@@ -158,8 +158,22 @@ export function CreateWarrantyIssueDialog({
       setPhotos([]);
       onOpenChange(false);
     } catch (error) {
-      toast.error("Nie udało się utworzyć usterki");
       console.error(error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as { message: unknown }).message)
+            : "";
+      if (message.includes("location_master") || message.includes("locations")) {
+        toast.error("Nie udało się utworzyć usterki. Wybrany budynek jest nieprawidłowy.");
+      } else if (message.includes("organizacji") || message.includes("org_id")) {
+        toast.error("Nie udało się utworzyć usterki. Brak organizacji.");
+      } else if (message.toLowerCase().includes("row-level security")) {
+        toast.error("Nie udało się utworzyć usterki. Brak uprawnień.");
+      } else {
+        toast.error("Nie udało się utworzyć usterki");
+      }
     }
   };
 
@@ -337,8 +351,10 @@ export function CreateWarrantyIssueDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value={NO_BUILDING}>Nie dotyczy konkretnego budynku</SelectItem>
-                        {locations?.filter((location) => location.id).map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
+                        {locations
+                          ?.filter((location) => location.locationMasterId)
+                          .map((location) => (
+                          <SelectItem key={location.id} value={location.locationMasterId!}>
                             {location.address}
                           </SelectItem>
                         ))}

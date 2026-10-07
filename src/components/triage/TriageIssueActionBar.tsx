@@ -48,6 +48,7 @@ function statusActionHint(
   technicianName: string | null,
   marketplaceWaiting: boolean,
   emailDispatchStatus: TriageIssue["email_dispatch_status"],
+  locationId: string | null | undefined,
 ): string | null {
   if (marketplaceWaiting) {
     return "Wystawione na giełdzie — czekamy, aż firma podejmie zlecenie. Możesz anulować albo przypisać samodzielnie.";
@@ -75,6 +76,9 @@ function statusActionHint(
     return "Wniosek o cesję czeka na zgodę kontrahenta.";
   }
   if (!status) return null;
+  if ((status === "new" || status === "pending_admin_approval") && !locationId) {
+    return "Adres nie jest dopasowany do budynku Administracji. Przypisz właściwy budynek albo odrzuć zgłoszenie.";
+  }
   if (status === "new") return "Nowe zgłoszenie — możesz je zaakceptować lub odrzucić.";
   if (status === "pending_admin_approval") return "Wymaga decyzji administracyjnej.";
   return null;
@@ -133,7 +137,9 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
     technicianName,
     marketplaceWaiting,
     issue.email_dispatch_status,
+    issue.location_id,
   );
+  const needsBuilding = !issue.location_id;
   const canAcceptAndOpen = status === "new" || status === "pending_admin_approval";
   const canReject = lock === "unlocked" && !marketplaceWaiting;
   const canCancelNow =
@@ -142,9 +148,10 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
   const canRetryEmail =
     lock === "delegated" &&
     (issue.email_dispatch_status === "failed" || issue.email_dispatch_status === "queued");
-  const canBroadcast = lock === "unlocked" && !marketplaceWaiting && issue.is_public_broadcast !== true;
-  const showB2b = lock === "unlocked";
-  const showStaff = lock !== "in_progress" && lock !== "transfer_pending";
+  const canBroadcast =
+    lock === "unlocked" && !marketplaceWaiting && issue.is_public_broadcast !== true && !needsBuilding;
+  const showB2b = lock === "unlocked" && !needsBuilding;
+  const showStaff = lock !== "in_progress" && lock !== "transfer_pending" && !needsBuilding;
   const showRoutingControls = showB2b || canBroadcast || showStaff;
 
   return (
@@ -179,7 +186,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
               type="button"
               size="sm"
               className="gap-1.5"
-              disabled={busy}
+              disabled={busy || !issue.location_id}
               onClick={() => acceptMut.mutate({ issueId: issue.id })}
             >
               {acceptMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}

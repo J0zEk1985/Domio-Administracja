@@ -5,6 +5,7 @@ import type { Database } from "@/types/supabase";
 import { formatMissedCleaningDetail } from "@/lib/dashboardMissedCleaning";
 import {
   ADMIN_HANDOFF_FROM_SERWIS_OR,
+  ADMIN_INTAKE_MODULE_OR,
   ADMIN_VISIBLE_ISSUES_OR,
 } from "@/lib/issueModuleVisibility";
 import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
@@ -94,6 +95,7 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
       .eq("location.is_admin_active", true)
       .or(ADMIN_VISIBLE_ISSUES_OR)
       .or(ADMIN_HANDOFF_FROM_SERWIS_OR)
+      .or(ADMIN_INTAKE_MODULE_OR)
       .in("status", ACTIVE_ISSUE_STATUSES)
       .lt("created_at", cutoff)
       .order("created_at", { ascending: true })

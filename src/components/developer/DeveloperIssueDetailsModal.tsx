@@ -17,7 +17,6 @@ import {
   FileText,
   MapPin,
   Calendar,
-  Image as ImageIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -335,12 +334,19 @@ export function DeveloperIssueDetailsModal({
                 <h4 className="font-semibold mb-2">Zdjęcia zgłoszeniowe</h4>
                 <div className="grid grid-cols-3 gap-2">
                   {issue.photos_reported.map((url, idx) => (
-                    <div
+                    <a
                       key={idx}
-                      className="aspect-square rounded-lg border bg-muted flex items-center justify-center"
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="aspect-square overflow-hidden rounded-lg border bg-muted"
                     >
-                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                    </div>
+                      <img
+                        src={url}
+                        alt={`Zdjęcie zgłoszeniowe ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </a>
                   ))}
                 </div>
               </div>

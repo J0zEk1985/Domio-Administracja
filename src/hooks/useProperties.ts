@@ -581,13 +581,14 @@ export type CommunityLocationRow = {
   id: string;
   name: string;
   address: string;
+  locationMasterId: string | null;
 };
 
 async function fetchLocationsForCommunity(communityId: string): Promise<CommunityLocationRow[]> {
   const actor = await getOrgAndActor();
   const { data, error } = await supabase
     .from("cleaning_locations")
-    .select("id, name, address")
+    .select("id, name, address, location_master_id")
     .eq("org_id", actor.orgId)
     .eq("community_id", communityId)
     .order("name", { ascending: true });
@@ -601,6 +602,7 @@ async function fetchLocationsForCommunity(communityId: string): Promise<Communit
     id: l.id,
     name: l.name?.trim() || "—",
     address: l.address?.trim() || "—",
+    locationMasterId: l.location_master_id ?? null,
   }));
 }
 
@@ -618,7 +620,7 @@ async function fetchUnassignedOrgLocations(): Promise<CommunityLocationRow[]> {
   const actor = await getOrgAndActor();
   const { data, error } = await supabase
     .from("cleaning_locations")
-    .select("id, name, address")
+    .select("id, name, address, location_master_id")
     .eq("org_id", actor.orgId)
     .eq("is_admin_active", true)
     .is("community_id", null)
@@ -633,6 +635,7 @@ async function fetchUnassignedOrgLocations(): Promise<CommunityLocationRow[]> {
     id: l.id,
     name: l.name?.trim() || "—",
     address: l.address?.trim() || "—",
+    locationMasterId: l.location_master_id ?? null,
   }));
 }
 

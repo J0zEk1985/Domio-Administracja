@@ -43,15 +43,16 @@ export function ResourcesManagementView({
   const [category, setCategory] = useState("all");
   const [editingResource, setEditingResource] = useState<SharedResource | null>(null);
 
-  const { data: resources, isLoading } = useAvailableResources({
+  const { data: resources, isLoading, isError } = useAvailableResources({
+    communityId,
     resourceType: "community_managed",
-    category: category === "all" ? undefined : category,
   });
 
   const updateResource = useUpdateResource("");
   const deactivateResource = useDeactivateResource();
 
   const filteredResources = resources?.filter((r) => {
+    if (category !== "all" && r.category !== category) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -125,6 +126,12 @@ export function ResourcesManagementView({
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
+            </div>
+          ) : isError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
+              <p className="text-sm text-destructive">
+                Nie udało się wczytać listy zasobów. Odśwież stronę.
+              </p>
             </div>
           ) : filteredResources && filteredResources.length > 0 ? (
             <div className="rounded-md border">

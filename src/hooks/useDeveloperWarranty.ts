@@ -317,14 +317,21 @@ export function useCreateWarrantyIssue() {
   
   return useMutation({
     mutationFn: async (dto: CreateWarrantyIssueDto) => {
-      const { data: session } = await supabase.auth.getSession();
-      
+      const { data: orgId, error: orgErr } = await supabase.rpc("get_my_org_id_safe");
+      if (orgErr) {
+        console.error("[useCreateWarrantyIssue] get_my_org_id_safe:", orgErr);
+        throw orgErr;
+      }
+      if (!orgId) {
+        throw new Error("Brak kontekstu organizacji.");
+      }
+
       const { data, error } = await supabase
         .from("developer_warranty_issues")
         .insert({
           community_id: dto.community_id,
-          org_id: session.session?.user.user_metadata.org_id,
-          location_master_id: dto.location_master_id,
+          org_id: orgId,
+          location_master_id: dto.location_master_id ?? null,
           title: dto.title,
           description: dto.description,
           category: dto.category,

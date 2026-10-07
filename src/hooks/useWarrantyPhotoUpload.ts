@@ -4,11 +4,30 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/sonner";
+import { WARRANTY_PHOTOS_BUCKET, warrantyPhotoObjectPath } from "@/lib/warrantyPhotos";
+
+export { WARRANTY_PHOTOS_BUCKET, warrantyPhotoObjectPath };
 
 interface UploadProgress {
   fileName: string;
   progress: number;
   url?: string;
+}
+
+function uploadFailureMessage(fileName: string, message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("bucket not found") || lower.includes("not found")) {
+    return `Nie udało się przesłać ${fileName}. Magazyn zdjęć nie jest skonfigurowany.`;
+  }
+  if (
+    lower.includes("row-level security") ||
+    lower.includes("permission") ||
+    lower.includes("unauthorized") ||
+    lower.includes("403")
+  ) {
+    return `Nie udało się przesłać ${fileName}. Brak uprawnień do zapisu.`;
+  }
+  return `Nie udało się przesłać ${fileName}.`;
 }
 
 export function useWarrantyPhotoUpload() {
@@ -58,22 +77,22 @@ export function useWarrantyPhotoUpload() {
         );
 
         // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from("warranty-photos")
+        const { error } = await supabase.storage
+          .from(WARRANTY_PHOTOS_BUCKET)
           .upload(filePath, file, {
             cacheControl: "3600",
+            contentType: file.type || "image/jpeg",
             upsert: false,
           });
 
         if (error) {
           console.error("Upload error:", error);
-          toast.error(`Nie udało się przesłać ${file.name}`);
+          toast.error(uploadFailureMessage(file.name, error.message));
           continue;
         }
 
-        // Get public URL
         const { data: urlData } = supabase.storage
-          .from("warranty-photos")
+          .from(WARRANTY_PHOTOS_BUCKET)
           .getPublicUrl(filePath);
 
         const publicUrl = urlData.publicUrl;
@@ -104,17 +123,14 @@ export function useWarrantyPhotoUpload() {
 
   const deletePhoto = async (url: string): Promise<boolean> => {
     try {
-      // Extract file path from URL
-      const urlParts = url.split("/warranty-photos/");
-      if (urlParts.length !== 2) {
+      const filePath = warrantyPhotoObjectPath(url);
+      if (!filePath) {
         console.error("Invalid URL format");
         return false;
       }
 
-      const filePath = `warranty-issues/${urlParts[1]}`;
-
       const { error } = await supabase.storage
-        .from("warranty-photos")
+        .from(WARRANTY_PHOTOS_BUCKET)
         .remove([filePath]);
 
       if (error) {

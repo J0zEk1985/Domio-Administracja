@@ -33,6 +33,16 @@ function formatDt(iso: string | null | undefined): string {
   return format(d, "d MMM yyyy, HH:mm", { locale: pl });
 }
 
+function addressCandidateLabels(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row) => {
+      if (!row || typeof row !== "object" || !("label" in row)) return "";
+      return String((row as { label?: unknown }).label ?? "").trim();
+    })
+    .filter((label) => label.length > 0);
+}
+
 function formatMoneyPl(n: number | null | undefined): string {
   if (n == null || Number.isNaN(Number(n))) return "—";
   return new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(Number(n));
@@ -120,6 +130,17 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
             <span className="text-muted-foreground font-normal">Budynek: </span>
             {issue.location_id ? formatIssueBuildingLabel(issue.location) : "Nieprzypisane"}
           </p>
+          {!issue.location_id && issue.reported_address?.trim() ? (
+            <p className="text-sm text-foreground">
+              <span className="text-muted-foreground">Podany adres: </span>
+              {issue.reported_address.trim()}
+            </p>
+          ) : null}
+          {!issue.location_id && addressCandidateLabels(issue.address_candidates).length > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Podobne budynki w Administracji: {addressCandidateLabels(issue.address_candidates).join(", ")}
+            </p>
+          ) : null}
           {showCoordinatorActions && !issue.location_id ? <AssignIssueBuildingControl issue={issue} /> : null}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-foreground">
             <span className="shrink-0">Utworzono: {formatDt(issue.created_at)}</span>
