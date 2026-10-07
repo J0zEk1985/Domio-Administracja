@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Plus } from "lucide-react";
 
@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CommunityRecordSwitcher } from "@/components/communities/CommunityRecordSwitcher";
 import { DeactivateCommunityDialog } from "@/components/communities/DeactivateCommunityDialog";
 import {
   Dialog,
@@ -72,7 +73,9 @@ async function fetchMyOrgId(): Promise<string | null> {
 
 export default function CommunityDetails() {
   const { communityId } = useParams<{ communityId: string }>();
+  const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [switchedName, setSwitchedName] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const deactivateMutation = useDeactivateCommunity();
@@ -102,6 +105,16 @@ export default function CommunityDetails() {
     return <Navigate to="/communities" replace />;
   }
 
+  function handleCommunitySwitch(nextId: string, name: string) {
+    setSwitchedName(name);
+    setAssignOpen(false);
+    setDeactivateOpen(false);
+    setSelectedIds(new Set());
+    if (nextId !== communityId) {
+      navigate(`/communities/${nextId}`);
+    }
+  }
+
   if (orgLoading) {
     return (
       <div className="flex-1 space-y-4 p-6">
@@ -117,35 +130,38 @@ export default function CommunityDetails() {
     );
   }
 
-  if (communityQuery.isLoading) {
-    return (
-      <div className="flex-1 space-y-4 p-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-24 w-full max-w-2xl" />
-      </div>
-    );
-  }
-
-  if (communityQuery.isError || !communityQuery.data) {
+  if (!communityQuery.data && !switchedName) {
     return (
       <div className="flex-1 space-y-4 p-6">
         <Button type="button" variant="ghost" size="sm" className="gap-2 -ml-2 w-fit" asChild>
           <Link to="/communities">
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Wróć do listy
+            Wspólnoty
           </Link>
         </Button>
-        <p className="text-sm text-destructive">
-          {communityQuery.error instanceof Error
-            ? communityQuery.error.message
-            : "Nie znaleziono wspólnoty."}
-        </p>
+        <div className="rounded-xl border border-border/60 bg-card/50 p-6 shadow-sm">
+          <CommunityRecordSwitcher
+            orgId={orgId}
+            communityId={communityId}
+            currentName={switchedName ?? ""}
+            onSwitch={handleCommunitySwitch}
+          />
+        </div>
+        {communityQuery.isLoading ? (
+          <Skeleton className="h-24 w-full max-w-2xl" />
+        ) : (
+          <p className="text-sm text-destructive">
+            {communityQuery.error instanceof Error
+              ? communityQuery.error.message
+              : "Nie znaleziono wspólnoty."}
+          </p>
+        )}
       </div>
     );
   }
 
-  const community = communityQuery.data;
-  const inactive = isCommunityInactive(community.status);
+  const community = communityQuery.data ?? null;
+  const inactive = community ? isCommunityInactive(community.status) : false;
 
   function toggleLocation(id: string) {
     setSelectedIds((prev) => {
@@ -168,6 +184,7 @@ export default function CommunityDetails() {
   }
 
   function onDeactivate() {
+    if (!community) return;
     deactivateMutation.mutate(
       { orgId, communityId: community.id },
       {
@@ -198,19 +215,30 @@ export default function CommunityDetails() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">{community.name}</h1>
-                <Badge variant={inactive ? "secondary" : "default"}>
-                  {formatCommunityStatus(community.status)}
-                </Badge>
-                {rowNeedsVerification(verificationAlerts, "community", community.id, community.nip) ? (
+                <CommunityRecordSwitcher
+                  orgId={orgId}
+                  communityId={communityId}
+                  currentName={community?.name ?? switchedName ?? ""}
+                  onSwitch={handleCommunitySwitch}
+                />
+                {community ? (
+                  <Badge variant={inactive ? "secondary" : "default"}>
+                    {formatCommunityStatus(community.status)}
+                  </Badge>
+                ) : null}
+                {community && rowNeedsVerification(verificationAlerts, "community", community.id, community.nip) ? (
                   <VerificationNeededBadge />
                 ) : null}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                NIP: <span className="text-foreground/90 tabular-nums">{community.nip?.trim() || "—"}</span>
-              </p>
+              {community ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  NIP: <span className="text-foreground/90 tabular-nums">{community.nip?.trim() || "—"}</span>
+                </p>
+              ) : (
+                <Skeleton className="mt-2 h-4 w-40" />
+              )}
             </div>
-            {inactive ? null : (
+            {community && !inactive ? (
               <Button
                 type="button"
                 variant="outline"
@@ -219,7 +247,7 @@ export default function CommunityDetails() {
               >
                 Dezaktywuj
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -236,6 +264,7 @@ export default function CommunityDetails() {
       </div>
 
       <CollapsibleSection title="Zarządzanie">
+        {community && !locationsQuery.isLoading ? (
         <Tabs defaultValue="contracts-policies" className="w-full">
           <TabsList className="flex h-auto min-h-10 w-full flex-wrap justify-start gap-1 p-1">
             <TabsTrigger value="contracts-policies" className="shrink-0">
@@ -402,9 +431,20 @@ export default function CommunityDetails() {
             </TabsContent>
           ) : null}
         </Tabs>
+        ) : communityQuery.isError ? (
+          <p className="text-sm text-destructive">
+            {communityQuery.error instanceof Error
+              ? communityQuery.error.message
+              : "Nie znaleziono wspólnoty."}
+          </p>
+        ) : (
+          <Skeleton className="h-40 w-full" />
+        )}
       </CollapsibleSection>
 
       <CollapsibleSection title="Podstawowe">
+        {community ? (
+        <>
         <CommunityDomainEditor
           community={community}
           orgId={orgId}
@@ -478,6 +518,16 @@ export default function CommunityDetails() {
           </div>
         )}
         </section>
+        </>
+        ) : communityQuery.isError ? (
+          <p className="text-sm text-destructive">
+            {communityQuery.error instanceof Error
+              ? communityQuery.error.message
+              : "Nie znaleziono wspólnoty."}
+          </p>
+        ) : (
+          <Skeleton className="h-40 w-full" />
+        )}
       </CollapsibleSection>
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
@@ -543,7 +593,7 @@ export default function CommunityDetails() {
 
       <DeactivateCommunityDialog
         open={deactivateOpen}
-        communityName={community.name}
+        communityName={community?.name ?? switchedName ?? ""}
         pending={deactivateMutation.isPending}
         onOpenChange={setDeactivateOpen}
         onConfirm={onDeactivate}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, ListChecks, Trash2, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { usePropertyTasksCanEdit } from "@/hooks/usePropertyTasks";
 import { useIsOrgOwner } from "@/hooks/useIsOrgOwner";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralInfoForm";
+import { PropertyRecordSwitcher } from "@/components/property/PropertyRecordSwitcher";
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyAutomationsTab } from "@/components/property/PropertyAutomationsTab";
 import { PropertyLocalInspectionsTab } from "@/components/property/PropertyLocalInspectionsTab";
@@ -36,20 +37,6 @@ import { PropertyCleaningWorkScopeTab } from "@/components/property/PropertyClea
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-
-function PropertyDetailsSkeleton() {
-  return (
-    <div className="flex-1 space-y-6 p-6">
-      <Skeleton className="h-9 w-56" />
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-72" />
-        <Skeleton className="h-4 w-64" />
-      </div>
-      <Skeleton className="h-10 w-full max-w-2xl" />
-      <Skeleton className="h-48 w-full rounded-lg" />
-    </div>
-  );
-}
 
 function AdministratorsSkeleton({ showActions = true }: { showActions?: boolean }) {
   return (
@@ -87,6 +74,7 @@ function AdministratorsSkeleton({ showActions = true }: { showActions?: boolean 
 export default function PropertyDetails() {
   const { id: propertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [switchedName, setSwitchedName] = useState<string | null>(null);
   const { data: ownerAccess } = useIsOrgOwner();
   const isOwner = ownerAccess?.isOwner === true;
   const membershipRole = ownerAccess?.membershipRole?.trim().toLowerCase() ?? "";
@@ -121,11 +109,14 @@ export default function PropertyDetails() {
     return <Navigate to="/properties" replace />;
   }
 
-  if (propertyQuery.isLoading) {
-    return <PropertyDetailsSkeleton />;
+  function handlePropertySwitch(nextId: string, name: string) {
+    setSwitchedName(name);
+    if (nextId !== propertyId) {
+      navigate(`/properties/${nextId}`);
+    }
   }
 
-  if (propertyQuery.isError) {
+  if (!propertyQuery.data && !switchedName) {
     return (
       <div className="flex-1 space-y-4 p-6">
         <Button
@@ -138,24 +129,33 @@ export default function PropertyDetails() {
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Wróć do listy budynków
         </Button>
-        <Alert variant="destructive">
-          <AlertDescription>
-            {propertyQuery.error instanceof Error
-              ? propertyQuery.error.message
-              : "Nie udało się wczytać danych nieruchomości."}
-          </AlertDescription>
-        </Alert>
+        <PropertyRecordSwitcher
+          propertyId={propertyId}
+          currentName={switchedName ?? ""}
+          onSwitch={handlePropertySwitch}
+        />
+        {propertyQuery.isLoading ? (
+          <>
+            <Skeleton className="h-10 w-full max-w-2xl" />
+            <Skeleton className="h-48 w-full rounded-lg" />
+          </>
+        ) : null}
+        {propertyQuery.isError ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {propertyQuery.error instanceof Error
+                ? propertyQuery.error.message
+                : "Nie udało się wczytać danych nieruchomości."}
+            </AlertDescription>
+          </Alert>
+        ) : null}
       </div>
     );
   }
 
-  const property = propertyQuery.data;
-  if (!property) {
-    return null;
-  }
-
-  const displayName = propertyDisplayName(property.name);
-  const heading = displayName ?? property.address;
+  const property = propertyQuery.data ?? null;
+  const displayName = property ? propertyDisplayName(property.name) : null;
+  const heading = property ? (displayName ?? property.address) : (switchedName ?? "");
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -170,11 +170,25 @@ export default function PropertyDetails() {
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Wróć do listy budynków
         </Button>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{heading}</h1>
-        {displayName ? <p className="text-sm text-muted-foreground mt-1">{property.address}</p> : null}
+        <PropertyRecordSwitcher
+          propertyId={propertyId}
+          currentName={heading}
+          onSwitch={handlePropertySwitch}
+        />
+        {property && displayName ? <p className="text-sm text-muted-foreground mt-1">{property.address}</p> : null}
+        {propertyQuery.isError ? (
+          <Alert variant="destructive" className="mt-4">
+            <AlertDescription>
+              {propertyQuery.error instanceof Error
+                ? propertyQuery.error.message
+                : "Nie udało się wczytać danych nieruchomości."}
+            </AlertDescription>
+          </Alert>
+        ) : null}
       </div>
 
       <CollapsibleSection title="Zarządzanie">
+      {property ? (
       <Tabs defaultValue="team" className="w-full">
         <TabsList className="grid h-auto w-full max-w-7xl grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-5">
           <TabsTrigger value="team" className="text-xs sm:text-sm">
@@ -286,9 +300,15 @@ export default function PropertyDetails() {
           <PropertyLocalInspectionsTab locationId={property.id} />
         </TabsContent>
       </Tabs>
+      ) : propertyQuery.isError ? (
+        <p className="text-sm text-destructive">Nie udało się wczytać danych budynku.</p>
+      ) : (
+        <Skeleton className="h-40 w-full" />
+      )}
       </CollapsibleSection>
 
       <CollapsibleSection title="Podstawowe">
+      {property ? (
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-1 p-1">
           <TabsTrigger value="general" className="text-xs sm:text-sm">
@@ -400,6 +420,11 @@ export default function PropertyDetails() {
           </Card>
         </TabsContent>
       </Tabs>
+      ) : propertyQuery.isError ? (
+        <p className="text-sm text-destructive">Nie udało się wczytać danych budynku.</p>
+      ) : (
+        <Skeleton className="h-40 w-full" />
+      )}
       </CollapsibleSection>
     </div>
   );

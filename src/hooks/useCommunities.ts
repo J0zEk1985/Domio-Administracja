@@ -36,7 +36,10 @@ export function useCommunity(communityId: string | undefined, orgId: string | nu
   });
 }
 
-export function useCommunities(orgId: string | null) {
+export function useCommunities(
+  orgId: string | null,
+  options?: { enabled?: boolean; staleTime?: number },
+) {
   return useQuery({
     queryKey: communityQueryKeys.list(orgId ?? "__none__"),
     queryFn: async (): Promise<CommunityRow[]> => {
@@ -53,7 +56,8 @@ export function useCommunities(orgId: string | null) {
       }
       return data ?? [];
     },
-    enabled: orgId !== null && orgId !== "",
+    enabled: (options?.enabled ?? true) && orgId !== null && orgId !== "",
+    staleTime: options?.staleTime,
   });
 }
 
