@@ -58,7 +58,6 @@ import { PropertyContractsTab } from "@/components/property/PropertyContractsTab
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -237,24 +236,45 @@ export default function CommunityDetails() {
 
       <CollapsibleSection title="Zarządzanie">
         <Tabs defaultValue="contracts-policies" className="w-full">
-          <TabsList
-            className={cn(
-              "grid h-auto w-full max-w-6xl grid-cols-2 gap-1 p-1 sm:grid-cols-4",
-              isOrgOwner ? "xl:grid-cols-12" : "xl:grid-cols-11",
-            )}
-          >
-            <TabsTrigger value="contracts-policies">Umowy i Polisy</TabsTrigger>
-            <TabsTrigger value="tasks">Zadania</TabsTrigger>
-            <TabsTrigger value="inspections">Przeglądy</TabsTrigger>
-            <TabsTrigger value="team">Zespół</TabsTrigger>
-            <TabsTrigger value="orders">Zamówienia</TabsTrigger>
-            <TabsTrigger value="announcements">Ogłoszenia</TabsTrigger>
-            <TabsTrigger value="issues">Zgłoszenia</TabsTrigger>
-            <TabsTrigger value="warranty">Usterki deweloperskie</TabsTrigger>
-            <TabsTrigger value="resources">Zasoby</TabsTrigger>
-            <TabsTrigger value="waste">Gospodarka odpadami</TabsTrigger>
-            <TabsTrigger value="estate">Osiedle</TabsTrigger>
-            {isOrgOwner ? <TabsTrigger value="succession">Sukcesja</TabsTrigger> : null}
+          <TabsList className="flex h-auto min-h-10 w-full flex-wrap justify-start gap-1 p-1">
+            <TabsTrigger value="contracts-policies" className="shrink-0">
+              Umowy i Polisy
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="shrink-0">
+              Zadania
+            </TabsTrigger>
+            <TabsTrigger value="inspections" className="shrink-0">
+              Przeglądy
+            </TabsTrigger>
+            <TabsTrigger value="team" className="shrink-0">
+              Zespół
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="shrink-0">
+              Zamówienia
+            </TabsTrigger>
+            <TabsTrigger value="announcements" className="shrink-0">
+              Ogłoszenia
+            </TabsTrigger>
+            <TabsTrigger value="issues" className="shrink-0">
+              Zgłoszenia
+            </TabsTrigger>
+            <TabsTrigger value="warranty" className="shrink-0">
+              Usterki deweloperskie
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="shrink-0">
+              Zasoby
+            </TabsTrigger>
+            <TabsTrigger value="waste" className="shrink-0">
+              Gospodarka odpadami
+            </TabsTrigger>
+            <TabsTrigger value="estate" className="shrink-0">
+              Osiedle
+            </TabsTrigger>
+            {isOrgOwner ? (
+              <TabsTrigger value="succession" className="shrink-0">
+                Sukcesja
+              </TabsTrigger>
+            ) : null}
           </TabsList>
 
           <TabsContent value="contracts-policies" className="mt-4">
