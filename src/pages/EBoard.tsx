@@ -29,6 +29,8 @@ import {
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEBoardMessages, type EBoardMessageListItem } from "@/hooks/useEBoardMessages";
 import { applyEBoardMessageList, type EBoardSortKey } from "@/lib/eboardMessageList";
+import { RequireAddon } from "@/components/billing/RequireAddon";
+import { useAddonAccess } from "@/hooks/useAddonAccess";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 
@@ -92,12 +94,16 @@ export default function EBoard() {
     queryFn: fetchMyOrgId,
   });
 
-  const { data: rows, isPending, isError } = useEBoardMessages(orgId ?? null);
   const { data: communities = [] } = useCommunities(orgId ?? null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EBoardMessageListItem | null>(null);
   const [displayLinkCommunityId, setDisplayLinkCommunityId] = useState("");
+  const selectedCommunityId = displayLinkCommunityId || communities[0]?.id || null;
+  const homeAccess = useAddonAccess("home", selectedCommunityId);
+  const { data: rows, isPending, isError } = useEBoardMessages(
+    homeAccess.isActive ? (orgId ?? null) : null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<EBoardSortKey>("created_desc");
 
@@ -194,12 +200,24 @@ export default function EBoard() {
               </Button>
             </div>
           ) : null}
-          <Button type="button" onClick={openCreate}>
-            + Nowe ogłoszenie
-          </Button>
+          {homeAccess.isActive ? (
+            <Button type="button" onClick={openCreate}>
+              + Nowe ogłoszenie
+            </Button>
+          ) : null}
         </div>
       </div>
 
+      {!selectedCommunityId || homeAccess.isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      ) : !homeAccess.isActive ? (
+        <RequireAddon module="home" communityId={selectedCommunityId} featureName="Tablica ogłoszeń">
+          {null}
+        </RequireAddon>
+      ) : (
       <div className="space-y-3">
         <EBoardMessagesToolbar
           query={searchQuery}
@@ -282,6 +300,7 @@ export default function EBoard() {
         )}
       </div>
       </div>
+      )}
 
       <CommunityCreateAnnouncementDialog
         open={dialogOpen}

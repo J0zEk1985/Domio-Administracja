@@ -36,8 +36,17 @@ import {
 } from "@/types/developer-warranty";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { RequireAddon } from "@/components/billing/RequireAddon";
 
 export default function DeveloperWarranty() {
+  return (
+    <RequireAddon module="developer_warranty" featureName="Usterki deweloperskie">
+      <DeveloperWarrantyContent />
+    </RequireAddon>
+  );
+}
+
+function DeveloperWarrantyContent() {
   const [selectedCommunity, setSelectedCommunity] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<DeveloperWarrantyIssueStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");

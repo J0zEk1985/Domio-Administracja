@@ -58,6 +58,7 @@ import { PropertyContractsTab } from "@/components/property/PropertyContractsTab
 import { PropertyTasksTabWithAccess } from "@/components/property/PropertyTasksTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
+import { RequireAddon } from "@/components/billing/RequireAddon";
 
 async function fetchMyOrgId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("get_my_org_id_safe");
@@ -335,17 +336,21 @@ export default function CommunityDetails() {
           </TabsContent>
 
           <TabsContent value="orders" className="mt-4">
-            <CommunityOrdersTab communityId={communityId!} buildings={assigned} />
+            <RequireAddon module="home" communityId={communityId} featureName="Zamówienia z Home">
+              <CommunityOrdersTab communityId={communityId!} buildings={assigned} />
+            </RequireAddon>
           </TabsContent>
 
           <TabsContent value="announcements" className="mt-4">
-            <CommunityAnnouncementReviewTab
-              communityId={communityId!}
-              communityName={community.name}
-              buildingIds={buildingIds}
-              buildings={assigned}
-              canManage={!inactive}
-            />
+            <RequireAddon module="home" communityId={communityId} featureName="Ogłoszenia dla mieszkańców">
+              <CommunityAnnouncementReviewTab
+                communityId={communityId!}
+                communityName={community.name}
+                buildingIds={buildingIds}
+                buildings={assigned}
+                canManage={!inactive}
+              />
+            </RequireAddon>
           </TabsContent>
 
           <TabsContent value="issues" className="mt-4">
@@ -353,22 +358,24 @@ export default function CommunityDetails() {
           </TabsContent>
 
           <TabsContent value="warranty" className="mt-4">
-            {orgId ? (
-              <CommunityWarrantyTab
-                communityId={communityId!}
-                communityName={community.name}
-                orgId={orgId}
-                canManage={!inactive}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Ładowanie...
-              </p>
-            )}
+            <RequireAddon module="developer_warranty" featureName="Usterki deweloperskie">
+              {orgId ? (
+                <CommunityWarrantyTab
+                  communityId={communityId!}
+                  communityName={community.name}
+                  orgId={orgId}
+                  canManage={!inactive}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Ładowanie...</p>
+              )}
+            </RequireAddon>
           </TabsContent>
 
           <TabsContent value="resources" className="mt-4">
-            <CommunitySharedResourcesTab communityId={communityId!} buildings={assigned} />
+            <RequireAddon module="home" communityId={communityId} featureName="Zasoby dla mieszkańców">
+              <CommunitySharedResourcesTab communityId={communityId!} buildings={assigned} />
+            </RequireAddon>
           </TabsContent>
 
           <TabsContent value="estate" className="mt-4">
@@ -376,15 +383,17 @@ export default function CommunityDetails() {
           </TabsContent>
 
           <TabsContent value="waste" className="mt-4">
-            {orgId ? (
-              <CommunityWasteTab
-                communityId={communityId!}
-                orgId={orgId}
-                buildings={assigned}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Ładowanie...</p>
-            )}
+            <RequireAddon module="home" communityId={communityId} featureName="Gospodarka odpadami">
+              {orgId ? (
+                <CommunityWasteTab
+                  communityId={communityId!}
+                  orgId={orgId}
+                  buildings={assigned}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Ładowanie...</p>
+              )}
+            </RequireAddon>
           </TabsContent>
 
           {isOrgOwner ? (
@@ -409,9 +418,13 @@ export default function CommunityDetails() {
             />
           }
           homeBoard={
-            orgId ? (
-              <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
-            ) : null
+            <RequireAddon module="home" communityId={communityId} featureName="Tablica mieszkańca">
+              {orgId ? (
+                <CommunityContactBoardCard communityId={communityId} orgId={orgId} readOnly={inactive} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Ładowanie...</p>
+              )}
+            </RequireAddon>
           }
         />
 
