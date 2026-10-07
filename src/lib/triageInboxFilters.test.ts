@@ -114,4 +114,16 @@ describe("applyTriageInboxFilters", () => {
     });
     expect(filtered.map((i) => i.id)).toEqual(["open", "done", "rej", "can"]);
   });
+
+  it("Nieprzypisane keeps only tickets without a building", () => {
+    const issues = [
+      issue({ id: "loose", location_id: null, status: "new" }),
+      issue({ id: "placed", location_id: "loc-1", status: "new" }),
+    ];
+    const filtered = applyTriageInboxFilters(issues, {
+      ...DEFAULT_TRIAGE_INBOX_FILTERS,
+      status: "unassigned",
+    });
+    expect(filtered.map((i) => i.id)).toEqual(["loose"]);
+  });
 });

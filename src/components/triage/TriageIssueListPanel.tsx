@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS: { value: TriageInboxStatusFilter; label: string }[] = [
   { value: "all", label: "Wszystkie" },
+  { value: "unassigned", label: "Nieprzypisane / Do weryfikacji" },
   { value: "awaiting_approval", label: "Do akceptacji" },
   { value: "on_marketplace", label: "Na giełdzie" },
   { value: "in_progress", label: "W trakcie realizacji" },
@@ -272,7 +273,7 @@ export function TriageIssueListPanel({
           value={filters.status}
           onValueChange={(v) => onFiltersChange({ ...filters, status: v as TriageInboxStatusFilter })}
         >
-          <SelectTrigger className="h-9 w-[min(100%,14rem)] shrink-0 text-xs">
+          <SelectTrigger className="h-9 w-[min(100%,16rem)] shrink-0 text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

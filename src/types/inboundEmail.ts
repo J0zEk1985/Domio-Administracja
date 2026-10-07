@@ -49,6 +49,7 @@ export interface ResolveInboundMailboxResult {
   ai_parses_limit?: number;
   ai_parses_used?: number;
   ai_parses_remaining?: number;
+  ai_prepaid_balance?: number;
   allow_ai_parse?: boolean;
 }
 

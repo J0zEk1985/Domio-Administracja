@@ -20,6 +20,7 @@ import { IssuePhotoGallery } from "@/components/triage/IssuePhotoGallery";
 import { IssueAfterPhotosStrip } from "@/components/triage/IssueAfterPhotosStrip";
 import { IssueProtocolDialog } from "@/components/triage/IssueProtocolDialog";
 import { IssueCategorySelect } from "@/components/triage/IssueCategorySelect";
+import { AssignIssueBuildingControl } from "@/components/triage/AssignIssueBuildingControl";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -117,8 +118,9 @@ export function IssueDetailsPanel({ issue, variant = "triage" }: IssueDetailsPan
           </div>
           <p className="text-sm font-medium text-foreground">
             <span className="text-muted-foreground font-normal">Budynek: </span>
-            {formatIssueBuildingLabel(issue.location)}
+            {issue.location_id ? formatIssueBuildingLabel(issue.location) : "Nieprzypisane"}
           </p>
+          {showCoordinatorActions && !issue.location_id ? <AssignIssueBuildingControl issue={issue} /> : null}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-foreground">
             <span className="shrink-0">Utworzono: {formatDt(issue.created_at)}</span>
             <span className="inline-flex min-w-0 items-center gap-2">

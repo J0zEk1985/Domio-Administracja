@@ -3,6 +3,7 @@ import { Copy, Mail, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from "@/lib/supabase";
 import type { InboundIngestMode, InboundModule } from "@/types/inboundEmail";
+import { InboundMailboxGuide, type AiQuotaSnapshot } from "@/components/inbound/InboundMailboxGuide";
 
 const INBOUND_DOMAIN =
   (import.meta.env.VITE_INBOUND_MAIL_DOMAIN as string | undefined)?.trim() || 'domio.com.pl'
@@ -23,12 +24,7 @@ type MailboxRow = {
   is_enabled: boolean
 }
 
-type Quota = {
-  ai_parses_limit: number
-  ai_parses_used: number
-  ai_parses_remaining: number
-  has_ai_auto: boolean
-}
+type Quota = AiQuotaSnapshot;
 
 type Props = {
   orgId: string
@@ -141,10 +137,6 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
     }
   }
 
-  const used = quota?.ai_parses_used ?? 0
-  const limit = quota?.ai_parses_limit ?? 20
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
-
   return (
     <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -154,8 +146,8 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
             Zgłoszenia e-mail
           </h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Promujcie wzór zgłoszenia. W planie bazowym redagujecie mail i wysyłacie na alias Domio.
-            Forward od razu wymaga planu z automatyczną analizą.
+            Alias przyjmuje każdy mail organizacji. Bez rozpoznanego budynku zgłoszenie czeka w Triage jako
+            nieprzypisane.
           </p>
         </div>
         <button
@@ -168,17 +160,7 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
         </button>
       </div>
 
-      {quota ? (
-        <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
-          <p className="text-sm font-medium">
-            Analizy AI w tym miesiącu: {used} / {limit}
-            {quota.has_ai_auto ? ' · forward automatyczny dostępny' : ' · próbka planu bazowego'}
-          </p>
-          <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
-            <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      ) : null}
+      <InboundMailboxGuide quota={quota} />
 
       {loading ? <p className="text-sm text-muted-foreground">Ładowanie skrzynek…</p> : null}
       {loadError ? (

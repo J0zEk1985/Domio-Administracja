@@ -43,7 +43,7 @@ export type TriageIssue = Omit<PropertyIssueRow, "status"> &
   PropertyIssueLifecycleFields &
   PropertyIssueProtocolFields & {
     status: IssueStatus | null;
-    location: { name: string | null; address: string | null } | null;
+    location: { name: string | null; address: string | null; is_admin_active?: boolean | null } | null;
     reporter: { full_name: string | null } | null;
     organization: { name: string | null } | null;
     delegated_vendor: { name: string | null } | null;
@@ -108,7 +108,7 @@ async function fetchTriageIssues(locationIds?: readonly string[]): Promise<Triag
     .select(
       `
       *,
-      location:cleaning_locations!inner(name, address),
+      location:cleaning_locations(name, address, is_admin_active),
       reporter:profiles!property_issues_reporter_id_fkey(full_name),
       organization:organizations!property_issues_org_id_fkey(name),
       delegated_vendor:vendor_partners!property_issues_delegated_vendor_id_fkey(name),
@@ -116,7 +116,6 @@ async function fetchTriageIssues(locationIds?: readonly string[]): Promise<Triag
     `,
     )
     .eq("org_id", String(orgId))
-    .eq("location.is_admin_active", true)
     .or(ADMIN_VISIBLE_ISSUES_OR)
     .or(ADMIN_HANDOFF_FROM_SERWIS_OR);
 
@@ -138,7 +137,11 @@ async function fetchTriageIssues(locationIds?: readonly string[]): Promise<Triag
     throw error;
   }
 
-  return mapTriageRows(data as unknown[] | null).filter(isIssueVisibleInAdminModule);
+  return mapTriageRows(data as unknown[] | null).filter((row) => {
+    if (!isIssueVisibleInAdminModule(row)) return false;
+    if (!row.location_id) return true;
+    return row.location?.is_admin_active === true;
+  });
 }
 
 export function useTriageIssues(options: boolean | UseTriageIssuesOptions = true) {

@@ -55,6 +55,19 @@ export default function TriageInbox() {
           Priorytetyzuj zgłoszenia serwisowe: przeglądaj kolejkę, oglądaj zdjęcia i steruj statusem bez
           przełączania kontekstu.
         </p>
+        <details className="rounded-lg border border-border/70 bg-muted/20 px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium">Wzorzec maila bez analizy AI</summary>
+          <p className="mt-2 text-muted-foreground">
+            Gdy limit AI jest wyczerpany, nadawca powinien wysłać wiadomość z tymi etykietami. Mail bez
+            dopasowanego budynku i tak pojawi się w filtrze „Nieprzypisane / Do weryfikacji”.
+          </p>
+          <pre className="mt-2 overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs leading-relaxed">{`Adres: ul. Przykładowa 1, 00-001 Warszawa
+Opis: Cieknący kran w łazience na 2. piętrze
+Kategoria: Hydrauliczna
+Priorytet: medium
+Zgłaszający: Jan Kowalski
+Telefon: 500600700`}</pre>
+        </details>
       </header>
 
       <PanelGroup direction="horizontal" className="min-h-0 flex-1 rounded-xl border border-border/60 bg-card/30">

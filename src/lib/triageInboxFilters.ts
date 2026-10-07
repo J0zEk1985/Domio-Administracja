@@ -9,7 +9,7 @@ import type { DateRange } from "react-day-picker";
 import { endOfDay, startOfDay } from "date-fns";
 
 /** Status dropdown — coordinator buckets, not raw DB enum values. */
-export type TriageInboxStatusFilter = "all" | IssueCoordinatorBucket;
+export type TriageInboxStatusFilter = "all" | IssueCoordinatorBucket | "unassigned";
 
 export type TriageInboxBuildingFilter = "all" | string;
 
@@ -34,6 +34,7 @@ export const DEFAULT_TRIAGE_INBOX_FILTERS: TriageInboxFiltersState = {
 
 function matchesStatusFilter(issue: TriageIssue, status: TriageInboxStatusFilter): boolean {
   if (status === "all") return true;
+  if (status === "unassigned") return !issue.location_id;
   if (status === "on_marketplace") return isMarketplaceWaiting(issue);
   return issueCoordinatorBucket(issue) === status;
 }

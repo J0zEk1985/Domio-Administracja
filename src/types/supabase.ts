@@ -4284,6 +4284,9 @@ export type Database = {
         Returns: Database["public"]["Tables"]["org_inbound_mailboxes"]["Row"][]
       }
       get_org_ai_quota: { Args: { p_org_id: string }; Returns: Json }
+      grant_ai_prepaid_credits: { Args: { p_org_id: string; p_amount: number }; Returns: Json }
+      list_inbound_location_choices: { Args: { p_org_id: string }; Returns: Json }
+      assign_issue_location: { Args: { p_issue_id: string; p_location_id: string }; Returns: Json }
       ingest_email_issue: {
         Args: {
           p_to_address: string
