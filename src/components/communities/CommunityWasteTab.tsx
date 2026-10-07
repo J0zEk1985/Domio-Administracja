@@ -24,7 +24,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Plus, RefreshCw, Trash2, AlertCircle, Download, Edit } from "lucide-react";
+import { Calendar, Plus, RefreshCw, Trash2, AlertCircle, Edit } from "lucide-react";
+import { AddWasteScheduleSeriesDialog } from "@/components/communities/AddWasteScheduleSeriesDialog";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { getWasteTypeConfig } from "@/lib/wasteConstants";
@@ -42,6 +43,7 @@ type Props = {
 export function CommunityWasteTab({ communityId, orgId, buildings }: Props) {
   const primaryLocation = buildings[0];
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [seriesDialogOpen, setSeriesDialogOpen] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<WasteCollectionSchedule | null>(null);
 
@@ -122,12 +124,18 @@ export function CommunityWasteTab({ communityId, orgId, buildings }: Props) {
                 Zarządzaj terminami wywozu odpadów dla wspólnoty
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <AddScheduleDialog
                 locationId={primaryLocation.id}
                 orgId={orgId}
                 open={addDialogOpen}
                 onOpenChange={setAddDialogOpen}
+              />
+              <AddWasteScheduleSeriesDialog
+                locationId={primaryLocation.id}
+                orgId={orgId}
+                open={seriesDialogOpen}
+                onOpenChange={setSeriesDialogOpen}
               />
               <SyncFromCityDialog
                 locationId={primaryLocation.id}

@@ -17,6 +17,7 @@ import type {
   AddWarrantyIssueCommentDto,
   UpdateCommunityWarrantySettingsDto,
   CreateDeveloperAccessResponse,
+  DeleteDeveloperAccessResponse,
   WarrantyIssueFilters,
 } from "@/types/developer-warranty";
 
@@ -109,6 +110,67 @@ export function useDeactivateDeveloperAccess() {
         .eq("id", accessId);
       
       if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: developerWarrantyKeys.access(variables.communityId),
+      });
+    },
+  });
+}
+
+/**
+ * Restore a deactivated developer. PIN and portal link stay unchanged.
+ * Warranty issues are not modified.
+ */
+export function useRestoreDeveloperAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ accessId, communityId }: { accessId: string; communityId: string }) => {
+      const { error } = await supabase
+        .from("developer_accesses")
+        .update({
+          deactivated_at: null,
+          deactivated_by: null,
+        })
+        .eq("id", accessId);
+
+      if (error) throw error;
+      return { communityId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: developerWarrantyKeys.access(variables.communityId),
+      });
+    },
+  });
+}
+
+/**
+ * Permanently remove developer portal access.
+ * The RPC deletes only developer_accesses and leaves warranty issues in place.
+ */
+export function useDeleteDeveloperAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ accessId, communityId }: { accessId: string; communityId: string }) => {
+      const { data, error } = await supabase.rpc("delete_developer_access", {
+        p_access_id: accessId,
+      });
+
+      if (error) throw error;
+
+      const response = data as DeleteDeveloperAccessResponse;
+      if (!response?.ok) {
+        throw new Error(response?.error || "Failed to delete developer access");
+      }
+
+      return {
+        communityId,
+        preservedIssueCount: response.preserved_issue_count ?? 0,
+      };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

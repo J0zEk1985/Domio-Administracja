@@ -16,9 +16,11 @@ import {
   fetchWasteGuide,
   fetchPopularWasteGuideItems,
   createWasteSchedule,
+  createWasteSchedules,
   updateWasteSchedule,
   deleteWasteSchedule,
   syncWasteScheduleFromCity,
+  type CreateWasteScheduleInput,
 } from "@/lib/wasteManagementApi";
 import { getCityAdapter } from "@/lib/adapters/LodzWasteAdapter";
 
@@ -154,6 +156,22 @@ export function useCreateWasteSchedule() {
       });
       void queryClient.invalidateQueries({
         queryKey: wasteKeys.upcomingSchedule(variables.locationId),
+      });
+    },
+  });
+}
+
+/**
+ * Hook do zbiorczego dodawania terminów odbioru (admin)
+ */
+export function useCreateWasteSchedules() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (schedules: CreateWasteScheduleInput[]) => createWasteSchedules(schedules),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: wasteKeys.schedules(),
       });
     },
   });

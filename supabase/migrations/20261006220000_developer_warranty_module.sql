@@ -343,7 +343,7 @@ CREATE OR REPLACE FUNCTION public.activate_developer_access(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   v_access_id uuid;
@@ -403,7 +403,7 @@ CREATE OR REPLACE FUNCTION public.developer_portal_login(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   v_access record;

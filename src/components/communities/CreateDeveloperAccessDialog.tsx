@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, AlertCircle, CheckCircle2, Copy } from "lucide-react";
+import { Mail, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useCreateDeveloperAccess } from "@/hooks/useDeveloperWarranty";
 import { toast } from "@/components/ui/sonner";
@@ -57,7 +56,7 @@ export function CreateDeveloperAccessDialog({
   communityId,
   communityName,
 }: CreateDeveloperAccessDialogProps) {
-  const [activationUrl, setActivationUrl] = useState<string | null>(null);
+  const [created, setCreated] = useState(false);
   const createMutation = useCreateDeveloperAccess();
 
   const form = useForm<FormValues>({
@@ -70,20 +69,14 @@ export function CreateDeveloperAccessDialog({
 
   const handleSubmit = async (values: FormValues) => {
     try {
-      const response = await createMutation.mutateAsync({
+      await createMutation.mutateAsync({
         community_id: communityId,
         developer_email: values.developer_email,
         developer_name: values.developer_name,
       });
 
-      if (response.activation_url) {
-        // For development/testing - show activation URL
-        // In production, this would be sent via n8n email automation
-        const fullUrl = `${window.location.origin}${response.activation_url}`;
-        setActivationUrl(fullUrl);
-        
-        toast.success("Dostęp dewelopera został utworzony");
-      }
+      setCreated(true);
+      toast.success("Dostęp dewelopera został utworzony. Link aktywacyjny został wysłany.");
     } catch (error: any) {
       console.error("Błąd tworzenia dostępu dewelopera:", error);
       
@@ -101,15 +94,8 @@ export function CreateDeveloperAccessDialog({
 
   const handleClose = () => {
     form.reset();
-    setActivationUrl(null);
+    setCreated(false);
     onOpenChange(false);
-  };
-
-  const handleCopyUrl = () => {
-    if (activationUrl) {
-      navigator.clipboard.writeText(activationUrl);
-      toast.success("Link aktywacyjny skopiowany do schowka");
-    }
   };
 
   return (
@@ -122,7 +108,7 @@ export function CreateDeveloperAccessDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!activationUrl ? (
+        {!created ? (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <Alert>
@@ -182,32 +168,10 @@ export function CreateDeveloperAccessDialog({
           <div className="space-y-4">
             <Alert className="bg-green-500/10 border-green-500/20">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-600">Dostęp utworzony pomyślnie!</AlertTitle>
+              <AlertTitle className="text-green-600">Dostęp utworzony pomyślnie</AlertTitle>
               <AlertDescription className="text-green-600/80">
-                Link aktywacyjny został wygenerowany. W środowisku produkcyjnym zostanie wysłany 
-                automatycznie na adres e-mail dewelopera.
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Link aktywacyjny (development)</Label>
-              <div className="flex gap-2">
-                <Input value={activationUrl} readOnly className="font-mono text-xs" />
-                <Button size="icon" variant="outline" onClick={handleCopyUrl}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Link wygasa za 7 dni od momentu utworzenia
-              </p>
-            </div>
-
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Produkcja: Automatyczna wysyłka e-mail</AlertTitle>
-              <AlertDescription>
-                W środowisku produkcyjnym link zostanie automatycznie wysłany przez n8n na adres 
-                e-mail dewelopera. Administrator nie zobaczy linku aktywacyjnego.
+                Link aktywacyjny został wysłany na adres e-mail dewelopera.
+                Po kliknięciu w link deweloper ustawi swój PIN.
               </AlertDescription>
             </Alert>
 

@@ -44,6 +44,8 @@ import { useCommunities } from "@/hooks/useCommunities";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
+const NO_BUILDING = "__none__";
+
 const CATEGORIES = [
   "Hydraulika",
   "Elektryka",
@@ -176,7 +178,12 @@ export function CreateWarrantyIssueDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) handleClose();
+      }}
+    >
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Dodaj usterkę deweloperską</DialogTitle>
@@ -317,15 +324,20 @@ export function CreateWarrantyIssueDialog({
                   {locationsLoading ? (
                     <Skeleton className="h-10 w-full" />
                   ) : (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(value) =>
+                        field.onChange(value === NO_BUILDING ? "" : value)
+                      }
+                      value={field.value || NO_BUILDING}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Wybierz budynek (opcjonalnie)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nie dotyczy konkretnego budynku</SelectItem>
-                        {locations?.map((location) => (
+                        <SelectItem value={NO_BUILDING}>Nie dotyczy konkretnego budynku</SelectItem>
+                        {locations?.filter((location) => location.id).map((location) => (
                           <SelectItem key={location.id} value={location.id}>
                             {location.address}
                           </SelectItem>

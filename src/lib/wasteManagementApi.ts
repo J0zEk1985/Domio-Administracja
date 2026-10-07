@@ -120,6 +120,94 @@ export async function createWasteSchedule(
   return mapScheduleRowToSchedule(data as WasteCollectionScheduleRow);
 }
 
+export type CreateWasteScheduleInput = {
+  locationId: string;
+  orgId: string;
+  wasteType: WasteType;
+  collectionDate: string;
+  collectionTimeFrom?: string;
+  collectionTimeUntil?: string;
+  notes?: string;
+};
+
+/**
+ * Dodaj wiele terminów odbioru naraz (admin).
+ * Aktywne terminy o tym samym typie i dacie są pomijane.
+ * Unique index covers only non-manual rows, so manual series use insert.
+ */
+export async function createWasteSchedules(
+  schedules: CreateWasteScheduleInput[],
+): Promise<{ created: WasteCollectionSchedule[]; skipped: number }> {
+  if (schedules.length === 0) {
+    throw new Error("Brak terminów do dodania");
+  }
+
+  const seen = new Set<string>();
+  const uniqueSchedules = schedules.filter((schedule) => {
+    const key = `${schedule.locationId}|${schedule.wasteType}|${schedule.collectionDate}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const locationIds = [...new Set(uniqueSchedules.map((schedule) => schedule.locationId))];
+  const wasteTypes = [...new Set(uniqueSchedules.map((schedule) => schedule.wasteType))];
+  const collectionDates = uniqueSchedules.map((schedule) => schedule.collectionDate);
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("waste_collection_schedules")
+    .select("location_id, waste_type, collection_date")
+    .in("location_id", locationIds)
+    .in("waste_type", wasteTypes)
+    .in("collection_date", collectionDates)
+    .eq("is_cancelled", false);
+
+  if (existingError) {
+    console.error("[createWasteSchedules] existing", existingError);
+    throw new Error(existingError.message);
+  }
+
+  const existingKeys = new Set(
+    (existingRows ?? []).map(
+      (row) => `${row.location_id}|${row.waste_type}|${row.collection_date}`,
+    ),
+  );
+
+  const rows = uniqueSchedules
+    .filter(
+      (schedule) =>
+        !existingKeys.has(`${schedule.locationId}|${schedule.wasteType}|${schedule.collectionDate}`),
+    )
+    .map((schedule) => ({
+      location_id: schedule.locationId,
+      org_id: schedule.orgId,
+      waste_type: schedule.wasteType,
+      collection_date: schedule.collectionDate,
+      collection_time_from: schedule.collectionTimeFrom || null,
+      collection_time_until: schedule.collectionTimeUntil || null,
+      notes: schedule.notes || null,
+      data_source: "manual" as const,
+    }));
+
+  if (rows.length === 0) {
+    return { created: [], skipped: uniqueSchedules.length };
+  }
+
+  const { data, error } = await supabase.from("waste_collection_schedules").insert(rows).select();
+
+  if (error) {
+    console.error("[createWasteSchedules]", error);
+    throw new Error(error.message);
+  }
+
+  const created = ((data ?? []) as WasteCollectionScheduleRow[]).map(mapScheduleRowToSchedule);
+
+  return {
+    created,
+    skipped: uniqueSchedules.length - created.length,
+  };
+}
+
 /**
  * Aktualizuj termin odbioru (admin)
  */

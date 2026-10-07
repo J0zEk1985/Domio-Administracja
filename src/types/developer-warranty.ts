@@ -230,6 +230,10 @@ export interface CreateDeveloperAccessResponse extends RpcResponse {
   existing_email?: string;
 }
 
+export interface DeleteDeveloperAccessResponse extends RpcResponse {
+  preserved_issue_count?: number;
+}
+
 export interface DeveloperActivationInfoResponse extends RpcResponse {
   developer_name?: string;
   developer_email?: string;
