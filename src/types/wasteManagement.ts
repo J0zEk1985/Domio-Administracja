@@ -271,6 +271,20 @@ export function mapScheduleRowToSchedule(row: WasteCollectionScheduleRow): Waste
   };
 }
 
+export function mapSyncLogRowToSyncLog(row: WasteScheduleSyncLogRow): WasteScheduleSyncLog {
+  return {
+    id: row.id,
+    locationId: row.location_id,
+    cityAdapter: row.city_adapter,
+    syncStatus: row.sync_status,
+    recordsAdded: row.records_added,
+    recordsUpdated: row.records_updated,
+    errorMessage: row.error_message,
+    syncedAt: row.synced_at,
+    syncedBy: row.synced_by,
+  };
+}
+
 export function mapGuideItemRowToGuideItem(row: WasteGuideItemRow): WasteGuideItem {
   return {
     id: row.id,

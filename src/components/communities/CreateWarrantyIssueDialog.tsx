@@ -1,12 +1,11 @@
 /**
- * Create Warranty Issue Dialog
- * Dialog do tworzenia nowej usterki deweloperskiej
+ * Create or edit a developer warranty issue.
+ * Editing is limited to drafts that have not been published yet.
  */
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,15 +33,33 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useCreateWarrantyIssue } from "@/hooks/useDeveloperWarranty";
+import { useCreateWarrantyIssue, useUpdateWarrantyIssue } from "@/hooks/useDeveloperWarranty";
 import { useLocationsByCommunity } from "@/hooks/useProperties";
-import { DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS } from "@/types/developer-warranty";
+import {
+  DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS,
+  type DeveloperWarrantyIssue,
+} from "@/types/developer-warranty";
 import { toast } from "@/components/ui/sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PhotoUpload } from "@/components/warranty/PhotoUpload";
+import { useWarrantyPhotoUpload } from "@/hooks/useWarrantyPhotoUpload";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+
+export type WarrantyIssueDraft = Pick<
+  DeveloperWarrantyIssue,
+  | "id"
+  | "community_id"
+  | "status"
+  | "title"
+  | "description"
+  | "category"
+  | "location_master_id"
+  | "location_detail"
+  | "priority"
+  | "photos_reported"
+>;
 
 const NO_BUILDING = "__none__";
 
@@ -79,6 +96,31 @@ interface CreateWarrantyIssueDialogProps {
   onOpenChange: (open: boolean) => void;
   communityId?: string; // Optional - if not provided, user selects from dropdown
   orgId?: string; // Optional - will be derived from selected community
+  issue?: WarrantyIssueDraft | null;
+}
+
+function emptyFormValues(communityId = ""): FormValues {
+  return {
+    community_id: communityId,
+    title: "",
+    description: "",
+    category: "",
+    location_master_id: "",
+    location_detail: "",
+    priority: "normal",
+  };
+}
+
+function formValuesFromIssue(issue: WarrantyIssueDraft): FormValues {
+  return {
+    community_id: issue.community_id,
+    title: issue.title,
+    description: issue.description ?? "",
+    category: issue.category ?? "",
+    location_master_id: issue.location_master_id ?? "",
+    location_detail: issue.location_detail ?? "",
+    priority: issue.priority,
+  };
 }
 
 export function CreateWarrantyIssueDialog({
@@ -86,9 +128,14 @@ export function CreateWarrantyIssueDialog({
   onOpenChange,
   communityId: propCommunityId,
   orgId: propOrgId,
+  issue = null,
 }: CreateWarrantyIssueDialogProps) {
-  const [photos, setPhotos] = useState<string[]>([]);
+  const isEdit = issue != null;
+  const [photos, setPhotos] = useState<string[]>(issue?.photos_reported ?? []);
   const createMutation = useCreateWarrantyIssue();
+  const updateMutation = useUpdateWarrantyIssue();
+  const { deletePhoto } = useWarrantyPhotoUpload();
+  const isSaving = createMutation.isPending || updateMutation.isPending;
   
   const { data: userOrgId } = useQuery({
     queryKey: ["org-id"],
@@ -106,15 +153,7 @@ export function CreateWarrantyIssueDialog({
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      community_id: propCommunityId || "",
-      title: "",
-      description: "",
-      category: "",
-      location_master_id: "",
-      location_detail: "",
-      priority: "normal",
-    },
+    defaultValues: issue ? formValuesFromIssue(issue) : emptyFormValues(propCommunityId || ""),
   });
 
   const selectedCommunityId = form.watch("community_id") || propCommunityId;
@@ -128,6 +167,46 @@ export function CreateWarrantyIssueDialog({
   );
 
   const handleSubmit = async (values: FormValues) => {
+    if (isEdit && issue) {
+      if (issue.status !== "draft") {
+        toast.error("Można edytować tylko usterkę w statusie szkicu.");
+        return;
+      }
+
+      const savedPhotos = issue.photos_reported ?? [];
+      try {
+        await updateMutation.mutateAsync({
+          id: issue.id,
+          dto: {
+            title: values.title.trim(),
+            description: values.description?.trim() || null,
+            category: values.category || null,
+            location_master_id: values.location_master_id || null,
+            location_detail: values.location_detail?.trim() || null,
+            priority: values.priority,
+            photos_reported: photos,
+          },
+        });
+
+        const removedPhotos = savedPhotos.filter((path) => !photos.includes(path));
+        await Promise.all(removedPhotos.map((path) => deletePhoto(path)));
+
+        toast.success("Zmiany w usterce zostały zapisane");
+        onOpenChange(false);
+      } catch (error) {
+        console.error(error);
+        const message = error instanceof Error ? error.message : "";
+        if (message.includes("szkicu")) {
+          toast.error(message);
+        } else if (message.toLowerCase().includes("row-level security")) {
+          toast.error("Nie udało się zapisać zmian. Brak uprawnień.");
+        } else {
+          toast.error("Nie udało się zapisać zmian w usterce");
+        }
+      }
+      return;
+    }
+
     const communityId = values.community_id || propCommunityId;
     const orgId = propOrgId || selectedCommunity?.org_id;
 
@@ -154,7 +233,7 @@ export function CreateWarrantyIssueDialog({
       });
 
       toast.success("Usterka została utworzona jako szkic");
-      form.reset();
+      form.reset(emptyFormValues(propCommunityId || ""));
       setPhotos([]);
       onOpenChange(false);
     } catch (error) {
@@ -178,16 +257,13 @@ export function CreateWarrantyIssueDialog({
   };
 
   const handleClose = () => {
-    form.reset({
-      community_id: propCommunityId || "",
-      title: "",
-      description: "",
-      category: "",
-      location_master_id: "",
-      location_detail: "",
-      priority: "normal",
-    });
-    setPhotos([]);
+    if (issue) {
+      form.reset(formValuesFromIssue(issue));
+      setPhotos(issue.photos_reported ?? []);
+    } else {
+      form.reset(emptyFormValues(propCommunityId || ""));
+      setPhotos([]);
+    }
     onOpenChange(false);
   };
 
@@ -200,15 +276,19 @@ export function CreateWarrantyIssueDialog({
     >
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Dodaj usterkę deweloperską</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Edytuj usterkę deweloperską" : "Dodaj usterkę deweloperską"}
+          </DialogTitle>
           <DialogDescription>
-            Utwórz nową usterkę objętą rękojmią deweloperską. Usterka zostanie zapisana jako szkic.
+            {isEdit
+              ? "Popraw dane szkicu przed publikacją. Usterka pozostanie szkicem, dopóki jej nie opublikujesz."
+              : "Utwórz nową usterkę objętą rękojmią deweloperską. Usterka zostanie zapisana jako szkic."}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {!propCommunityId && (
+            {!propCommunityId && !isEdit && (
               <FormField
                 control={form.control}
                 name="community_id"
@@ -392,15 +472,22 @@ export function CreateWarrantyIssueDialog({
               label="Zdjęcia dokumentujące usterkę"
               description="Dodaj zdjęcia pokazujące problem (opcjonalnie)"
               maxPhotos={6}
-              disabled={createMutation.isPending}
+              disabled={isSaving}
+              retainOnRemove={issue?.photos_reported ?? []}
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isSaving}>
                 Anuluj
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Tworzenie..." : "Utwórz szkic"}
+              <Button type="submit" disabled={isSaving}>
+                {isEdit
+                  ? updateMutation.isPending
+                    ? "Zapisywanie..."
+                    : "Zapisz zmiany"
+                  : createMutation.isPending
+                    ? "Tworzenie..."
+                    : "Utwórz szkic"}
               </Button>
             </DialogFooter>
           </form>

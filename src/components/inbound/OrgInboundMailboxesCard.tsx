@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from "@/lib/supabase";
 import type { InboundIngestMode, InboundModule } from "@/types/inboundEmail";
 import { InboundMailboxGuide, type AiQuotaSnapshot } from "@/components/inbound/InboundMailboxGuide";
+import { canEnableInboundAiAuto } from "@/lib/inboundAiAccess";
 
 const INBOUND_DOMAIN =
   (import.meta.env.VITE_INBOUND_MAIL_DOMAIN as string | undefined)?.trim() || 'domio.com.pl'
@@ -47,6 +48,7 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
   const [savingId, setSavingId] = useState<string | null>(null)
   const [boxes, setBoxes] = useState<MailboxRow[]>([])
   const [quota, setQuota] = useState<Quota | null>(null)
+  const [purchasing, setPurchasing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -98,6 +100,43 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
   useEffect(() => {
     void load()
   }, [load])
+
+  const purchasePack = async (): Promise<boolean> => {
+    if (!canManage) return false
+    setPurchasing(true)
+    try {
+      const { data, error } = await supabase.rpc('purchase_ai_analysis_pack', { p_org_id: orgId })
+      if (error) {
+        console.error('[OrgInboundMailboxesCard] purchase pack:', error)
+        toast.error(error.message || 'Nie udało się dodać pakietu analiz.')
+        return false
+      }
+      const granted =
+        data && typeof data === 'object' && 'granted' in data ? Number((data as { granted: unknown }).granted) : null
+      const balance =
+        data && typeof data === 'object' && 'ai_prepaid_balance' in data
+          ? Number((data as { ai_prepaid_balance: unknown }).ai_prepaid_balance)
+          : null
+      toast.success(
+        granted && balance != null && Number.isFinite(balance)
+          ? `Dodano ${granted} analiz AI. Saldo pre-paid: ${balance}.`
+          : 'Dodano pakiet analiz AI.',
+      )
+      const quotaRes = await supabase.rpc('get_org_ai_quota', { p_org_id: orgId })
+      if (quotaRes.error) {
+        console.error('[OrgInboundMailboxesCard] quota after purchase:', quotaRes.error)
+      } else {
+        setQuota(quotaRes.data as Quota)
+      }
+      return true
+    } catch (e) {
+      console.error('[OrgInboundMailboxesCard] purchase pack:', e)
+      toast.error(errMessage(e))
+      return false
+    } finally {
+      setPurchasing(false)
+    }
+  }
 
   const copyText = async (value: string, ok: string) => {
     try {
@@ -160,7 +199,12 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
         </button>
       </div>
 
-      <InboundMailboxGuide quota={quota} />
+      <InboundMailboxGuide
+        quota={quota}
+        canPurchase={canManage}
+        purchasing={purchasing}
+        onPurchase={purchasePack}
+      />
 
       {loading ? <p className="text-sm text-muted-foreground">Ładowanie skrzynek…</p> : null}
       {loadError ? (
@@ -224,9 +268,9 @@ export function OrgInboundMailboxesCard({ orgId, canManage, moduleFilter }: Prop
                   onChange={(e) => void saveBox(box.id, { p_ingest_mode: e.target.value as InboundIngestMode })}
                 >
                   <option value="redacted_template">Standard — redakcja u firmy, potem wysyłka na Domio</option>
-                  <option value="ai_auto" disabled={!quota?.has_ai_auto}>
+                  <option value="ai_auto" disabled={!canEnableInboundAiAuto(quota)}>
                     Automatyczna analiza — forward od razu
-                    {!quota?.has_ai_auto ? ' (wymaga planu AI)' : ''}
+                    {!canEnableInboundAiAuto(quota) ? ' (brak analiz)' : ''}
                   </option>
                 </select>
               </label>

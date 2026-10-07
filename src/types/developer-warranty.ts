@@ -130,6 +130,7 @@ export interface CommunityWarrantySettings {
   community_id: string;
   org_id: string;
   resident_visibility_enabled: boolean;
+  public_view_token: string | null;
   created_at: string;
   updated_at: string;
   updated_by: string | null;
@@ -189,9 +190,10 @@ export interface CreateWarrantyIssueDto {
 
 export interface UpdateWarrantyIssueDto {
   title?: string;
-  description?: string;
-  category?: string;
-  location_detail?: string;
+  description?: string | null;
+  category?: string | null;
+  location_master_id?: string | null;
+  location_detail?: string | null;
   priority?: DeveloperWarrantyIssuePriority;
   photos_reported?: string[];
 }

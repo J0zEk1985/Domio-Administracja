@@ -18,6 +18,7 @@ import {
   XCircle,
   MessageSquare,
   History,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,12 +71,14 @@ import {
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { toast } from "@/components/ui/sonner";
+import { CreateWarrantyIssueDialog } from "@/components/communities/CreateWarrantyIssueDialog";
 
 export default function WarrantyIssueDetails() {
   const { issueId } = useParams<{ issueId: string }>();
   const navigate = useNavigate();
   
   const [commentText, setCommentText] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<DeveloperWarrantyIssueStatus | null>(null);
@@ -239,6 +242,12 @@ export default function WarrantyIssueDetails() {
           </div>
         </div>
         <div className="flex gap-2">
+          {issue.status === "draft" && (
+            <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edytuj
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => setDeleteDialogOpen(true)}
@@ -549,6 +558,17 @@ export default function WarrantyIssueDetails() {
           </Card>
         </div>
       </div>
+
+      {issue.status === "draft" && (
+        <CreateWarrantyIssueDialog
+          key={issue.updated_at}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          communityId={issue.community_id}
+          orgId={issue.org_id}
+          issue={issue}
+        />
+      )}
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -254,10 +254,7 @@ export function TriageIssueListPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 border-r border-border/40 bg-transparent pr-3">
-      <div className="shrink-0 space-y-0.5">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">Kolejka</h2>
-        <p className="text-[11px] text-muted-foreground">Filtry łączą się (AND).</p>
-      </div>
+      <h2 className="shrink-0 text-sm font-semibold tracking-tight text-foreground">Kolejka</h2>
 
       <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-2">
         <Button

@@ -17,6 +17,8 @@ interface PhotoUploadProps {
   description?: string;
   maxPhotos?: number;
   disabled?: boolean;
+  /** Paths already saved on the issue. Removing them only updates the form until save. */
+  retainOnRemove?: string[];
 }
 
 export function PhotoUpload({
@@ -26,6 +28,7 @@ export function PhotoUpload({
   description,
   maxPhotos = 10,
   disabled = false,
+  retainOnRemove = [],
 }: PhotoUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -69,10 +72,9 @@ export function PhotoUpload({
   };
 
   const handleRemovePhoto = async (url: string) => {
-    // Optimistically remove from UI
     onPhotosChange(photos.filter((p) => p !== url));
-    
-    // Try to delete from storage (fire and forget)
+
+    if (retainOnRemove.includes(url)) return;
     await deletePhoto(url);
   };
 

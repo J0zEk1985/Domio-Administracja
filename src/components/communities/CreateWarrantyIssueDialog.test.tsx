@@ -1,11 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { CreateWarrantyIssueDialog } from "@/components/communities/CreateWarrantyIssueDialog";
+import type { WarrantyIssueDraft } from "@/components/communities/CreateWarrantyIssueDialog";
+
+const { updateWarrantyIssue } = vi.hoisted(() => ({
+  updateWarrantyIssue: vi.fn().mockResolvedValue({ id: "issue-1" }),
+}));
 
 vi.mock("@/hooks/useDeveloperWarranty", () => ({
   useCreateWarrantyIssue: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateWarrantyIssue: () => ({ mutateAsync: updateWarrantyIssue, isPending: false }),
 }));
 
 vi.mock("@/hooks/useCommunities", () => ({
@@ -36,13 +42,35 @@ vi.mock("@/components/warranty/PhotoUpload", () => ({
   PhotoUpload: () => <div>Zdjęcia</div>,
 }));
 
-function renderDialog() {
+vi.mock("@/hooks/useWarrantyPhotoUpload", () => ({
+  useWarrantyPhotoUpload: () => ({
+    deletePhoto: vi.fn().mockResolvedValue(true),
+    uploadPhotos: vi.fn(),
+    uploading: false,
+    progress: [],
+  }),
+}));
+
+const draftIssue: WarrantyIssueDraft = {
+  id: "issue-1",
+  community_id: "c1",
+  status: "draft",
+  title: "Przeciek przy miejscu postojowym 56",
+  description: "W hali garażowej przecieka woda",
+  category: "Inne",
+  location_master_id: "master-1",
+  location_detail: "Miejsce 56",
+  priority: "high",
+  photos_reported: [],
+};
+
+function renderDialog(issue?: WarrantyIssueDraft) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <CreateWarrantyIssueDialog open onOpenChange={vi.fn()} />
+      <CreateWarrantyIssueDialog open onOpenChange={vi.fn()} communityId="c1" orgId="org-1" issue={issue} />
     </QueryClientProvider>,
   );
 }
@@ -62,5 +90,32 @@ describe("CreateWarrantyIssueDialog", () => {
     expect(optionValues).toContain("master-1");
     expect(optionValues).not.toContain("loc-1");
     expect(optionValues).not.toContain("loc-2");
+  });
+
+  it("opens a draft with its current values and saves the edit", async () => {
+    updateWarrantyIssue.mockClear();
+    renderDialog(draftIssue);
+
+    expect(screen.getByRole("heading", { name: "Edytuj usterkę deweloperską" })).toBeInTheDocument();
+    const title = screen.getByLabelText(/Tytuł usterki/i);
+    expect(title).toHaveValue("Przeciek przy miejscu postojowym 56");
+    expect(screen.getByLabelText(/^Opis/i)).toHaveValue("W hali garażowej przecieka woda");
+    expect(screen.getByRole("combobox", { name: "Priorytet" })).toHaveTextContent("Wysoki");
+
+    fireEvent.change(title, { target: { value: "Przeciek przy miejscu 57" } });
+    fireEvent.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
+
+    await waitFor(() => expect(updateWarrantyIssue).toHaveBeenCalledWith({
+      id: "issue-1",
+      dto: {
+        title: "Przeciek przy miejscu 57",
+        description: "W hali garażowej przecieka woda",
+        category: "Inne",
+        location_master_id: "master-1",
+        location_detail: "Miejsce 56",
+        priority: "high",
+        photos_reported: [],
+      },
+    }));
   });
 });

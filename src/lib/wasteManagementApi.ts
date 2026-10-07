@@ -18,6 +18,7 @@ import type {
 import {
   mapScheduleRowToSchedule,
   mapGuideItemRowToGuideItem,
+  mapSyncLogRowToSyncLog,
 } from "@/types/wasteManagement";
 import {
   planWasteScheduleInserts,
@@ -493,5 +494,5 @@ export async function fetchWasteSyncLogs(
     throw new Error(error.message);
   }
 
-  return data as WasteScheduleSyncLog[];
+  return ((data ?? []) as WasteScheduleSyncLogRow[]).map(mapSyncLogRowToSyncLog);
 }

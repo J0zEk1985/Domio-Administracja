@@ -3134,6 +3134,7 @@ export type Database = {
           id: string
           location_id: string
           org_id: string
+          resident_building_issue_scope: "resident_reports" | "all_open"
           show_cleaning_status: boolean
           show_service_tracker: boolean
           updated_at: string
@@ -3145,6 +3146,7 @@ export type Database = {
           id?: string
           location_id: string
           org_id: string
+          resident_building_issue_scope?: "resident_reports" | "all_open"
           show_cleaning_status?: boolean
           show_service_tracker?: boolean
           updated_at?: string
@@ -3156,6 +3158,7 @@ export type Database = {
           id?: string
           location_id?: string
           org_id?: string
+          resident_building_issue_scope?: "resident_reports" | "all_open"
           show_cleaning_status?: boolean
           show_service_tracker?: boolean
           updated_at?: string
@@ -4294,6 +4297,7 @@ export type Database = {
       }
       get_org_ai_quota: { Args: { p_org_id: string }; Returns: Json }
       grant_ai_prepaid_credits: { Args: { p_org_id: string; p_amount: number }; Returns: Json }
+      purchase_ai_analysis_pack: { Args: { p_org_id: string }; Returns: Json }
       list_inbound_location_choices: { Args: { p_org_id: string }; Returns: Json }
       assign_issue_location: { Args: { p_issue_id: string; p_location_id: string }; Returns: Json }
       ingest_email_issue: {
@@ -5104,6 +5108,7 @@ export type Database = {
         | "resolved"
         | "rejected"
         | "cancelled"
+      resident_building_issue_scope: "resident_reports" | "all_open"
       policy_scope_enum: "majątkowe" | "oc_ogolne" | "oc_zarzadu"
       priority_level: "low" | "medium" | "high" | "emergency"
       property_contract_type:
@@ -5316,6 +5321,7 @@ export const Constants = {
         "rejected",
         "cancelled",
       ],
+      resident_building_issue_scope: ["resident_reports", "all_open"],
       policy_scope_enum: ["majątkowe", "oc_ogolne", "oc_zarzadu"],
       priority_level: ["low", "medium", "high", "emergency"],
       property_contract_type: [

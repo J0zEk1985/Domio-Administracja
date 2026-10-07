@@ -32,7 +32,13 @@ import { getWasteTypeConfig } from "@/lib/wasteConstants";
 import type { WasteType, WasteCollectionSchedule } from "@/types/wasteManagement";
 import type { CommunityLocationRow } from "@/hooks/useProperties";
 import { toast } from "@/components/ui/sonner";
-import { supabase } from "@/lib/supabase";
+
+function formatWasteTimestamp(value: string | null | undefined, pattern: string): string {
+  if (!value) return "—";
+  const parsed = parseISO(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return format(parsed, pattern, { locale: pl });
+}
 
 type Props = {
   communityId: string;
@@ -74,7 +80,8 @@ export function CommunityWasteTab({ communityId, orgId, buildings }: Props) {
   }
 
   const handleDelete = async (schedule: WasteCollectionSchedule) => {
-    if (!confirm(`Czy na pewno chcesz usunąć termin odbioru ${getWasteTypeConfig(schedule.wasteType).label} z dnia ${format(parseISO(schedule.collectionDate), "d MMMM yyyy", { locale: pl })}?`)) {
+    const wasteLabel = getWasteTypeConfig(schedule.wasteType)?.label ?? schedule.wasteType;
+    if (!confirm(`Czy na pewno chcesz usunąć termin odbioru ${wasteLabel} z dnia ${formatWasteTimestamp(schedule.collectionDate, "d MMMM yyyy")}?`)) {
       return;
     }
 
@@ -192,16 +199,15 @@ export function CommunityWasteTab({ communityId, orgId, buildings }: Props) {
               <TableBody>
                 {schedules.map((schedule) => {
                   const config = getWasteTypeConfig(schedule.wasteType);
-                  const date = parseISO(schedule.collectionDate);
 
                   return (
                     <TableRow key={schedule.id}>
                       <TableCell className="font-medium">
-                        {format(date, "d MMMM yyyy", { locale: pl })}
+                        {formatWasteTimestamp(schedule.collectionDate, "d MMMM yyyy")}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${config.bgColor} ${config.color} border-0`}>
-                          {config.label}
+                        <Badge className={`${config?.bgColor ?? ""} ${config?.color ?? ""} border-0`}>
+                          {config?.label ?? schedule.wasteType}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -594,8 +600,8 @@ function EditScheduleDialog({
           <DialogHeader>
             <DialogTitle>Edytuj termin odbioru</DialogTitle>
             <DialogDescription>
-              {getWasteTypeConfig(schedule.wasteType).label} -{" "}
-              {format(parseISO(schedule.collectionDate), "d MMMM yyyy", { locale: pl })}
+              {getWasteTypeConfig(schedule.wasteType)?.label ?? schedule.wasteType} -{" "}
+              {formatWasteTimestamp(schedule.collectionDate, "d MMMM yyyy")}
             </DialogDescription>
           </DialogHeader>
 
@@ -683,7 +689,7 @@ function SyncLogsCard({ locationId }: { locationId: string }) {
             {logs.map((log) => (
               <TableRow key={log.id}>
                 <TableCell className="text-sm">
-                  {format(parseISO(log.syncedAt), "d.MM.yyyy HH:mm", { locale: pl })}
+                  {formatWasteTimestamp(log.syncedAt, "d.MM.yyyy HH:mm")}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{log.cityAdapter}</Badge>

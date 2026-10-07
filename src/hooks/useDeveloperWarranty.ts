@@ -367,18 +367,22 @@ export function useUpdateWarrantyIssue() {
         .from("developer_warranty_issues")
         .update(dto)
         .eq("id", id)
+        .eq("status", "draft")
         .select()
         .single();
-      
-      if (error) throw error;
+
+      if (error) {
+        console.error("[useUpdateWarrantyIssue]", error);
+        if (error.code === "PGRST116") {
+          throw new Error("Można edytować tylko usterkę w statusie szkicu.");
+        }
+        throw error;
+      }
       return data as DeveloperWarrantyIssue;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: developerWarrantyKeys.issue(data.id),
-      });
-      queryClient.invalidateQueries({
-        queryKey: developerWarrantyKeys.issuesList({ community_id: data.community_id }),
+        queryKey: developerWarrantyKeys.issues(),
       });
     },
   });

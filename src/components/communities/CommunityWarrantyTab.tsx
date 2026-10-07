@@ -11,6 +11,7 @@ import {
   XCircle,
   Trash2,
   FileText,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ import {
 import {
   DEVELOPER_WARRANTY_ISSUE_STATUS_LABELS,
   DEVELOPER_WARRANTY_ISSUE_PRIORITY_LABELS,
+  type DeveloperWarrantyIssue,
   type DeveloperWarrantyIssueStatus,
 } from "@/types/developer-warranty";
 import { format } from "date-fns";
@@ -52,6 +54,7 @@ import { pl } from "date-fns/locale";
 import { toast } from "@/components/ui/sonner";
 import { CreateWarrantyIssueDialog } from "./CreateWarrantyIssueDialog";
 import { DeveloperAccessCard } from "./DeveloperAccessCard";
+import { ResidentWarrantyLinkPreview } from "./ResidentWarrantyLinkPreview";
 
 interface CommunityWarrantyTabProps {
   communityId: string;
@@ -67,6 +70,7 @@ export function CommunityWarrantyTab({
   canManage,
 }: CommunityWarrantyTabProps) {
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
+  const [editingIssue, setEditingIssue] = useState<DeveloperWarrantyIssue | null>(null);
   const [deleteIssueId, setDeleteIssueId] = useState<string | null>(null);
 
   const { data: developerAccess, isLoading: accessLoading } = useDeveloperAccess(communityId);
@@ -209,6 +213,9 @@ export function CommunityWarrantyTab({
               disabled={!canManage || updateSettingsMutation.isPending}
             />
           </div>
+          {settings?.resident_visibility_enabled && settings.public_view_token ? (
+            <ResidentWarrantyLinkPreview token={settings.public_view_token} />
+          ) : null}
         </CardContent>
       </Card>
 
@@ -267,7 +274,12 @@ export function CommunityWarrantyTab({
               </CardDescription>
             </div>
             {canManage && (
-              <Button onClick={() => setCreateIssueOpen(true)}>
+              <Button
+                onClick={() => {
+                  setEditingIssue(null);
+                  setCreateIssueOpen(true);
+                }}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Dodaj usterkę
               </Button>
@@ -332,14 +344,27 @@ export function CommunityWarrantyTab({
                       {canManage && (
                         <div className="flex items-center gap-2">
                           {issue.status === "draft" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handlePublishIssue(issue.id)}
-                              disabled={updateStatusMutation.isPending}
-                            >
-                              Opublikuj
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCreateIssueOpen(false);
+                                  setEditingIssue(issue);
+                                }}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edytuj
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePublishIssue(issue.id)}
+                                disabled={updateStatusMutation.isPending}
+                              >
+                                Opublikuj
+                              </Button>
+                            </>
                           )}
                           <Button
                             size="sm"
@@ -362,10 +387,17 @@ export function CommunityWarrantyTab({
       </Card>
 
       <CreateWarrantyIssueDialog
-        open={createIssueOpen}
-        onOpenChange={setCreateIssueOpen}
+        key={editingIssue?.id ?? "new"}
+        open={createIssueOpen || editingIssue != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreateIssueOpen(false);
+            setEditingIssue(null);
+          }
+        }}
         communityId={communityId}
         orgId={orgId}
+        issue={editingIssue}
       />
 
       <AlertDialog open={!!deleteIssueId} onOpenChange={() => setDeleteIssueId(null)}>
