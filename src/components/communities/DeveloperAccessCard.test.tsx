@@ -86,4 +86,17 @@ describe("DeveloperAccessCard", () => {
 
     expect(screen.getByRole("button", { name: "Dodaj dewelopera" })).toBeInTheDocument();
   });
+
+  it("shows the developer portal link for an active access", () => {
+    renderCard({ ...deactivatedAccess, deactivated_at: null });
+
+    const portalUrl = screen.getByRole("link", { name: /\/deweloper\/portal-token$/ });
+    expect(portalUrl).toBeVisible();
+    expect(portalUrl).toHaveAttribute("href", expect.stringContaining("/deweloper/portal-token"));
+    expect(screen.getByRole("button", { name: "Kopiuj link" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otwórz stronę" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/deweloper/portal-token"),
+    );
+  });
 });

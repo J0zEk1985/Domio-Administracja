@@ -147,7 +147,7 @@ export function CreateDeveloperAccessDialog({
                       <Input type="email" placeholder="kontakt@deweloper.pl" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Na ten adres zostanie wysłany link aktywacyjny
+                      Na ten adres zostanie wysłany link aktywacyjny i adres portalu usterek
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

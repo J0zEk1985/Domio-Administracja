@@ -1,47 +1,27 @@
 /**
  * DOMIO Home - Łódź Waste Adapter
- * Adapter do pobierania harmonogramu odbioru odpadów z UML Łódź
- * 
- * Źródło: https://uml.lodz.pl/dla-mieszkancow/ochrona-srodowiska/czyste-miasto/gospodarka-odpadami/harmonogramy-odbioru-odpadow/
+ * Pobiera terminy odpadów gabarytowych z Karty Łodzianina (harmonogram UM Łódź).
+ *
+ * The browser cannot call kartalodzianina.pl directly (no CORS). Dev uses the
+ * Vite proxy; production calls the `lodz-waste-schedule` edge function.
  */
 
-import type { ICityWasteAdapter, CityAdapterResponse, WasteType } from "@/types/wasteManagement";
+import { supabase } from "@/lib/supabase";
+import type { ICityWasteAdapter, CityAdapterResponse } from "@/types/wasteManagement";
 
-/**
- * Adapter dla miasta Łódź
- * 
- * UWAGA: To jest mockowa implementacja. Prawdziwa implementacja wymaga:
- * 1. Web scraping strony UML Łódź (np. Cheerio/JSDOM w Edge Function)
- * 2. Lub reverse engineering ich API (jeśli istnieje)
- * 3. Lub ręczne parsowanie PDF-ów z harmonogramami
- * 
- * Obecnie zwraca mockowe dane dla celów demonstracyjnych.
- */
 export class LodzWasteAdapter implements ICityWasteAdapter {
   readonly cityName = "Łódź";
   readonly adapterKey = "lodz";
 
-  private readonly baseUrl = "https://uml.lodz.pl/dla-mieszkancow/ochrona-srodowiska/czyste-miasto/gospodarka-odpadami/harmonogramy-odbioru-odpadow/";
-
-  /**
-   * Pobierz harmonogram dla danego adresu
-   * 
-   * @param street - Nazwa ulicy (np. "Piotrkowska")
-   * @param buildingNumber - Numer budynku (np. "104")
-   */
   async fetchSchedule(street: string, buildingNumber: string): Promise<CityAdapterResponse> {
     try {
-      console.log(`[LodzWasteAdapter] Fetching schedule for: ${street} ${buildingNumber}`);
+      console.log(`[LodzWasteAdapter] Fetching bulky-waste schedule for: ${street} ${buildingNumber}`);
 
-      // TODO: Implementacja rzeczywistego scrapingu/API call
-      // Obecnie zwraca mockowe dane
-      const mockSchedules = this.generateMockSchedule(street, buildingNumber);
+      if (import.meta.env.DEV) {
+        return await this.fetchViaDevProxy(street, buildingNumber);
+      }
 
-      return {
-        success: true,
-        schedules: mockSchedules,
-        source: this.baseUrl,
-      };
+      return await this.fetchViaEdgeFunction(street, buildingNumber);
     } catch (error) {
       console.error("[LodzWasteAdapter] Error:", error);
       return {
@@ -52,195 +32,117 @@ export class LodzWasteAdapter implements ICityWasteAdapter {
     }
   }
 
-  /**
-   * Sprawdź czy adres jest obsługiwany
-   */
   isAddressSupported(street: string): boolean {
-    // TODO: Walidacja na podstawie listy ulic w Łodzi
-    // Obecnie akceptuje wszystkie
     return street.trim().length > 0;
   }
 
-  /**
-   * Pobierz listę obsługiwanych ulic (opcjonalne, dla autocomplete)
-   */
-  async getSupportedStreets(): Promise<string[]> {
-    // TODO: Zwróć rzeczywistą listę ulic z UML Łódź
-    return [
-      "Piotrkowska",
-      "Nawrot",
-      "Kilińskiego",
-      "Łąkowa",
-      "Sienkiewicza",
-      "Roosevelta",
-      "Jaracza",
-      "Wschodnia",
-      "Zachodnia",
-      "Północna",
-      "Południowa",
-    ];
+  private async fetchViaDevProxy(street: string, buildingNumber: string): Promise<CityAdapterResponse> {
+    const response = await fetch("/api/lodz-waste-schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ street, buildingNumber }),
+    });
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      console.error("[LodzWasteAdapter] Dev proxy returned non-JSON:", error);
+      throw new Error("Nie udało się odczytać odpowiedzi harmonogramu.");
+    }
+
+    if (!response.ok) {
+      const message =
+        payload && typeof payload === "object" && typeof (payload as { error?: unknown }).error === "string"
+          ? (payload as { error: string }).error
+          : `Serwer harmonogramu zwrócił błąd (HTTP ${response.status}).`;
+      return { success: false, schedules: [], error: message };
+    }
+
+    return asCityAdapterResponse(payload);
   }
 
-  /**
-   * Generuj mockowe harmonogramy (do usunięcia po implementacji prawdziwego scrapera)
-   */
-  private generateMockSchedule(street: string, buildingNumber: string): Array<{
-    wasteType: WasteType;
-    collectionDate: string;
-    collectionTimeFrom?: string;
-    collectionTimeUntil?: string;
-  }> {
-    const today = new Date();
-    const schedules: Array<{
-      wasteType: WasteType;
-      collectionDate: string;
-      collectionTimeFrom?: string;
-      collectionTimeUntil?: string;
-    }> = [];
+  private async fetchViaEdgeFunction(street: string, buildingNumber: string): Promise<CityAdapterResponse> {
+    const { data, error } = await supabase.functions.invoke("lodz-waste-schedule", {
+      body: { street, buildingNumber },
+    });
 
-    // Generuj harmonogram na najbliższe 3 miesiące
-    const wasteTypes: WasteType[] = ['bulk', 'plastic', 'paper', 'glass', 'bio'];
-    
-    // Gabaryty - raz w miesiącu (pierwsza sobota)
-    for (let month = 0; month < 3; month++) {
-      const date = new Date(today);
-      date.setMonth(date.getMonth() + month);
-      date.setDate(1);
-      
-      // Znajdź pierwszą sobotę
-      while (date.getDay() !== 6) {
-        date.setDate(date.getDate() + 1);
-      }
-      
-      if (date > today) {
-        schedules.push({
-          wasteType: 'bulk',
-          collectionDate: date.toISOString().split('T')[0],
-          collectionTimeFrom: '06:00',
-          collectionTimeUntil: '14:00',
-        });
-      }
+    if (error) {
+      console.error("[LodzWasteAdapter] edge function:", error);
+      const fromBody = readFunctionError(data);
+      return {
+        success: false,
+        schedules: [],
+        error:
+          fromBody ??
+          "Nie udało się połączyć z usługą harmonogramu Łodzi. Wdróż funkcję lodz-waste-schedule.",
+      };
     }
 
-    // Plastik/metal - co 2 tygodnie (środa)
-    for (let week = 0; week < 12; week += 2) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + (week * 7));
-      
-      // Znajdź najbliższą środę
-      while (date.getDay() !== 3) {
-        date.setDate(date.getDate() + 1);
-      }
-      
-      if (date > today) {
-        schedules.push({
-          wasteType: 'plastic',
-          collectionDate: date.toISOString().split('T')[0],
-          collectionTimeFrom: '07:00',
-          collectionTimeUntil: '15:00',
-        });
-      }
-    }
-
-    // Papier - raz w miesiącu (drugi wtorek)
-    for (let month = 0; month < 3; month++) {
-      const date = new Date(today);
-      date.setMonth(date.getMonth() + month);
-      date.setDate(1);
-      
-      // Znajdź drugi wtorek
-      let tuesdayCount = 0;
-      while (tuesdayCount < 2) {
-        if (date.getDay() === 2) {
-          tuesdayCount++;
-        }
-        if (tuesdayCount < 2) {
-          date.setDate(date.getDate() + 1);
-        }
-      }
-      
-      if (date > today) {
-        schedules.push({
-          wasteType: 'paper',
-          collectionDate: date.toISOString().split('T')[0],
-          collectionTimeFrom: '07:00',
-          collectionTimeUntil: '15:00',
-        });
-      }
-    }
-
-    // Szkło - raz w miesiącu (trzeci czwartek)
-    for (let month = 0; month < 3; month++) {
-      const date = new Date(today);
-      date.setMonth(date.getMonth() + month);
-      date.setDate(1);
-      
-      // Znajdź trzeci czwartek
-      let thursdayCount = 0;
-      while (thursdayCount < 3) {
-        if (date.getDay() === 4) {
-          thursdayCount++;
-        }
-        if (thursdayCount < 3) {
-          date.setDate(date.getDate() + 1);
-        }
-      }
-      
-      if (date > today) {
-        schedules.push({
-          wasteType: 'glass',
-          collectionDate: date.toISOString().split('T')[0],
-          collectionTimeFrom: '07:00',
-          collectionTimeUntil: '15:00',
-        });
-      }
-    }
-
-    // Bio - co tydzień (piątek)
-    for (let week = 0; week < 12; week++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + (week * 7));
-      
-      // Znajdź najbliższy piątek
-      while (date.getDay() !== 5) {
-        date.setDate(date.getDate() + 1);
-      }
-      
-      if (date > today) {
-        schedules.push({
-          wasteType: 'bio',
-          collectionDate: date.toISOString().split('T')[0],
-          collectionTimeFrom: '07:00',
-          collectionTimeUntil: '15:00',
-        });
-      }
-    }
-
-    // Sortuj po dacie
-    schedules.sort((a, b) => a.collectionDate.localeCompare(b.collectionDate));
-
-    return schedules;
+    return asCityAdapterResponse(data);
   }
 }
 
-/**
- * Factory function do tworzenia instancji adaptera
- */
+function readFunctionError(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const error = (data as { error?: unknown }).error;
+  return typeof error === "string" && error.trim() ? error : null;
+}
+
+function asCityAdapterResponse(payload: unknown): CityAdapterResponse {
+  if (!payload || typeof payload !== "object") {
+    return { success: false, schedules: [], error: "Nieprawidłowa odpowiedź usługi harmonogramu." };
+  }
+
+  const body = payload as {
+    success?: unknown;
+    error?: unknown;
+    source?: unknown;
+    schedules?: unknown;
+  };
+
+  if (body.success !== true) {
+    return {
+      success: false,
+      schedules: [],
+      error: typeof body.error === "string" ? body.error : "Nie udało się pobrać harmonogramu.",
+    };
+  }
+
+  const schedules = Array.isArray(body.schedules)
+    ? body.schedules.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as { wasteType?: unknown; collectionDate?: unknown };
+        if (row.wasteType !== "bulk" || typeof row.collectionDate !== "string") return [];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(row.collectionDate)) return [];
+        return [{ wasteType: "bulk" as const, collectionDate: row.collectionDate }];
+      })
+    : [];
+
+  if (schedules.length === 0) {
+    return {
+      success: false,
+      schedules: [],
+      error: "Nie znaleziono terminów odbioru odpadów gabarytowych dla tego adresu.",
+    };
+  }
+
+  return {
+    success: true,
+    schedules,
+    source: typeof body.source === "string" ? body.source : undefined,
+  };
+}
+
 export function createLodzWasteAdapter(): ICityWasteAdapter {
   return new LodzWasteAdapter();
 }
 
-/**
- * Helper: Pobierz adapter dla danego miasta
- */
 export function getCityAdapter(cityKey: string): ICityWasteAdapter | null {
   switch (cityKey.toLowerCase()) {
-    case 'lodz':
-    case 'łódź':
+    case "lodz":
+    case "łódź":
       return createLodzWasteAdapter();
-    // Dodaj tutaj kolejne miasta w przyszłości
-    // case 'warszawa':
-    //   return new WarszawaWasteAdapter();
     default:
       return null;
   }

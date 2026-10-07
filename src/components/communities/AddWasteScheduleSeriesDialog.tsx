@@ -25,8 +25,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
+import { PickedWasteDatesEditor } from "@/components/communities/PickedWasteDatesEditor";
 import {
   addMonthsToIsoDate,
+  formatWasteDateCount,
   generateWasteCollectionDates,
   parseIsoDateLocal,
   WASTE_SCHEDULE_INTERVALS,
@@ -34,15 +36,7 @@ import {
 } from "@/lib/wasteScheduleSeries";
 import type { WasteType } from "@/types/wasteManagement";
 
-function polishTerminCount(count: number): string {
-  if (count === 1) return "1 termin";
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return `${count} terminy`;
-  }
-  return `${count} terminów`;
-}
+type ScheduleEntryMode = "series" | "picked";
 
 function formatSeriesDate(isoDate: string): string {
   const date = parseIsoDateLocal(isoDate);
@@ -73,6 +67,8 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
   const [timeUntil, setTimeUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const [mode, setMode] = useState<ScheduleEntryMode>("series");
+  const [pickedDates, setPickedDates] = useState<string[]>([]);
 
   const createMutation = useCreateWasteSchedules();
 
@@ -81,7 +77,8 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
     [startDate, endDate, interval],
   );
 
-  const selectedDates = series.dates.filter((date) => !excluded.has(date));
+  const seriesDates = series.dates.filter((date) => !excluded.has(date));
+  const selectedDates = mode === "picked" ? pickedDates : seriesDates;
 
   const applyStartDate = (value: string) => {
     setStartDate(value);
@@ -107,6 +104,8 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
     setTimeUntil("");
     setNotes("");
     setExcluded(new Set());
+    setMode("series");
+    setPickedDates([]);
   };
 
   const toggleDate = (date: string, checked: boolean) => {
@@ -121,18 +120,20 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!startDate || !endDate) {
-      toast.error("Podaj datę pierwszego i ostatniego odbioru");
-      return;
-    }
+    if (mode === "series") {
+      if (!startDate || !endDate) {
+        toast.error("Podaj datę pierwszego i ostatniego odbioru");
+        return;
+      }
 
-    if (endDate < startDate) {
-      toast.error("Data końcowa nie może być wcześniejsza niż pierwszy odbiór");
-      return;
+      if (endDate < startDate) {
+        toast.error("Data końcowa nie może być wcześniejsza niż pierwszy odbiór");
+        return;
+      }
     }
 
     if (selectedDates.length === 0) {
-      toast.error("Zaznacz co najmniej jeden termin");
+      toast.error(mode === "picked" ? "Zaznacz albo wpisz co najmniej jedną datę" : "Zaznacz co najmniej jeden termin");
       return;
     }
 
@@ -155,10 +156,10 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
 
           if (result.skipped > 0) {
             toast.success(
-              `Dodano ${polishTerminCount(result.created.length)}. Pominięto ${result.skipped} już zapisanych.`,
+              `Dodano ${formatWasteDateCount(result.created.length)}. Pominięto ${result.skipped} już zapisanych.`,
             );
           } else {
-            toast.success(`Dodano ${polishTerminCount(result.created.length)} odbioru`);
+            toast.success(`Dodano ${formatWasteDateCount(result.created.length)} odbioru`);
           }
 
           onOpenChange(false);
@@ -179,19 +180,28 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
           Dodaj zbiorczo
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Dodaj terminy zbiorczo</DialogTitle>
             <DialogDescription>
-              Wygeneruj serię odbiorów, na przykład co tydzień przez najbliższe pół roku.
+              {mode === "picked"
+                ? "Zaznacz albo wpisz dowolne daty. Tak planuje się gabaryty, gdy odbiór wypada raz co 9, raz co 10 dni."
+                : "Wygeneruj serię odbiorów, na przykład co tydzień przez najbliższe pół roku."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="series-waste-type">Typ odpadu</Label>
-              <Select value={wasteType} onValueChange={(value) => setWasteType(value as WasteType)}>
+              <Select
+                value={wasteType}
+                onValueChange={(value) => {
+                  const next = value as WasteType;
+                  setWasteType(next);
+                  if (next === "bulk") setMode("picked");
+                }}
+              >
                 <SelectTrigger id="series-waste-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -206,69 +216,126 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="series-start">Pierwszy odbiór</Label>
-                <Input
-                  id="series-start"
-                  type="date"
-                  value={startDate}
-                  onChange={(event) => applyStartDate(event.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="series-end">Ostatni odbiór</Label>
-                <Input
-                  id="series-end"
-                  type="date"
-                  value={endDate}
-                  min={startDate || undefined}
-                  onChange={(event) => {
-                    setHorizonMonths(null);
-                    setExcluded(new Set());
-                    setEndDate(event.target.value);
-                  }}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {HORIZON_PRESETS.map((preset) => (
-                <Button
-                  key={preset.months}
-                  type="button"
-                  size="sm"
-                  variant={horizonMonths === preset.months ? "default" : "outline"}
-                  onClick={() => applyHorizon(preset.months)}
-                >
-                  {preset.label}
-                </Button>
-              ))}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="series-interval">Częstotliwość</Label>
-              <Select
-                value={interval}
-                onValueChange={(value) => {
-                  setExcluded(new Set());
-                  setInterval(value as WasteScheduleInterval);
-                }}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "series" ? "default" : "outline"}
+                aria-pressed={mode === "series"}
+                onClick={() => setMode("series")}
               >
-                <SelectTrigger id="series-interval">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WASTE_SCHEDULE_INTERVALS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                Regularna seria
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "picked" ? "default" : "outline"}
+                aria-pressed={mode === "picked"}
+                onClick={() => setMode("picked")}
+              >
+                Wybrane daty
+              </Button>
             </div>
+
+            {mode === "picked" ? (
+              <PickedWasteDatesEditor dates={pickedDates} onChange={setPickedDates} />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="series-start">Pierwszy odbiór</Label>
+                    <Input
+                      id="series-start"
+                      type="date"
+                      value={startDate}
+                      onChange={(event) => applyStartDate(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="series-end">Ostatni odbiór</Label>
+                    <Input
+                      id="series-end"
+                      type="date"
+                      value={endDate}
+                      min={startDate || undefined}
+                      onChange={(event) => {
+                        setHorizonMonths(null);
+                        setExcluded(new Set());
+                        setEndDate(event.target.value);
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {HORIZON_PRESETS.map((preset) => (
+                    <Button
+                      key={preset.months}
+                      type="button"
+                      size="sm"
+                      variant={horizonMonths === preset.months ? "default" : "outline"}
+                      onClick={() => applyHorizon(preset.months)}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="series-interval">Częstotliwość</Label>
+                  <Select
+                    value={interval}
+                    onValueChange={(value) => {
+                      setExcluded(new Set());
+                      setInterval(value as WasteScheduleInterval);
+                    }}
+                  >
+                    <SelectTrigger id="series-interval">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WASTE_SCHEDULE_INTERVALS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Terminy do dodania</Label>
+                    <span className="text-xs text-muted-foreground">{formatWasteDateCount(seriesDates.length)}</span>
+                  </div>
+                  {series.dates.length === 0 ? (
+                    <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                      Wybierz datę pierwszego odbioru. Koniec serii ustawi się na 6 miesięcy do przodu.
+                    </p>
+                  ) : (
+                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+                      {series.dates.map((date) => (
+                        <label key={date} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted/60">
+                          <Checkbox
+                            checked={!excluded.has(date)}
+                            onCheckedChange={(checked) => toggleDate(date, checked === true)}
+                            aria-label={formatSeriesDate(date)}
+                          />
+                          <span>{formatSeriesDate(date)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {series.truncated && (
+                    <p className="text-xs text-muted-foreground">
+                      Pokazano pierwsze {series.dates.length} terminów. Skróć zakres albo zapisz tę część i dodaj kolejną.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -302,35 +369,6 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Terminy do dodania</Label>
-                <span className="text-xs text-muted-foreground">{polishTerminCount(selectedDates.length)}</span>
-              </div>
-              {series.dates.length === 0 ? (
-                <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
-                  Wybierz datę pierwszego odbioru. Koniec serii ustawi się na 6 miesięcy do przodu.
-                </p>
-              ) : (
-                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
-                  {series.dates.map((date) => (
-                    <label key={date} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted/60">
-                      <Checkbox
-                        checked={!excluded.has(date)}
-                        onCheckedChange={(checked) => toggleDate(date, checked === true)}
-                        aria-label={formatSeriesDate(date)}
-                      />
-                      <span>{formatSeriesDate(date)}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-              {series.truncated && (
-                <p className="text-xs text-muted-foreground">
-                  Pokazano pierwsze {series.dates.length} terminów. Skróć zakres albo zapisz tę część i dodaj kolejną.
-                </p>
-              )}
-            </div>
           </div>
 
           <DialogFooter>
@@ -338,7 +376,11 @@ export function AddWasteScheduleSeriesDialog({ locationId, orgId, open, onOpenCh
               Anuluj
             </Button>
             <Button type="submit" disabled={createMutation.isPending || selectedDates.length === 0}>
-              {createMutation.isPending ? "Dodawanie..." : `Dodaj ${polishTerminCount(selectedDates.length)}`}
+              {createMutation.isPending
+                ? "Dodawanie..."
+                : selectedDates.length === 0
+                  ? "Dodaj terminy"
+                  : `Dodaj ${formatWasteDateCount(selectedDates.length)}`}
             </Button>
           </DialogFooter>
         </form>

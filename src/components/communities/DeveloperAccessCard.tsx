@@ -29,6 +29,7 @@ import {
 } from "@/hooks/useDeveloperWarranty";
 import type { DeveloperAccess } from "@/types/developer-warranty";
 import { CreateDeveloperAccessDialog } from "./CreateDeveloperAccessDialog";
+import { DeveloperPortalLinkPreview } from "./DeveloperPortalLinkPreview";
 
 interface DeveloperAccessCardProps {
   communityId: string;
@@ -174,13 +175,21 @@ export function DeveloperAccessCard({
                 )}
               </div>
 
+              {developerAccess.access_token ? (
+                <DeveloperPortalLinkPreview
+                  accessToken={developerAccess.access_token}
+                  pendingActivation={Boolean(isAccessActive && !isAccessActivated)}
+                  loginEnabled={Boolean(isAccessActive && isAccessActivated)}
+                />
+              ) : null}
+
               {isAccessActive && !isAccessActivated && (
                 <Alert>
                   <Mail className="h-4 w-4" />
                   <AlertTitle>Oczekuje na aktywację</AlertTitle>
                   <AlertDescription>
-                    Deweloper otrzymał e-mail z linkiem aktywacyjnym. Po kliknięciu w link, ustawi swój PIN
-                    i uzyska dostęp do portalu.
+                    Deweloper otrzymał e-mail z linkiem aktywacyjnym i adresem portalu usterek.
+                    Po ustawieniu PIN-u loguje się tym adresem.
                   </AlertDescription>
                 </Alert>
               )}

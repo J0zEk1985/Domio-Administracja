@@ -15,6 +15,16 @@ export const WASTE_SCHEDULE_INTERVALS: { value: WasteScheduleInterval; label: st
 /** Two years of weekly pickups. Longer ranges are split across saves. */
 export const MAX_WASTE_SERIES_DATES = 104;
 
+export function formatWasteDateCount(count: number): string {
+  if (count === 1) return "1 termin";
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${count} terminy`;
+  }
+  return `${count} terminów`;
+}
+
 const INTERVAL_DAYS: Record<Exclude<WasteScheduleInterval, "monthly">, number> = {
   weekly: 7,
   biweekly: 14,

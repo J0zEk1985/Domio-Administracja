@@ -61,6 +61,7 @@ export default function DeveloperActivation() {
   const [error, setError] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -126,14 +127,9 @@ export default function DeveloperActivation() {
         throw new Error(data?.error || "Nie udało się aktywować dostępu");
       }
 
+      setPortalUrl(typeof data.portal_url === "string" ? data.portal_url : null);
       setSuccess(true);
       toast.success("Konto zostało aktywowane pomyślnie!");
-      
-      // Redirect to login page after 3 seconds
-      setTimeout(() => {
-        // We'll need to get the access_token somehow - for now, just show success
-        // In production, the activation response should return the access_token
-      }, 3000);
     } catch (err: any) {
       console.error("Activation error:", err);
       toast.error("Nie udało się aktywować konta");
@@ -214,14 +210,26 @@ export default function DeveloperActivation() {
             <div className="space-y-2 p-4 bg-muted rounded-lg">
               <p className="text-sm font-medium">Jak się zalogować?</p>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Otwórz link do portalu który otrzymałeś w e-mailu</li>
+                <li>Otwórz link do portalu usterek</li>
                 <li>Wprowadź swój 4-6 cyfrowy PIN</li>
                 <li>Przeglądaj i zarządzaj usterkami</li>
               </ol>
             </div>
+
+            {portalUrl ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Link do portalu usterek</p>
+                <a
+                  href={portalUrl}
+                  className="block rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs break-all text-primary underline-offset-2 hover:underline"
+                >
+                  {portalUrl}
+                </a>
+              </div>
+            ) : null}
           </CardContent>
           <CardFooter className="text-sm text-muted-foreground">
-            Link do logowania znajdziesz w otrzymanym e-mailu.
+            Ten sam adres portalu jest w mailu aktywacyjnym. Link aktywacyjny działa tylko raz.
           </CardFooter>
         </Card>
       </div>
@@ -339,8 +347,7 @@ export default function DeveloperActivation() {
         </CardContent>
 
         <CardFooter className="text-xs text-muted-foreground text-center">
-          Po aktywacji otrzymasz dostęp do portalu usterek deweloperskich.
-          Link do logowania znajdziesz w otrzymanym e-mailu.
+          Po aktywacji zobaczysz adres portalu usterek. Ten sam adres jest w mailu aktywacyjnym.
         </CardFooter>
       </Card>
     </div>

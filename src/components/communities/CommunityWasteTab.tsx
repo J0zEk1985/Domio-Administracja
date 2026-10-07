@@ -479,7 +479,7 @@ function SyncFromCityDialog({
           <DialogHeader>
             <DialogTitle>Synchronizacja z harmonogramem miasta</DialogTitle>
             <DialogDescription>
-              Pobierz terminy odbioru ze strony UML Łódź
+              Pobierz terminy odbioru odpadów gabarytowych ze strony UM Łódź
             </DialogDescription>
           </DialogHeader>
 
@@ -487,8 +487,8 @@ function SyncFromCityDialog({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                <strong>Uwaga:</strong> Obecnie adapter Łodzi używa mockowych danych.
-                Do produkcji wymaga implementacji scrapera strony UML.
+                Synchronizacja zapisuje terminy odpadów gabarytowych z Karty Łodzianina
+                dla podanej ulicy i numeru budynku (zabudowa wielorodzinna).
               </AlertDescription>
             </Alert>
 
