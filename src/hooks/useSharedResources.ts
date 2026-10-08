@@ -308,6 +308,7 @@ export function useApproveBooking() {
       toast.success("Rezerwacja zatwierdzona");
       queryClient.invalidateQueries({ queryKey: ["resource-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["community-pending-bookings"] });
     },
   });
 }
@@ -339,6 +340,7 @@ export function useRejectBooking() {
       toast.success("Rezerwacja odrzucona");
       queryClient.invalidateQueries({ queryKey: ["resource-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["community-pending-bookings"] });
     },
   });
 }

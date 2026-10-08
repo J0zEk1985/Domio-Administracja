@@ -19,26 +19,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Check, X, CheckSquare, XSquare, Download, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import {
   useCreateCommunityResource,
   useUpdateResource,
-  useResourceBookings,
-  useApproveBooking,
-  useRejectBooking,
   useResourceUsageReport,
   useAvailableResources,
   useResourceAvailability,
 } from "@/hooks/useSharedResources";
-import {
-  formatBookingTimeRange,
-  getBookingStatusLabel,
-  getBookingStatusColor,
-  formatPrice,
-} from "@/lib/sharedResourcesHelpers";
+import { formatPrice } from "@/lib/sharedResourcesHelpers";
 import type { SharedResource, BillingUnitType } from "@/types/sharedResources";
 import { pl } from "date-fns/locale";
-import { toast } from "sonner";
+
+export { PendingBookingsView } from "@/components/shared-resources/admin/PendingBookingsView";
 
 // ============================================================================
 // CreateResourceDialog
@@ -427,120 +420,6 @@ export function EditResourceDialog({
   );
 }
 
-// ============================================================================
-// PendingBookingsView - Lista oczekujących rezerwacji z zatwierdzaniem hurtowym
-// ============================================================================
-
-interface PendingBookingsViewProps {
-  communityId: string;
-}
-
-export function PendingBookingsView({ communityId }: PendingBookingsViewProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
-
-  const { data: resources } = useAvailableResources({
-    communityId,
-    resourceType: "community_managed",
-  });
-
-  // Pobierz rezerwacje dla każdego zasobu
-  const resourceIds = resources?.map((r) => r.id) || [];
-
-  const approveBooking = useApproveBooking();
-  const rejectBooking = useRejectBooking();
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      // TODO: Add all pending booking IDs
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
-
-  const handleApproveSelected = async () => {
-    if (selectedIds.size === 0) return;
-
-    for (const bookingId of Array.from(selectedIds)) {
-      await approveBooking.mutateAsync(bookingId);
-    }
-
-    setSelectedIds(new Set());
-    toast.success(`Zatwierdzono ${selectedIds.size} rezerwacji`);
-  };
-
-  const handleReject = async () => {
-    if (!rejectingId) return;
-
-    await rejectBooking.mutateAsync({
-      bookingId: rejectingId,
-      reason: rejectionReason,
-    });
-
-    setRejectingId(null);
-    setRejectionReason("");
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Oczekujące rezerwacje</CardTitle>
-            <CardDescription>
-              Zatwierdź lub odrzuć rezerwacje wymagające akceptacji
-            </CardDescription>
-          </div>
-          {selectedIds.size > 0 && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Anuluj ({selectedIds.size})
-              </Button>
-              <Button size="sm" onClick={handleApproveSelected}>
-                <CheckSquare className="mr-2 h-4 w-4" />
-                Zatwierdź wybrane
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <input
-                    type="checkbox"
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                </TableHead>
-                <TableHead>Zasób</TableHead>
-                <TableHead>Lokal</TableHead>
-                <TableHead>Termin</TableHead>
-                <TableHead>Cena</TableHead>
-                <TableHead className="w-[100px]">Akcje</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                  Brak oczekujących rezerwacji
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // UsageReportsView - Raporty wykorzystania zasobów
