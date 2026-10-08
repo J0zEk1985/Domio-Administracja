@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { buildMonthAvailability, monthQueryRange } from "@/lib/resourceAvailability";
 import {
   mapBookingRow,
   mapResourceRow,
@@ -677,17 +678,13 @@ export async function getResourceAvailabilityCalendar(
   month: number
 ): Promise<RpcResponse<ResourceAvailabilityCalendar[]>> {
   try {
-    // Początek i koniec miesiąca
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
-
-    // Pobierz wszystkie rezerwacje w tym miesiącu
+    const { start, end } = monthQueryRange(year, month);
     const { data: bookings, error } = await supabase
       .from("resource_bookings")
-      .select("id, starts_at, ends_at, status")
+      .select("id, starts_at, ends_at, status, booked_by_unit_id")
       .eq("resource_id", resourceId)
-      .gte("starts_at", startDate.toISOString())
-      .lte("ends_at", endDate.toISOString())
+      .lt("starts_at", end.toISOString())
+      .gt("ends_at", start.toISOString())
       .in("status", ["pending", "confirmed", "in_progress"]);
 
     if (error) {
@@ -695,34 +692,47 @@ export async function getResourceAvailabilityCalendar(
       return { data: null, error };
     }
 
-    // Grupuj rezerwacje po dniach
-    const calendar: ResourceAvailabilityCalendar[] = [];
-    const currentDate = new Date(startDate);
+    const unitIds = [
+      ...new Set(
+        (bookings ?? [])
+          .map((booking) => booking.booked_by_unit_id)
+          .filter((unitId): unitId is string => Boolean(unitId)),
+      ),
+    ];
+    const unitNumbers = new Map<string, string | null>();
 
-    while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split("T")[0];
-      const dayBookings = (bookings || []).filter((b) => {
-        const bookingStart = new Date(b.starts_at);
-        const bookingEnd = new Date(b.ends_at);
-        return bookingStart.toISOString().split("T")[0] <= dateStr &&
-               bookingEnd.toISOString().split("T")[0] >= dateStr;
-      });
+    if (unitIds.length > 0) {
+      const { data: units, error: unitsError } = await supabase
+        .from("community_units")
+        .select("id, unit_number")
+        .in("id", unitIds);
 
-      calendar.push({
-        resourceId,
-        date: dateStr,
-        slots: dayBookings.map((b) => ({
-          startsAt: b.starts_at,
-          endsAt: b.ends_at,
-          available: false,
-          bookingId: b.id,
-        })),
-      });
-
-      currentDate.setDate(currentDate.getDate() + 1);
+      if (unitsError) {
+        console.error("[getResourceAvailabilityCalendar] units:", unitsError);
+      } else {
+        for (const unit of units ?? []) {
+          unitNumbers.set(unit.id, unit.unit_number);
+        }
+      }
     }
 
-    return { data: calendar, error: null };
+    return {
+      data: buildMonthAvailability(
+        resourceId,
+        year,
+        month,
+        (bookings ?? []).map((booking) => ({
+          id: booking.id,
+          startsAt: booking.starts_at,
+          endsAt: booking.ends_at,
+          status: booking.status as BookingStatus,
+          unitNumber: booking.booked_by_unit_id
+            ? unitNumbers.get(booking.booked_by_unit_id) ?? null
+            : null,
+        })),
+      ),
+      error: null,
+    };
   } catch (err) {
     console.error("[getResourceAvailabilityCalendar] Exception:", err);
     return { data: null, error: err as Error };

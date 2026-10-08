@@ -429,6 +429,8 @@ export interface ResourceAvailabilityCalendar {
     endsAt: string;
     available: boolean;
     bookingId?: string;
+    status?: BookingStatus;
+    unitNumber?: string | null;
   }>;
 }
 

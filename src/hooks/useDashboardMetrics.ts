@@ -8,7 +8,7 @@ import {
   ADMIN_INTAKE_MODULE_OR,
   ADMIN_VISIBLE_ISSUES_OR,
 } from "@/lib/issueModuleVisibility";
-import { formatIssueBuildingLabel } from "@/lib/issueLocationLabel";
+import { formatIssueBuildingLabel, formatIssuePlaceLabels } from "@/lib/issueLocationLabel";
 
 export const DASHBOARD_METRICS_STALE_MS = 60_000;
 
@@ -43,9 +43,11 @@ type SectionName = { name: string | null };
 export type DashboardOverdueIssue = {
   id: string;
   locationId: string | null;
+  communityId: string | null;
   /** SLA deadline (created_at + 48h) — display as due date */
   dueAtIso: string;
   buildingName: string;
+  communityName: string | null;
   detail: string;
 };
 
@@ -90,7 +92,9 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
     const cutoff = addHours(new Date(), -OPEN_ISSUE_SLA_HOURS).toISOString();
     const { data, error } = await supabase
       .from("property_issues")
-      .select("id, location_id, created_at, category, description, location:cleaning_locations!inner(name)")
+      .select(
+        "id, location_id, created_at, category, description, location:cleaning_locations!inner(name, address, community:communities!cleaning_locations_community_id_fkey(id, name))",
+      )
       .eq("org_id", orgId)
       .eq("location.is_admin_active", true)
       .or(ADMIN_VISIBLE_ISSUES_OR)
@@ -112,21 +116,27 @@ async function fetchOverdueIssues(orgId: string): Promise<DashboardOverdueIssue[
       created_at: string | null;
       category: string | null;
       description: string | null;
-      location: LocationName | null;
+      location: {
+        name: string | null;
+        address: string | null;
+        community: { id: string; name: string | null } | { id: string; name: string | null }[] | null;
+      } | null;
     }[];
 
     return rows.map((row) => {
       const created = row.created_at ? parseISO(row.created_at) : new Date();
       const due = addHours(created, OPEN_ISSUE_SLA_HOURS);
-      const buildingName = row.location?.name?.trim() || "—";
+      const place = formatIssuePlaceLabels(row.location);
       const cat = row.category?.trim();
       const desc = row.description?.trim();
       const detail = cat && desc ? `${cat} — ${desc}` : cat ?? desc ?? "Usterka";
       return {
         id: row.id,
         locationId: row.location_id,
+        communityId: place.communityId,
         dueAtIso: due.toISOString(),
-        buildingName,
+        buildingName: place.buildingName,
+        communityName: place.communityName,
         detail,
       };
     });

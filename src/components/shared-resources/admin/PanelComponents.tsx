@@ -18,20 +18,18 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Plus, Calendar as CalendarIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   useCreateCommunityResource,
   useUpdateResource,
   useResourceUsageReport,
   useAvailableResources,
-  useResourceAvailability,
 } from "@/hooks/useSharedResources";
 import { formatPrice } from "@/lib/sharedResourcesHelpers";
 import type { SharedResource, BillingUnitType } from "@/types/sharedResources";
-import { pl } from "date-fns/locale";
 
 export { PendingBookingsView } from "@/components/shared-resources/admin/PendingBookingsView";
+export { AvailabilityCalendarView } from "@/components/shared-resources/admin/AvailabilityCalendarView";
 
 // ============================================================================
 // CreateResourceDialog
@@ -586,94 +584,3 @@ export function UsageReportsView({ communityId }: UsageReportsViewProps) {
   );
 }
 
-// ============================================================================
-// AvailabilityCalendarView - Kalendarz dostępności zasobów
-// ============================================================================
-
-interface AvailabilityCalendarViewProps {
-  communityId: string;
-}
-
-export function AvailabilityCalendarView({
-  communityId,
-}: AvailabilityCalendarViewProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedResourceId, setSelectedResourceId] = useState<string>("");
-
-  const { data: resources } = useAvailableResources({
-    communityId,
-    resourceType: "community_managed",
-  });
-
-  const year = selectedDate.getFullYear();
-  const month = selectedDate.getMonth() + 1;
-
-  const { data: calendar } = useResourceAvailability(
-    selectedResourceId,
-    year,
-    month
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Kalendarz dostępności</CardTitle>
-        <CardDescription>
-          Przegląd rezerwacji na wybrany miesiąc
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-2">
-          <Label>Zasób</Label>
-          <Select
-            value={selectedResourceId}
-            onValueChange={setSelectedResourceId}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Wybierz zasób" />
-            </SelectTrigger>
-            <SelectContent>
-              {resources?.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {selectedResourceId ? (
-          <div className="rounded-lg border p-4">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              locale={pl}
-              className="mx-auto"
-            />
-            <div className="mt-4 space-y-2">
-              <h4 className="font-medium">Legenda:</h4>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-green-500" />
-                  <span>Dostępny</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-red-500" />
-                  <span>Zarezerwowany</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border-2 border-dashed p-8 text-center">
-            <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-sm text-muted-foreground">
-              Wybierz zasób aby zobaczyć kalendarz
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}

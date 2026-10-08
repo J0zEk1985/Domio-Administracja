@@ -5,6 +5,7 @@ import { Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CommunityCreateAnnouncementDialog } from "@/components/communities/CommunityCreateAnnouncementDialog";
+import { CommunityResidentPostsSection } from "@/components/communities/CommunityResidentPostsSection";
 import { EBoardColorSwatch } from "@/components/eboard/EBoardColorSwatch";
 import { EBoardMessagesToolbar } from "@/components/eboard/EBoardMessagesToolbar";
 import { Badge } from "@/components/ui/badge";
@@ -287,6 +288,12 @@ export function CommunityAnnouncementReviewTab({
         </div>
         </div>
       )}
+
+      <CommunityResidentPostsSection
+        communityId={communityId}
+        buildingIds={buildingIds}
+        canManage={canManage}
+      />
 
       <div className="space-y-3">
         <h3 className="text-base font-semibold text-foreground">Ogłoszenia oczekujące na decyzję</h3>

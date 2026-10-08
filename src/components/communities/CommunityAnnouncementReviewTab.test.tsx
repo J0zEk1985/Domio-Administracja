@@ -52,6 +52,8 @@ describe("CommunityAnnouncementReviewTab", () => {
     expect(screen.getByLabelText("Szukaj ogłoszeń")).toBeVisible();
     expect(screen.getByLabelText("Sortuj ogłoszenia")).toBeVisible();
     expect(screen.getByText("Brak ogłoszeń na tablicy. Dodaj pierwsze przyciskiem powyżej.")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Wpisy mieszkańców" })).toBeVisible();
+    expect(screen.getByText("Brak opublikowanych wpisów mieszkańców.")).toBeVisible();
   });
 
   it("hides create action when the community cannot be managed", () => {

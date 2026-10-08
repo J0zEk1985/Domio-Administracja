@@ -62,23 +62,46 @@ function ActionRow({
   row: DashboardRow;
   detailMode: DetailLinkMode;
 }) {
+  const communityName = "communityName" in row ? row.communityName?.trim() || null : null;
+  const communityId = "communityId" in row ? row.communityId : null;
+  const showCommunity = Boolean(communityName && communityName !== row.buildingName);
+
   const building = (
     <>
       {row.locationId ? (
         <Link
           to={`/properties/${row.locationId}`}
-          className="text-sm font-medium text-primary hover:underline leading-snug mt-0.5 block truncate"
+          className="text-sm font-medium text-primary hover:underline leading-snug mt-0.5 block line-clamp-2"
           title={row.buildingName}
         >
           {row.buildingName}
         </Link>
       ) : (
-        <span className="text-sm font-medium text-foreground leading-snug mt-0.5 block truncate" title={row.buildingName}>
+        <span
+          className="text-sm font-medium text-foreground leading-snug mt-0.5 block line-clamp-2"
+          title={row.buildingName}
+        >
           {row.buildingName}
         </span>
       )}
     </>
   );
+
+  const community = showCommunity ? (
+    communityId ? (
+      <Link
+        to={`/communities/${communityId}`}
+        className="text-xs text-muted-foreground mt-0.5 block truncate hover:text-primary hover:underline"
+        title={`Wspólnota: ${communityName}`}
+      >
+        Wspólnota: {communityName}
+      </Link>
+    ) : (
+      <p className="text-xs text-muted-foreground mt-0.5 truncate" title={`Wspólnota: ${communityName}`}>
+        Wspólnota: {communityName}
+      </p>
+    )
+  ) : null;
 
   const detail =
     detailMode === "issues" ? (
@@ -99,6 +122,7 @@ function ActionRow({
     <li className="border-b border-border/60 pb-4 last:border-0 last:pb-0">
       <p className="text-xs font-medium text-red-600 tabular-nums">{formatDueDate(row.dueAtIso)}</p>
       {building}
+      {community}
       {detail}
     </li>
   );
