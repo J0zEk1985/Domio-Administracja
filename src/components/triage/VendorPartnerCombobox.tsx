@@ -1,9 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronsUpDown, Loader2, Search } from "lucide-react";
 import { CommandInput as CmdkInput } from "cmdk";
 
+import { toast } from "@/components/ui/sonner";
 import { useGlobalActiveVendorPartnersForRouting } from "@/hooks/useGlobalActiveVendorPartnersForRouting";
+import { useLocationIssueVendors } from "@/hooks/useLocationIssueVendors";
 import { useVendorPartners, type VendorPartnerRow } from "@/hooks/useVendorPartners";
+import {
+  ISSUE_VENDOR_OFFSITE_NO_EMAIL_PL,
+  partitionIssueVendors,
+  vendorHasEmail,
+} from "@/lib/issueVendorHandoff";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -24,10 +31,12 @@ export interface VendorPartnerComboboxProps {
   disabled?: boolean;
   placeholder?: string;
   /**
-   * `triage`: all org partners (legacy triage inbox).
-   * `routing`: org-wide active partners only — no contract/location coupling (property automations).
+   * `triage`: vendors attached to the issue building, with an option to reveal the rest.
+   * `routing`: org-wide partners for automations, without the building filter.
    */
   mode?: "triage" | "routing";
+  /** Building of the issue. Used only in triage mode. */
+  locationId?: string | null;
 }
 
 function filterLocal(rows: VendorPartnerRow[], q: string): VendorPartnerRow[] {
@@ -45,8 +54,10 @@ export function VendorPartnerCombobox({
   disabled = false,
   placeholder = "Wybierz firmę B2B…",
   mode = "triage",
+  locationId = null,
 }: VendorPartnerComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [showOthers, setShowOthers] = useState(false);
   const [inputQuery, setInputQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -57,15 +68,39 @@ export function VendorPartnerCombobox({
 
   const triageQuery = useVendorPartners(mode === "triage" && open);
   const routingQuery = useGlobalActiveVendorPartnersForRouting(mode === "routing" && open);
+  const attachedQuery = useLocationIssueVendors(
+    locationId,
+    mode === "triage" && open && Boolean(locationId),
+  );
 
   const { data: vendors = [], isPending, isFetching } =
     mode === "routing" ? routingQuery : triageQuery;
 
+  const attachedIds = useMemo(
+    () => new Set((attachedQuery.data ?? []).map((row) => row.vendor_id)),
+    [attachedQuery.data],
+  );
+  const scoped = mode === "triage";
   const filtered = filterLocal(vendors, debouncedQuery);
+  const split = scoped
+    ? partitionIssueVendors(filtered, locationId ? attachedIds : new Set())
+    : { attached: filtered, other: [] as VendorPartnerRow[] };
+  const visibleOthers = showOthers ? split.other : [];
   const selected = vendors.find((v) => v.id === value);
 
-  const listInitialLoad = isPending && vendors.length === 0;
+  const listInitialLoad =
+    (isPending && vendors.length === 0) ||
+    (scoped && Boolean(locationId) && attachedQuery.isPending && !attachedQuery.data);
   const showSearchSpinner = isFetching && !listInitialLoad;
+
+  const pickVendor = (vendor: VendorPartnerRow, attached: boolean) => {
+    if (scoped && !attached && !vendorHasEmail(vendor.contact_email)) {
+      toast.error(ISSUE_VENDOR_OFFSITE_NO_EMAIL_PL);
+      return;
+    }
+    onPick(vendor);
+    setOpen(false);
+  };
 
   return (
     <Popover
@@ -75,6 +110,7 @@ export function VendorPartnerCombobox({
         if (next) {
           setInputQuery("");
           setDebouncedQuery("");
+          setShowOthers(false);
         }
       }}
     >
@@ -124,47 +160,133 @@ export function VendorPartnerCombobox({
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
-            ) : filtered.length > 0 ? (
-              <CommandGroup heading="Partnerzy B2B">
-                {filtered.map((v) => (
-                  <CommandItem
-                    key={v.id}
-                    value={v.id}
-                    keywords={[v.name, v.service_type ?? ""]}
-                    className="items-start py-2"
-                    onSelect={() => {
-                      onPick(v);
-                      setOpen(false);
-                    }}
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-sm font-medium leading-snug">{v.name}</span>
-                      <span className="flex items-center gap-2">
-                        {v.service_type ? (
-                          <span className="truncate text-xs text-muted-foreground">{v.service_type}</span>
-                        ) : null}
-                        {v.dispatch_channel === "email" ? (
-                          <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-                            E-mail
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
             ) : (
-              <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                {mode === "routing" && vendors.length > 0
-                  ? "Brak wyników dla podanej frazy."
-                  : mode === "routing"
-                    ? "Brak wykonawców. Dodaj firmę z kategorią Wykonawca w zakładce Umowy i Firmy. Ubezpieczyciele nie pojawiają się na tej liście."
-                    : "Brak wykonawców. Dodaj firmę z kategorią Wykonawca w module umów."}
-              </CommandEmpty>
+              <>
+                {scoped ? (
+                  <CommandGroup heading="Podpięte pod budynek">
+                    {split.attached.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">
+                        {debouncedQuery.trim()
+                          ? "Brak podpiętych firm dla tej frazy."
+                          : "Brak firm podpiętych pod ten budynek."}
+                      </p>
+                    ) : (
+                      split.attached.map((vendor) => (
+                        <VendorOption
+                          key={vendor.id}
+                          vendor={vendor}
+                          attached
+                          onSelect={() => pickVendor(vendor, true)}
+                        />
+                      ))
+                    )}
+                  </CommandGroup>
+                ) : filtered.length > 0 ? (
+                  <CommandGroup heading="Partnerzy B2B">
+                    {filtered.map((vendor) => (
+                      <VendorOption
+                        key={vendor.id}
+                        vendor={vendor}
+                        attached
+                        onSelect={() => pickVendor(vendor, true)}
+                      />
+                    ))}
+                  </CommandGroup>
+                ) : (
+                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    {vendors.length > 0
+                      ? "Brak wyników dla podanej frazy."
+                      : "Brak wykonawców. Dodaj firmę z kategorią Wykonawca w zakładce Umowy i Firmy. Ubezpieczyciele nie pojawiają się na tej liście."}
+                  </CommandEmpty>
+                )}
+
+                {scoped && split.other.length > 0 && !showOthers ? (
+                  <div className="border-t px-2 py-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-full justify-start text-xs"
+                      onClick={() => setShowOthers(true)}
+                    >
+                      Pokaż pozostałe firmy
+                    </Button>
+                  </div>
+                ) : null}
+
+                {scoped && showOthers ? (
+                  <CommandGroup heading="Pozostałe firmy">
+                    {split.other.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">Brak pozostałych firm.</p>
+                    ) : (
+                      split.other.map((vendor) => (
+                        <VendorOption
+                          key={vendor.id}
+                          vendor={vendor}
+                          attached={false}
+                          onSelect={() => pickVendor(vendor, false)}
+                        />
+                      ))
+                    )}
+                  </CommandGroup>
+                ) : null}
+
+                {scoped && filtered.length === 0 && vendors.length > 0 ? (
+                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    Brak wyników dla podanej frazy.
+                  </CommandEmpty>
+                ) : null}
+                {scoped && vendors.length === 0 ? (
+                  <CommandEmpty className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    Brak wykonawców. Dodaj firmę z kategorią Wykonawca w module umów.
+                  </CommandEmpty>
+                ) : null}
+              </>
             )}
           </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function VendorOption({
+  vendor,
+  attached,
+  onSelect,
+}: {
+  vendor: VendorPartnerRow;
+  attached: boolean;
+  onSelect: () => void;
+}) {
+  const note = attached
+    ? vendor.dispatch_channel === "email"
+      ? "E-mail"
+      : null
+    : vendorHasEmail(vendor.contact_email)
+      ? "E-mail"
+      : "Bez e-maila";
+
+  return (
+    <CommandItem
+      value={vendor.id}
+      keywords={[vendor.name, vendor.service_type ?? ""]}
+      className="items-start py-2"
+      onSelect={onSelect}
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate text-sm font-medium leading-snug">{vendor.name}</span>
+        <span className="flex items-center gap-2">
+          {vendor.service_type ? (
+            <span className="truncate text-xs text-muted-foreground">{vendor.service_type}</span>
+          ) : null}
+          {note ? (
+            <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+              {note}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    </CommandItem>
   );
 }

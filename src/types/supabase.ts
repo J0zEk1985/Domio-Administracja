@@ -1573,6 +1573,52 @@ export type Database = {
           },
         ]
       }
+      location_issue_vendors: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          org_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          org_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          org_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_issue_vendors_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_issue_vendors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_issue_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_vendor_routing: {
         Row: {
           created_at: string

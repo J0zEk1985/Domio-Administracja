@@ -254,6 +254,7 @@ export function TriageIssueActionBar({ issue }: TriageIssueActionBarProps) {
               <span className="text-xs text-muted-foreground">Deleguj (B2B)</span>
               <VendorPartnerCombobox
                 value={issue.delegated_vendor_id ?? ""}
+                locationId={issue.location_id}
                 disabled={busy}
                 onPick={(v) => {
                   delegateMut.mutate({

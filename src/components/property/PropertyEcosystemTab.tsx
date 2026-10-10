@@ -18,6 +18,7 @@ import { PropertyEcosystemCopyCard } from "@/components/property/PropertyEcosyst
 import { PropertyEcosystemDirectoryCard } from "@/components/property/PropertyEcosystemDirectoryCard";
 import { PropertyEcosystemPresenceCard } from "@/components/property/PropertyEcosystemPresenceCard";
 import { PropertyEcosystemEmergencyProvidersCard } from "@/components/property/PropertyEcosystemEmergencyProvidersCard";
+import { PropertyEcosystemIssueVendorsCard } from "@/components/property/PropertyEcosystemIssueVendorsCard";
 import {
   useCommunityLegalEntityId,
   useCooperationLinks,
@@ -47,6 +48,7 @@ function statusVariant(status: MandateStatus): "default" | "secondary" | "outlin
 type PropertyEcosystemTabProps = {
   orgId: string;
   communityId: string | null;
+  locationId: string;
   locationMasterId: string | null;
   canManage: boolean;
 };
@@ -54,6 +56,7 @@ type PropertyEcosystemTabProps = {
 export function PropertyEcosystemTab({
   orgId,
   communityId,
+  locationId,
   locationMasterId,
   canManage,
 }: PropertyEcosystemTabProps) {
@@ -113,39 +116,57 @@ export function PropertyEcosystemTab({
     (row) => row.module === "admin" && row.role === "primary_operator" && row.status === "active",
   );
 
+  const issueVendorsCard = (
+    <PropertyEcosystemIssueVendorsCard locationId={locationId} canManage={canManage} />
+  );
+
   if (!locationMasterId) {
     return (
-      <Alert>
-        <AlertDescription>
-          Ten budynek nie jest dopięty do adresu w rejestrze. Dopnij adres (NIP wspólnoty), aby wskazać kooperantów
-          Cleaning i Serwis. Sama obecność firmy na adresie nie oznacza jeszcze mandatu.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        {issueVendorsCard}
+        <Alert>
+          <AlertDescription>
+            Ten budynek nie jest dopięty do adresu w rejestrze. Dopnij adres (NIP wspólnoty), aby wskazać kooperantów
+            Cleaning i Serwis. Sama obecność firmy na adresie nie oznacza jeszcze mandatu.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   if (!communityId) {
     return (
-      <Alert>
-        <AlertDescription>
-          Przypisz budynek do wspólnoty, aby Administracja mogła wybrać, które firmy kooperują w ekosystemie DOMIO.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        {issueVendorsCard}
+        <Alert>
+          <AlertDescription>
+            Przypisz budynek do wspólnoty, aby Administracja mogła wybrać, które firmy kooperują w ekosystemie DOMIO.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   if (entityQuery.isLoading) {
-    return <Skeleton className="h-48 w-full rounded-lg" />;
+    return (
+      <div className="space-y-6">
+        {issueVendorsCard}
+        <Skeleton className="h-48 w-full rounded-lg" />
+      </div>
+    );
   }
 
   if (!communityLegalEntityId) {
     return (
-      <Alert>
-        <AlertDescription>
-          Wspólnota nie ma NIP w rejestrze podmiotów. Uzupełnij NIP na karcie wspólnoty — dopiero wtedy można nadać
-          mandaty i wybrać kooperantów. Stary zarządca nie jest odpinany automatycznie.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        {issueVendorsCard}
+        <Alert>
+          <AlertDescription>
+            Wspólnota nie ma NIP w rejestrze podmiotów. Uzupełnij NIP na karcie wspólnoty — dopiero wtedy można nadać
+            mandaty i wybrać kooperantów. Stary zarządca nie jest odpinany automatycznie.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -179,6 +200,7 @@ export function PropertyEcosystemTab({
 
   return (
     <div className="space-y-6">
+      {issueVendorsCard}
       <PropertyEcosystemPresenceCard
         canManage={canManage}
         loading={presenceQuery.isLoading}

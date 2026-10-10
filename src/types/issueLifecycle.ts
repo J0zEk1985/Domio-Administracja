@@ -122,6 +122,7 @@ export const ISSUE_LIFECYCLE_ERROR_CODES = [
   "ISSUE_MARKETPLACE_ALREADY_CLAIMED",
   "ISSUE_MARKETPLACE_FORBIDDEN",
   "ISSUE_CLEANING_RELEASE_FORBIDDEN",
+  "ISSUE_VENDOR_OFFSITE_NO_EMAIL",
 ] as const;
 
 export type IssueLifecycleErrorCode =
@@ -160,6 +161,8 @@ const ERROR_MESSAGE_PL: Record<IssueLifecycleErrorCode, string> = {
   ISSUE_MARKETPLACE_FORBIDDEN: "Brak uprawnień do podjęcia tego zgłoszenia z giełdy.",
   ISSUE_CLEANING_RELEASE_FORBIDDEN:
     "Nie można przekazać tej usterki poza moduł sprzątania.",
+  ISSUE_VENDOR_OFFSITE_NO_EMAIL:
+    "Ta firma nie jest podpięta pod nieruchomość i nie ma adresu e-mail. Przekaż zgłoszenie inną drogą, na przykład telefonicznie.",
 };
 
 export function issueLifecycleErrorMessagePl(err: unknown): string {

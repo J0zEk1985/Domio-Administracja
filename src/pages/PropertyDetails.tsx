@@ -250,6 +250,7 @@ export default function PropertyDetails() {
           <PropertyEcosystemTab
             orgId={property.orgId}
             communityId={property.communityId}
+            locationId={property.id}
             locationMasterId={property.locationMasterId}
             canManage={isOwner}
           />
