@@ -27,6 +27,7 @@ import { PropertyGeneralInfoForm } from "@/components/property/PropertyGeneralIn
 import { PropertyRecordSwitcher } from "@/components/property/PropertyRecordSwitcher";
 import { PropertySerwisQrAccessCard } from "@/components/property/PropertySerwisQrAccessCard";
 import { PropertyResidentIssueVisibilityCard } from "@/components/property/PropertyResidentIssueVisibilityCard";
+import { PropertySosModuleCard } from "@/components/property/PropertySosModuleCard";
 import { PropertyAutomationsTab } from "@/components/property/PropertyAutomationsTab";
 import { PropertyLocalInspectionsTab } from "@/components/property/PropertyLocalInspectionsTab";
 import { PropertyContractsTab } from "@/components/property/PropertyContractsTab";
@@ -324,6 +325,12 @@ export default function PropertyDetails() {
         <TabsContent value="general" className="mt-6 space-y-6">
           <PropertyGeneralInfoForm property={property} isOwner={isOwner} />
           <PropertyResidentIssueVisibilityCard
+            locationId={property.id}
+            orgId={property.orgId}
+            canManage={portalAccessQuery.data === true}
+            accessPending={portalAccessQuery.isLoading}
+          />
+          <PropertySosModuleCard
             locationId={property.id}
             orgId={property.orgId}
             canManage={portalAccessQuery.data === true}

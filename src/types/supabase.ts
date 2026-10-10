@@ -3177,6 +3177,7 @@ export type Database = {
           created_at: string
           enable_community_board: boolean
           enable_partner_offers: boolean
+          enable_sos: boolean
           id: string
           location_id: string
           org_id: string
@@ -3189,6 +3190,7 @@ export type Database = {
           created_at?: string
           enable_community_board?: boolean
           enable_partner_offers?: boolean
+          enable_sos?: boolean
           id?: string
           location_id: string
           org_id: string
@@ -3201,6 +3203,7 @@ export type Database = {
           created_at?: string
           enable_community_board?: boolean
           enable_partner_offers?: boolean
+          enable_sos?: boolean
           id?: string
           location_id?: string
           org_id?: string
