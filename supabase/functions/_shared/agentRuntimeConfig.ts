@@ -1,7 +1,9 @@
 /**
  * Agent secrets come from the edge runtime environment. On the self-hosted
- * stack they may instead sit in runtime-secrets.json next to this function,
- * because that file is not part of the git tree.
+ * stack they sit in runtime-secrets.json next to this function, because that
+ * file is not part of the git tree. The user worker cannot read that file.
+ * main/index.ts reads it and copies the values into the worker environment
+ * before the function starts.
  */
 
 const SECRET_FILE = "/home/deno/functions/agent-community-rules/runtime-secrets.json";
