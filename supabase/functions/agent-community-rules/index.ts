@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { agentSecret } from "../_shared/agentRuntimeConfig.ts";
 import { signDomioAgentUserToken } from "../_shared/agentUserToken.ts";
 import {
   deleteCommunityRule,
@@ -155,7 +156,7 @@ async function allowedCommunityIds(client: UserClient): Promise<string[]> {
 }
 
 async function issueToken(userId: string, communityIds: readonly string[]) {
-  const secret = Deno.env.get("DOMIO_AGENT_USER_TOKEN_SECRET")?.trim() ?? "";
+  const secret = agentSecret("DOMIO_AGENT_USER_TOKEN_SECRET");
   if (secret.length < 16) throw new Error("DOMIO_AGENT_USER_TOKEN_SECRET is not configured");
   return signDomioAgentUserToken(userId, communityIds, secret);
 }
@@ -250,8 +251,8 @@ async function invokeAgent(userId: string, client: UserClient, body: Record<stri
   const requestedSource = typeof body.source === "string" ? body.source.trim().toLowerCase() : "";
   const source = DOMIO_SOURCE.test(requestedSource) ? requestedSource : "domio-administracja";
   const signed = await issueToken(userId, ids);
-  const webhookUrl = Deno.env.get("AGENT_WEBHOOK_URL")?.trim() ?? "";
-  const webhookToken = Deno.env.get("AGENT_WEBHOOK_TOKEN")?.trim() ?? "";
+  const webhookUrl = agentSecret("AGENT_WEBHOOK_URL");
+  const webhookToken = agentSecret("AGENT_WEBHOOK_TOKEN");
   if (!webhookUrl || !webhookToken) throw new Error("AGENT_WEBHOOK_URL is not configured");
 
   let upstream: Response;

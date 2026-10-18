@@ -1,4 +1,5 @@
 import postgres from "npm:postgres@3.4.7";
+import { agentSecret } from "./agentRuntimeConfig.ts";
 
 export type AgentRuleRow = {
   id: string;
@@ -30,7 +31,7 @@ function mapRule(row: Record<string, unknown>): AgentRuleRow {
 }
 
 async function withAgentDb<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
-  const url = Deno.env.get("AGENT_DB_URL")?.trim() ?? "";
+  const url = agentSecret("AGENT_DB_URL");
   if (!url) throw new Error("AGENT_DB_URL is not configured");
   const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 10 });
   try {
