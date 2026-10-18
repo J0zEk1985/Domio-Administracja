@@ -23,9 +23,11 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormDescription,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { syncCommunityAdminNotes } from "@/lib/agentCommunityRules";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -135,7 +137,21 @@ export function CommunityDomainEditor({
       { id: community.id, orgId, updates },
       {
         onSuccess: () => {
-          toast.success("Zapisano dane wspólnoty.");
+          const administrationNotes = values.operational_notes.administration?.trim() ?? "";
+          void syncCommunityAdminNotes(community.id, administrationNotes).then(
+            () => {
+              toast.success("Zapisano dane wspólnoty.");
+            },
+            (error: unknown) => {
+              console.error("[CommunityDomainEditor] sync admin notes", error);
+              toast.success("Zapisano dane wspólnoty.");
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Zapisano uwagi, ale nie udało się przekazać ich agentowi AI.",
+              );
+            },
+          );
         },
       },
     );
@@ -539,8 +555,11 @@ export function CommunityDomainEditor({
                     <FormItem>
                       <FormLabel>Uwagi dla administracji</FormLabel>
                       <FormControl>
-                        <Textarea rows={3} {...field} disabled={pending} />
+                        <Textarea rows={3} maxLength={2000} {...field} disabled={pending} />
                       </FormControl>
+                      <FormDescription>
+                        Po zapisaniu te uwagi trafiają do agenta AI jako wytyczna tej wspólnoty.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

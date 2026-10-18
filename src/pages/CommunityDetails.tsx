@@ -48,6 +48,7 @@ import { CommunityIssuesTab } from "@/components/communities/CommunityIssuesTab"
 import { CommunityWarrantyTab } from "@/components/communities/CommunityWarrantyTab";
 import { CommunitySharedResourcesTab } from "@/components/communities/CommunitySharedResourcesTab";
 import { CommunityWasteTab } from "@/components/communities/CommunityWasteTab";
+import { CommunityAiRulesTab } from "@/components/communities/CommunityAiRulesTab";
 import {
   VerificationNeededBadge,
   rowNeedsVerification,
@@ -297,6 +298,9 @@ export default function CommunityDetails() {
             <TabsTrigger value="waste" className="shrink-0">
               Gospodarka odpadami
             </TabsTrigger>
+            <TabsTrigger value="ai-rules" className="shrink-0">
+              Wytyczne AI
+            </TabsTrigger>
             <TabsTrigger value="estate" className="shrink-0">
               Osiedle
             </TabsTrigger>
@@ -409,6 +413,10 @@ export default function CommunityDetails() {
 
           <TabsContent value="estate" className="mt-4">
             <CommunityEstateTab communityId={communityId!} communityName={community.name} />
+          </TabsContent>
+
+          <TabsContent value="ai-rules" className="mt-4">
+            <CommunityAiRulesTab communityId={communityId!} readOnly={inactive} />
           </TabsContent>
 
           <TabsContent value="waste" className="mt-4">

@@ -357,6 +357,9 @@ allow_dynamic_registration = false
 [functions.lodz-waste-schedule]
 verify_jwt = true
 
+[functions.agent-community-rules]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -4263,6 +4263,14 @@ export type Database = {
         }[]
       }
       get_my_org_id_safe: { Args: never; Returns: string }
+      can_manage_community_agent_rules: {
+        Args: { p_community_id: string }
+        Returns: boolean
+      }
+      list_my_agent_community_ids: {
+        Args: never
+        Returns: { community_id: string }[]
+      }
       claim_my_resident_units: { Args: never; Returns: number }
       import_location_residents: {
         Args: { p_location_id: string; p_rows: Json }
