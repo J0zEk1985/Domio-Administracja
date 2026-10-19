@@ -155,10 +155,41 @@ async function allowedCommunityIds(client: UserClient): Promise<string[]> {
     .filter((id) => UUID.test(id));
 }
 
-async function issueToken(userId: string, communityIds: readonly string[]) {
+async function orgMapForCommunities(
+  client: UserClient,
+  communityIds: readonly string[],
+): Promise<Record<string, string[]>> {
+  if (!communityIds.length) return {};
+  const { data, error } = await client.from("communities").select("id, org_id").in("id", communityIds);
+  if (error || !Array.isArray(data)) return {};
+  const grouped = new Map<string, string[]>();
+  for (const row of data) {
+    if (!row || typeof row !== "object") continue;
+    const id = "id" in row ? String(row.id).trim().toLowerCase() : "";
+    const org = "org_id" in row ? String(row.org_id).trim().toLowerCase() : "";
+    if (!UUID.test(id) || !UUID.test(org) || !communityIds.includes(id)) continue;
+    const list = grouped.get(org) ?? [];
+    list.push(id);
+    grouped.set(org, list);
+  }
+  const map: Record<string, string[]> = {};
+  for (const org of [...grouped.keys()].sort()) {
+    map[org] = [...new Set(grouped.get(org))].sort();
+  }
+  return map;
+}
+
+async function issueToken(userId: string, communityIds: readonly string[], client: UserClient) {
   const secret = agentSecret("DOMIO_AGENT_USER_TOKEN_SECRET");
   if (secret.length < 16) throw new Error("DOMIO_AGENT_USER_TOKEN_SECRET is not configured");
-  return signDomioAgentUserToken(userId, communityIds, secret);
+  const orgCommunities = await orgMapForCommunities(client, communityIds);
+  const allowedOrgIds = Object.keys(orgCommunities);
+  return signDomioAgentUserToken(userId, communityIds, secret, Date.now(), {
+    userId: userId.toLowerCase(),
+    orgId: allowedOrgIds.length === 1 ? allowedOrgIds[0] : null,
+    allowedOrgIds,
+    orgCommunities,
+  });
 }
 
 Deno.serve(async (req) => {
@@ -175,10 +206,12 @@ Deno.serve(async (req) => {
 
     if (action === "issue_token") {
       const ids = await allowedCommunityIds(client);
-      const signed = await issueToken(userId, ids);
+      const signed = await issueToken(userId, ids, client);
       return jsonResponse({
         operator_id: userId.toLowerCase(),
         allowed_community_ids: signed.allowedCommunityIds,
+        org_id: signed.orgId,
+        allowed_org_ids: signed.allowedOrgIds,
         expires_at: signed.expiresAt,
         token: signed.token,
       }, 200);
@@ -250,7 +283,7 @@ async function invokeAgent(userId: string, client: UserClient, body: Record<stri
   }
   const requestedSource = typeof body.source === "string" ? body.source.trim().toLowerCase() : "";
   const source = DOMIO_SOURCE.test(requestedSource) ? requestedSource : "domio-administracja";
-  const signed = await issueToken(userId, ids);
+  const signed = await issueToken(userId, ids, client);
   const webhookUrl = agentSecret("AGENT_WEBHOOK_URL");
   const webhookToken = agentSecret("AGENT_WEBHOOK_TOKEN");
   if (!webhookUrl || !webhookToken) throw new Error("AGENT_WEBHOOK_URL is not configured");

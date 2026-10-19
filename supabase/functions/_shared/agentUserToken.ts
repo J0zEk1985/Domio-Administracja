@@ -1,8 +1,11 @@
 /**
  * Signs the DOMIO user token checked by agent-n8n/scripts/agent-user-token.mjs.
  * Payload keys, in this order: operator_id, allowed_community_ids, exp.
+ * Optional keys after those: user_id, org_id, allowed_org_ids.
  * Token: v1.<base64url(json)>.<base64url(hmac-sha256(secret, "v1." + payload))>
  */
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const B64_URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const SCOPE_ID = /^[A-Za-z0-9_.:@-]{1,80}$/;
@@ -43,18 +46,48 @@ export async function signDomioAgentUserToken(
   communityIds: readonly string[],
   secret: string,
   nowMs = Date.now(),
-): Promise<{ token: string; expiresAt: string; allowedCommunityIds: string[] }> {
+  scope?: {
+    userId?: string | null;
+    orgId?: string | null;
+    allowedOrgIds?: readonly string[];
+    orgCommunities?: Record<string, readonly string[]> | null;
+  },
+): Promise<{
+  token: string;
+  expiresAt: string;
+  allowedCommunityIds: string[];
+  userId: string | null;
+  orgId: string | null;
+  allowedOrgIds: string[];
+}> {
   const operator = operatorId.trim().toLowerCase();
   if (!SCOPE_ID.test(operator) || secret.trim().length < 16) {
     throw new Error("Nie można podpisać tożsamości agenta.");
   }
   const allowedCommunityIds = normalizeCommunityIds(communityIds);
   const exp = Math.floor(nowMs / 1000) + TOKEN_TTL_SECONDS;
-  const payload = JSON.stringify({
+  const userId = scope?.userId && UUID.test(scope.userId) ? scope.userId.trim().toLowerCase() : null;
+  const allowedOrgIds = [...new Set((scope?.allowedOrgIds ?? [])
+    .map((id) => id.trim().toLowerCase())
+    .filter((id) => UUID.test(id)))].sort();
+  const orgId = scope?.orgId && UUID.test(scope.orgId)
+    ? scope.orgId.trim().toLowerCase()
+    : (allowedOrgIds.length === 1 ? allowedOrgIds[0] : null);
+  if (orgId && allowedOrgIds.length && !allowedOrgIds.includes(orgId)) {
+    throw new Error("Nie można podpisać tożsamości agenta.");
+  }
+  const payloadObject: Record<string, unknown> = {
     operator_id: operator,
     allowed_community_ids: allowedCommunityIds,
     exp,
-  });
+  };
+  if (userId) payloadObject.user_id = userId;
+  if (orgId) payloadObject.org_id = orgId;
+  if (allowedOrgIds.length) payloadObject.allowed_org_ids = allowedOrgIds;
+  if (scope?.orgCommunities && Object.keys(scope.orgCommunities).length) {
+    payloadObject.org_community_ids = scope.orgCommunities;
+  }
+  const payload = JSON.stringify(payloadObject);
   const payloadPart = bytesToBase64Url(new TextEncoder().encode(payload));
   const key = await crypto.subtle.importKey(
     "raw",
@@ -70,5 +103,8 @@ export async function signDomioAgentUserToken(
     token: `v1.${payloadPart}.${bytesToBase64Url(mac)}`,
     expiresAt: new Date(exp * 1000).toISOString(),
     allowedCommunityIds,
+    userId,
+    orgId,
+    allowedOrgIds,
   };
 }
