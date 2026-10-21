@@ -1,0 +1,31 @@
+---
+description: Mobile PWA UI for DOMIO Home and DOMIO Serwis. Tailwind, shadcn/ui, 44px touch targets, WCAG AA contrast.
+globs: "**/*.tsx,**/*.jsx,**/*.css"
+alwaysApply: false
+---
+
+# UX/UI for DOMIO PWAs
+
+DOMIO Home (residents) and DOMIO Serwis (technicians and cleaning crews) are phone-first PWAs. Reuse the existing shadcn/ui component before adding one. Style with Tailwind utilities, mobile-first. UI copy is Polish.
+
+## Touch and layout
+
+- Interactive controls are at least 44×44 px (`min-h-11 min-w-11`). Separate adjacent targets by at least 8 px.
+- One primary action stays in the thumb zone and is not covered by a sticky bar or the safe-area inset.
+- Set `touch-action: manipulation` on buttons and links. A required action must not depend on hover.
+- Stack content in one column. Add `sm:` only when that screen must also work on a tablet.
+- An input has a visible label above the field, an `inputMode` that matches the data, and the error under the field.
+
+## Contrast and components
+
+- Body text and instructions meet WCAG AA (4.5:1), including outdoors. Do not use `text-gray-400` on a white or `slate-100` surface for text the user must read.
+- Use the Radix behavior already inside shadcn. An icon-only button has an `aria-label`.
+- Reuse Button, Card, Sheet, Dialog, and Form. Split a file that passes 300 lines.
+- Every screen has a loading skeleton, an empty state, and an error state with retry.
+- Honor `prefers-reduced-motion`. Animate transform and opacity only.
+
+```tsx
+<Button className="min-h-11 w-full touch-manipulation" type="button">
+  Zgłoś usterkę
+</Button>
+```

@@ -1,0 +1,33 @@
+---
+description: Create or update a DOMIO operational skill from raw guidelines (utility settlement, ownership law, building inspections). Use when the user asks for a new procedure skill or to revise one.
+alwaysApply: false
+---
+
+# Skill creator
+
+Turn one raw guideline into one operational skill. Follow the Anthropic skill-creator loop: capture intent, draft, confirm, then write. A procedure that already has a skill gets an update, not a second file.
+
+## Before writing
+
+Search `.cursor/rules/`, `.cursor/skills/`, and `.agents/skills/` for the same procedure. Never write into `~/.cursor/skills-cursor/`.
+
+Answer these from the user's note before asking anything else:
+
+1. What must the skill make the agent do?
+2. Which phrases should trigger it?
+3. What is the output (checklist, decision, or draft document)?
+4. Which source is binding (statute excerpt, internal procedure, inspection checklist)?
+
+Coding standards stay `.cursor/rules/<name>.mdc`. Repeatable procedures stay `.cursor/skills/<name>/SKILL.md` with `name` and `description`.
+
+## Draft shape
+
+- `description` is third person and states what the skill does and when to use it, including the trigger phrases.
+- Use imperative steps. Keep `SKILL.md` under 500 lines. Put statutes and long checklists in `references/` and link them once.
+- Name the audience: zarządca, mieszkaniec, serwis, or firma sprzątająca.
+- Quote the user's source. Do not invent a legal conclusion, a fee, or an inspection interval the source does not state.
+- UI labels inside a skill stay Polish. Identifiers stay English.
+- Show the outline and 2–3 test prompts. Write the file after the user accepts the outline.
+
+Input: "Zrób skill rozliczania wody z mojej notatki."
+Output: `utility-settlement` with the note in `references/source.md` and steps for reading meters, splitting the cost, and what the agent must not assume.

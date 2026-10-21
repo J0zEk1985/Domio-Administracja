@@ -1,0 +1,48 @@
+---
+description: Mobile PWA performance for technician and administrator views. No leaked effect subscriptions.
+globs: "**/*.tsx,**/*.jsx"
+alwaysApply: false
+---
+
+# React and PWA performance
+
+Follow the Cursor Directory React standard: functional components, mobile-first layout, server state outside ad-hoc effects, and memoization only where it keeps the screen smooth.
+
+## Mobile views
+
+- Technician and administrator screens are phone-first. Touch targets stay usable, primary actions stay visible, and content is not hidden under a sticky bar.
+- Issue lists, building lists, and finance tables render a skeleton on first load. Do not block the shell on secondary data.
+- Long lists virtualize their rows. Row components are `memo`ized and keyed by id.
+- Split heavy administrator panels with `React.lazy` and `Suspense`. Lazy-load images and give them width and height.
+- A GPS tick, a realtime event, or a form keystroke updates the smallest state slice. Do not copy the whole issue or building list into state on each event.
+
+## Effects and subscriptions
+
+- Server data belongs to the existing query or data hook. Do not start a second fetch of the same resource in `useEffect`.
+- A `useEffect` that subscribes (Supabase Realtime, `watchPosition`, push, `setInterval`, store subscribe) returns a cleanup that removes that subscription.
+- Effect dependencies are primitives or memoized values. Do not pass a fresh object, array, or inline closure if it resubscribes on every render.
+- Zustand and similar stores use a selector. Do not subscribe to the whole store from a list row.
+- `useMemo` and `useCallback` are for list rows, effect dependencies, and expensive derived data. Do not wrap every handler.
+
+```tsx
+useEffect(() => {
+  const channel = supabase
+    .channel(`property-issues:${orgId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "property_issues" },
+      onChange,
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}, [orgId, onChange]);
+```
+
+## PWA smoothness
+
+- Keep the first paint light. Defer maps, photo galleries, and finance breakdowns until the view needs them.
+- Show an error state with a retry. Do not leave a technician or administrator on a blank screen after a failed load.
+- Animate only transform and opacity. Avoid layout reads and writes in the same tick on scroll or GPS updates.

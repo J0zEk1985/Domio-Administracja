@@ -1,0 +1,60 @@
+---
+description: One shared Supabase database for DOMIO. RLS, grants, and housing-community isolation on every table
+globs: "**/*.sql"
+alwaysApply: false
+---
+
+# Supabase security
+
+Follow the Cursor Directory Supabase RLS standard: every exposed table has RLS, policies, and grants in the migration that creates it. A client filter is not an access policy.
+
+## One database
+
+The whole DOMIO ecosystem, including Domio-Cleaning, uses one Supabase PostgreSQL database. Administrator, resident, technical service, and the cleaning company exchange data there. Do not add a database per subscriber, a per-organization `database_url`, or a second client pointed at another instance. Housing communities share tables. Isolation is RLS.
+
+## New tables
+
+- `ENABLE ROW LEVEL SECURITY` in the same migration as `CREATE TABLE`. Do not ship a table without it.
+- Add one policy per command (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) in that migration. RLS with no policy denies every row.
+- `REVOKE ALL` from `anon` and `authenticated`, then `GRANT` only the commands the app uses, only to `authenticated`. Grant to `anon` only for data that signed-out visitors may read, with a matching policy.
+- Never `GRANT ... ON ALL TABLES IN SCHEMA public`. That exposes every table that has RLS off.
+- Keep the migration inside `BEGIN` / `COMMIT`.
+
+## Policies
+
+- Name the role: `TO authenticated` or `TO anon`.
+- Call `auth.uid()` as `(select auth.uid())`.
+- `INSERT` has `WITH CHECK`. `UPDATE` has `USING` and `WITH CHECK`. `UPDATE` also needs a `SELECT` policy on the same rows, or it changes nothing and returns no error.
+- Do not use `USING (true)` or `WITH CHECK (true)` on users, buildings, failures, finances, or community data.
+- A policy must not query the table it protects (`42P17` infinite recursion). Cross-table checks go through an existing `SECURITY DEFINER` helper in `private`, or an existing `public.is_*` role helper, with `search_path` fixed, schema-qualified names, `REVOKE ALL FROM PUBLIC`, and `EXECUTE` granted only to `authenticated`.
+- Views are `WITH (security_invoker = true)`. A `SECURITY DEFINER` function in an exposed schema must check the caller itself.
+
+## Community isolation
+
+- Scope rows with `org_id`, `community_id`, or `community_legal_entity_id` through the caller's membership. Reuse helpers such as `public.is_management_role`, `public.is_serwis_dispatcher_or_owner`, and `public.is_serwis_technician_role`.
+- Do not treat `org_id` or `community_id` from the request body, a header, or `.eq()` as the authorization decision.
+- The publishable key is public. Never put `service_role` or `sb_secret_` in frontend code or `VITE_*`.
+- Server code uses the user session so `auth.uid()` resolves. The service role is server-only and bypasses RLS.
+
+```sql
+ALTER TABLE public.property_issues ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON TABLE public.property_issues FROM anon, authenticated;
+GRANT SELECT, UPDATE ON TABLE public.property_issues TO authenticated;
+
+CREATE POLICY property_issues_select
+ON public.property_issues
+FOR SELECT
+TO authenticated
+USING (
+  org_id IS NOT NULL
+  AND public.is_serwis_technician_role(org_id)
+);
+```
+
+Replace the helper with the role that may see that table. Add insert, update, and delete policies the same way.
+
+## Queries
+
+- Do not add a client read or write for a table until its policies exist.
+- `42501` means a missing grant. `new row violates row-level security policy` means `WITH CHECK` failed. An update that affects zero rows means the `UPDATE` or `SELECT` policy did not match.

@@ -1,0 +1,32 @@
+---
+description: Read and update the local Markdown knowledge base. Keep DOMIO schema, RLS, roles, and building structure consistent with the code change.
+globs: "**/*.md,**/*.mdc,**/*.sql,**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# Knowledge base
+
+Markdown in the repo is the map. SQL migrations are the schema. Read both before changing access, roles, or building structure. Read files directly. Use Obsidian tools only when that MCP server is already connected.
+
+## Read order
+
+1. `README.md`, `docs/`, and `agent-n8n/PROCEDURY_WSPOLNOTY.md` when that file is in the repo.
+2. The latest `supabase/migrations` file that creates the table and its policies.
+3. The role helper the policy already calls. Do not invent a new role name.
+
+| Person | Helper to look for |
+| --- | --- |
+| Zarządca | `is_management_role`, `is_org_management`, `is_org_admin_team` |
+| Mieszkaniec | unit or community membership, not a staff helper |
+| Serwis | `is_serwis_technician_role`, `is_serwis_org_staff`, `is_service_staff_role` |
+| Sprzątanie | the cleaning org's own staff check in that repo |
+
+A building belongs to a community (`community_id` or `org_id`). A unit belongs to a building. An id from the client is not an authorization decision.
+
+## Write rules
+
+- Update the Markdown page that describes the surface you changed, in the same change. Link related pages with a relative path.
+- Do not rewrite a migration or a source note so it matches a summary. If they disagree, the migration wins; fix the summary.
+- New notes use flat YAML frontmatter (`title`, `updated`). Append to a log. Leave past log entries as they are.
+- Community procedures for the language agent live in `agent_community_rules` and are edited in Administracja under **Wytyczne AI**.
+- If `wiki/index.md` exists, add the new page there. Do not create an Obsidian vault the repo does not have.

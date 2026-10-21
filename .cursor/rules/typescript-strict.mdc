@@ -1,0 +1,47 @@
+---
+description: Strict TypeScript for DOMIO users, buildings, failures, and finances. No any.
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# TypeScript strict
+
+Follow the Cursor Directory TypeScript standard: strong types, no `any`, named interfaces, and explicit error handling. UI copy stays Polish. Type names stay English.
+
+## No `any`
+
+- `any`, `as any`, `Object`, and `@ts-ignore` are forbidden. `@ts-expect-error` needs a one-line reason.
+- Use `unknown`, then narrow. A type assertion is allowed only after Zod `parse` / `safeParse` or a discriminated-union check.
+- Prefer `import type` for type-only imports. Mark fields that callers must not reassign as `readonly`.
+- Do not widen `IssuePriority`, `PropertyIssueStatus`, `IssueCategory`, `IssueSource`, or `ReporterType` to `string`.
+
+## DOMIO data interfaces
+
+Users, buildings, failures, and finances use named interfaces. Do not type these payloads as `Record<string, unknown>` or an inline object at the call site.
+
+When `src/types/database.ts` (or this repo's equivalent) already exports the type, import it:
+
+| Module | Types |
+| --- | --- |
+| Users | `OrgStaffMember`, `OrgMemberRow` |
+| Buildings | `ManagerBuilding`, `BuildingContact` |
+| Failures | `PropertyIssueInsert`, `PropertyIssueWithLocation` |
+| Finances | `PropertyIssueBilling`, `PropertyIssueFinancialOriginal`, `OrgSerwisBillingSettings` |
+
+New external input (forms, JSONB, API bodies) gets a Zod schema, then `z.infer<typeof schema>`. Money fields stay `number | null` in PLN, matching the billing interfaces. Validate them with `z.number().finite()` at the boundary.
+
+## Errors
+
+- `catch (error: unknown)`. Narrow with `instanceof Error` or `ZodError`. Do not use an empty `catch`.
+- Log the operation and the error, then rethrow or return a typed failure. Do not continue on invalid data.
+- Supabase `{ data, error }`: when `error` is set, stop. Do not read `data`.
+
+```ts
+const parsed = propertyIssueInsertSchema.safeParse(input);
+if (!parsed.success) {
+  console.error("Invalid property issue", { issues: parsed.error.issues });
+  throw new TypeError("Invalid property issue");
+}
+
+const issue: PropertyIssueInsert = parsed.data;
+```
