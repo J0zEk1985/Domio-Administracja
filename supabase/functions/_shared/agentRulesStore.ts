@@ -30,7 +30,7 @@ function mapRule(row: Record<string, unknown>): AgentRuleRow {
   };
 }
 
-async function withAgentDb<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+export async function withAgentDb<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
   const url = agentSecret("AGENT_DB_URL");
   if (!url) throw new Error("AGENT_DB_URL is not configured");
   const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 10 });
@@ -41,13 +41,40 @@ async function withAgentDb<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
   }
 }
 
-export function listCommunityRules(communityId: string): Promise<AgentRuleRow[]> {
+export type RuleScope = "community" | "operator";
+
+export type AgentRuleProposal = {
+  id: string;
+  community_id: string | null;
+  operator_id: string;
+  category: string;
+  rule_content: string;
+  evidence: string | null;
+  status: "proposal";
+  created_at: string;
+};
+
+function mapProposal(row: Record<string, unknown>): AgentRuleProposal {
+  return {
+    id: String(row.id),
+    community_id: row.community_id == null ? null : String(row.community_id),
+    operator_id: String(row.operator_id),
+    category: String(row.category),
+    rule_content: String(row.rule_content),
+    evidence: row.evidence == null ? null : String(row.evidence),
+    status: "proposal",
+    created_at: asIso(row.created_at),
+  };
+}
+
+export function listCommunityRules(communityId: string, _actorId: string): Promise<AgentRuleRow[]> {
   return withAgentDb(async (sql) => {
     const rows = await sql<Record<string, unknown>[]>`
       SELECT id, community_id, operator_id, category, rule_content, created_at, updated_at
       FROM public.agent_community_rules
-      WHERE community_id IS NULL OR community_id = ${communityId}
-      ORDER BY community_id NULLS FIRST, category ASC, updated_at DESC
+      WHERE (community_id IS NULL OR community_id = ${communityId})
+        AND operator_id IS NULL
+      ORDER BY operator_id NULLS FIRST, community_id NULLS FIRST, category ASC, updated_at DESC
       LIMIT 200
     `;
     return rows.map(mapRule);
@@ -56,9 +83,14 @@ export function listCommunityRules(communityId: string): Promise<AgentRuleRow[]>
 
 export function insertCommunityRule(
   communityId: string,
+  _actorId: string,
+  scope: RuleScope,
   category: string,
   ruleContent: string,
 ): Promise<AgentRuleRow | null> {
+  if (scope === "operator") {
+    throw new Error("operator rules are saved from the chat");
+  }
   return withAgentDb(async (sql) => {
     const rows = await sql<Record<string, unknown>[]>`
       INSERT INTO public.agent_community_rules (community_id, operator_id, category, rule_content)
@@ -71,6 +103,7 @@ export function insertCommunityRule(
 
 export function updateCommunityRule(
   communityId: string,
+  _actorId: string,
   ruleId: string,
   category: string,
   ruleContent: string,
@@ -80,21 +113,75 @@ export function updateCommunityRule(
       UPDATE public.agent_community_rules
       SET category = ${category}, rule_content = ${ruleContent}
       WHERE id = ${ruleId}::uuid
-        AND community_id = ${communityId}
         AND category <> 'admin_notes'
+        AND community_id = ${communityId}
+        AND operator_id IS NULL
       RETURNING id, community_id, operator_id, category, rule_content, created_at, updated_at
     `;
     return rows[0] ? mapRule(rows[0]) : null;
   });
 }
 
-export function deleteCommunityRule(communityId: string, ruleId: string): Promise<boolean> {
+export function deleteCommunityRule(communityId: string, _actorId: string, ruleId: string): Promise<boolean> {
   return withAgentDb(async (sql) => {
     const rows = await sql<{ id: string }[]>`
       DELETE FROM public.agent_community_rules
       WHERE id = ${ruleId}::uuid
-        AND community_id = ${communityId}
         AND category <> 'admin_notes'
+        AND community_id = ${communityId}
+        AND operator_id IS NULL
+      RETURNING id
+    `;
+    return rows.length > 0;
+  });
+}
+
+export function listOperatorProposals(actorId: string): Promise<AgentRuleProposal[]> {
+  return withAgentDb(async (sql) => {
+    const rows = await sql<Record<string, unknown>[]>`
+      SELECT id, community_id, operator_id, category, rule_content, evidence, created_at
+      FROM public.agent_rule_proposals
+      WHERE operator_id = ${actorId}
+        AND status = 'proposal'
+      ORDER BY created_at DESC
+      LIMIT 20
+    `;
+    return rows.map(mapProposal);
+  });
+}
+
+export function approveOperatorProposal(actorId: string, proposalId: string): Promise<AgentRuleRow | null> {
+  return withAgentDb(async (sql) => {
+    return await sql.begin(async (tx) => {
+      const approved = await tx<Record<string, unknown>[]>`
+        UPDATE public.agent_rule_proposals
+        SET status = 'approved', reviewed_at = now(), reviewed_by = ${actorId}
+        WHERE id = ${proposalId}::uuid
+          AND operator_id = ${actorId}
+          AND status = 'proposal'
+        RETURNING community_id, operator_id, category, rule_content
+      `;
+      const source = approved[0];
+      if (!source) return null;
+      const inserted = await tx<Record<string, unknown>[]>`
+        INSERT INTO public.agent_community_rules (community_id, operator_id, category, rule_content)
+        VALUES (${source.community_id ?? null}, ${String(source.operator_id)}, ${String(source.category)}, ${String(source.rule_content)})
+        RETURNING id, community_id, operator_id, category, rule_content, created_at, updated_at
+      `;
+      if (!inserted[0]) throw new Error("style proposal was not copied");
+      return mapRule(inserted[0]);
+    });
+  });
+}
+
+export function rejectOperatorProposal(actorId: string, proposalId: string): Promise<boolean> {
+  return withAgentDb(async (sql) => {
+    const rows = await sql<{ id: string }[]>`
+      UPDATE public.agent_rule_proposals
+      SET status = 'rejected', reviewed_at = now(), reviewed_by = ${actorId}
+      WHERE id = ${proposalId}::uuid
+        AND operator_id = ${actorId}
+        AND status = 'proposal'
       RETURNING id
     `;
     return rows.length > 0;

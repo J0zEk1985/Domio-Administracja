@@ -33,15 +33,24 @@ export function agentRuleCategoryLabel(category: string): string {
   return CATEGORY_LABELS[category] ?? category;
 }
 
-export function isGlobalAgentRule(rule: Pick<AgentCommunityRule, "community_id">): boolean {
-  return rule.community_id == null || rule.community_id === "";
+export function isGlobalAgentRule(
+  rule: Pick<AgentCommunityRule, "community_id" | "operator_id">,
+): boolean {
+  const community = rule.community_id == null || rule.community_id === "";
+  return community && !rule.operator_id;
+}
+
+export function isOperatorAgentRule(rule: Pick<AgentCommunityRule, "operator_id">): boolean {
+  return Boolean(rule.operator_id);
 }
 
 export function isEditableAgentRule(
-  rule: Pick<AgentCommunityRule, "community_id" | "category">,
+  rule: Pick<AgentCommunityRule, "community_id" | "category" | "operator_id">,
   communityId: string,
 ): boolean {
-  return rule.community_id === communityId && rule.category !== "admin_notes";
+  if (rule.category === "admin_notes") return false;
+  if (isOperatorAgentRule(rule)) return false;
+  return rule.community_id === communityId;
 }
 
 async function invokeRules<T>(body: Record<string, unknown>): Promise<T> {
@@ -96,6 +105,7 @@ export async function createAgentCommunityRule(input: {
     community_id: input.communityId,
     category: input.category,
     rule_content: input.ruleContent,
+    scope: "community",
   });
   return data.rule;
 }

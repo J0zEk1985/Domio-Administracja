@@ -4,6 +4,7 @@ import {
   agentRuleCategoryLabel,
   isEditableAgentRule,
   isGlobalAgentRule,
+  isOperatorAgentRule,
 } from "@/lib/agentCommunityRules";
 
 describe("agent community rule labels", () => {
@@ -16,28 +17,36 @@ describe("agent community rule labels", () => {
   });
 
   it("keeps company-wide rules and synced administration notes out of the editor", () => {
-    expect(isGlobalAgentRule({ community_id: null })).toBe(true);
+    expect(isGlobalAgentRule({ community_id: null, operator_id: null })).toBe(true);
+    expect(isGlobalAgentRule({ community_id: null, operator_id: "user-1" })).toBe(false);
+    expect(isOperatorAgentRule({ operator_id: "user-1" })).toBe(true);
     expect(
       isEditableAgentRule(
-        { community_id: "community-1", category: "finance" },
+        { community_id: "community-1", operator_id: null, category: "finance" },
         "community-1",
       ),
     ).toBe(true);
     expect(
       isEditableAgentRule(
-        { community_id: null, category: "general" },
+        { community_id: null, operator_id: "user-1", category: "communication" },
         "community-1",
       ),
     ).toBe(false);
     expect(
       isEditableAgentRule(
-        { community_id: "community-1", category: "admin_notes" },
+        { community_id: null, operator_id: null, category: "general" },
         "community-1",
       ),
     ).toBe(false);
     expect(
       isEditableAgentRule(
-        { community_id: "community-2", category: "finance" },
+        { community_id: "community-1", operator_id: null, category: "admin_notes" },
+        "community-1",
+      ),
+    ).toBe(false);
+    expect(
+      isEditableAgentRule(
+        { community_id: "community-2", operator_id: null, category: "finance" },
         "community-1",
       ),
     ).toBe(false);

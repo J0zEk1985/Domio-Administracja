@@ -14,6 +14,7 @@ import {
   listCommunityRules,
   syncAdminNotes,
   updateCommunityRule,
+  type RuleScope,
 } from "../_shared/agentRulesStore.ts";
 
 const corsHeaders: Record<string, string> = {
@@ -58,6 +59,14 @@ function cleanContent(value: unknown): string {
   return text;
 }
 
+function cleanScope(value: unknown): RuleScope {
+  if (value === "operator") {
+    throw new HttpError(400, "Wytyczne użytkownika zapisuje się w oknie Wytyczne na czacie.");
+  }
+  if (value === "community" || value == null || value === "") return "community";
+  throw new HttpError(400, "Wytyczna wspólnoty nie ma zakresu użytkownika.");
+}
+
 function cleanCategory(value: unknown): string {
   const category = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (!EDITABLE_CATEGORIES.has(category)) {
@@ -73,8 +82,17 @@ function mapStoreError(error: unknown): HttpError {
   if (message.includes("AGENT_DB_URL") || message.includes("DOMIO_AGENT_USER_TOKEN_SECRET") || message.includes("AGENT_WEBHOOK")) {
     return new HttpError(503, "Połączenie z bazą procedur agenta nie jest skonfigurowane.");
   }
-  if (message.includes("agent_community_rules_content_chk")) {
+  if (message.includes("agent_community_rules_content_chk") || message.includes("agent_rule_proposals_content_chk")) {
     return new HttpError(400, "Treść wytycznej musi mieć od 1 do 2000 znaków.");
+  }
+  if (message.includes("duplicate style proposal")) {
+    return new HttpError(409, "Taka propozycja reguły już czeka na zatwierdzenie.");
+  }
+  if (message.includes("too many open style proposals")) {
+    return new HttpError(409, "Jest już za dużo oczekujących propozycji stylu. Zatwierdź albo odrzuć wcześniejsze.");
+  }
+  if (message.includes("agent_rule_proposals")) {
+    return new HttpError(503, "Baza agenta nie ma jeszcze propozycji reguł. Uruchom migrację 20261030_operator_style_proposals.");
   }
   return new HttpError(503, "Nie udało się wykonać operacji na procedurach agenta.");
 }
@@ -229,16 +247,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === "list") {
-      const rules = await listCommunityRules(communityId);
+      const rules = await listCommunityRules(communityId, userId.toLowerCase());
       return jsonResponse({ rules }, 200);
     }
     if (action === "create") {
-      const rule = await insertCommunityRule(communityId, cleanCategory(body.category), cleanContent(body.rule_content));
+      const rule = await insertCommunityRule(
+        communityId,
+        userId.toLowerCase(),
+        cleanScope(body.scope),
+        cleanCategory(body.category),
+        cleanContent(body.rule_content),
+      );
       return jsonResponse({ rule }, 201);
     }
     if (action === "update") {
       const rule = await updateCommunityRule(
         communityId,
+        userId.toLowerCase(),
         requireUuid(body.id, "wytyczna"),
         cleanCategory(body.category),
         cleanContent(body.rule_content),
@@ -247,7 +272,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ rule }, 200);
     }
     if (action === "delete") {
-      const removed = await deleteCommunityRule(communityId, requireUuid(body.id, "wytyczna"));
+      const removed = await deleteCommunityRule(communityId, userId.toLowerCase(), requireUuid(body.id, "wytyczna"));
       if (!removed) throw new HttpError(404, "Nie znaleziono wytycznej tej wspólnoty.");
       return jsonResponse({ ok: true }, 200);
     }

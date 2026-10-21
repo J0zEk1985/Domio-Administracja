@@ -20,6 +20,7 @@ import {
   agentRuleCategoryLabel,
   isEditableAgentRule,
   isGlobalAgentRule,
+  isOperatorAgentRule,
   type AgentCommunityRule,
   type AiRuleCategory,
 } from "@/lib/agentCommunityRules";
@@ -29,7 +30,10 @@ type Props = {
   readOnly?: boolean;
 };
 
-const EMPTY_FORM = { category: "general" as AiRuleCategory, ruleContent: "" };
+const EMPTY_FORM = {
+  category: "general" as AiRuleCategory,
+  ruleContent: "",
+};
 
 export function CommunityAiRulesTab({ communityId, readOnly = false }: Props) {
   const {
@@ -48,6 +52,7 @@ export function CommunityAiRulesTab({ communityId, readOnly = false }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const canEdit = canManage && !readOnly;
+  const sharedRules = rules.filter((rule) => !isOperatorAgentRule(rule));
 
   function beginEdit(rule: AgentCommunityRule) {
     const category = AI_RULE_CATEGORIES.some((item) => item.value === rule.category)
@@ -97,7 +102,7 @@ export function CommunityAiRulesTab({ communityId, readOnly = false }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Procedury i wytyczne AI</CardTitle>
           <CardDescription>
-            Lista pochodzi z bazy procedur agenta. Reguła globalna obowiązuje każdą wspólnotę i jest tylko do odczytu.
+            Lista pochodzi z bazy procedur agenta. Reguła globalna obowiązuje każdą wspólnotę i jest tylko do odczytu. Wytyczne użytkownika są w oknie Wytyczne na czacie agenta.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -107,10 +112,10 @@ export function CommunityAiRulesTab({ communityId, readOnly = false }: Props) {
               {rulesError instanceof Error ? rulesError.message : "Nie udało się wczytać wytycznych."}
             </p>
           ) : null}
-          {!rulesLoading && !rulesError && rules.length === 0 ? (
+          {!rulesLoading && !rulesError && sharedRules.length === 0 ? (
             <p className="text-sm text-muted-foreground">Brak wytycznych dla tej wspólnoty.</p>
           ) : null}
-          {rules.map((rule) => {
+          {sharedRules.map((rule) => {
             const global = isGlobalAgentRule(rule);
             const editable = canEdit && isEditableAgentRule(rule, communityId);
             return (
@@ -118,9 +123,8 @@ export function CommunityAiRulesTab({ communityId, readOnly = false }: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{agentRuleCategoryLabel(rule.category)}</Badge>
                   {global ? <Badge variant="secondary">Reguła globalna</Badge> : null}
-                  {rule.category === "admin_notes" ? (
-                    <Badge variant="secondary">Z uwag administracji</Badge>
-                  ) : null}
+                  {!global && rule.category !== "admin_notes" ? <Badge variant="secondary">Wspólnota</Badge> : null}
+                  {rule.category === "admin_notes" ? <Badge variant="secondary">Z uwag administracji</Badge> : null}
                 </div>
                 <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{rule.rule_content}</p>
                 {editable ? (
